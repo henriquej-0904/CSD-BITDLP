@@ -17,16 +17,17 @@ public interface Users {
     static final String PATH="/user";
 
     /**
-	 * Creates a new message.
+	 * Creates a new user.
 	 *
 	 * @param user object
 	 */
 	@POST
     @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
     User createUser(UserId userId);
 
     /**
-	 * Creates a new message.
+	 * Returns a user.
 	 *
 	 * @param UserId user id
 	 */
