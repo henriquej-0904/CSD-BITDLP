@@ -1,6 +1,9 @@
 package itdlp.api.service;
 
+import java.util.List;
+
 import itdlp.api.User;
+import itdlp.api.User.UserId;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
@@ -20,16 +23,26 @@ public interface Users {
 	 */
 	@POST
     @Consumes(MediaType.APPLICATION_JSON)
-    void createUser(User user);
+    User createUser(UserId userId);
 
     /**
 	 * Creates a new message.
 	 *
-	 * @param byte[] user id
+	 * @param UserId user id
 	 */
     @GET
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    User getUser(byte[] id);
+    User getUser(UserId id);
+
+    
+    @Path("/all")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    /**
+     * Get all users in the Ledger.
+     * @return A list of users.
+     */
+    List<User> getAllUsers();
     
 }

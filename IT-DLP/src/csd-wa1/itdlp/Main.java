@@ -6,8 +6,6 @@ import java.net.URI;
 import org.glassfish.jersey.jdkhttp.JdkHttpServerFactory;
 import org.glassfish.jersey.server.ResourceConfig;
 
-import itdlp.impl.srv.resources.App;
-
 public class Main
 {
 	public static final int PORT = 8080;
@@ -19,7 +17,7 @@ public class Main
 			URI uri = new URI(String.format("http://%s:%s/rest", ip, PORT));
 
 			ResourceConfig config = new ResourceConfig();
-			config.register(App.class);
+			//config.register(App.class);
             
 			JdkHttpServerFactory.createHttpServer( uri, config);
 		} catch (Exception e) {
