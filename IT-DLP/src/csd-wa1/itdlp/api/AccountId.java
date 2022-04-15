@@ -33,6 +33,9 @@ public class AccountId extends ObjectId
      */
     public AccountId(byte[] id) {
         super(id);
+        
+        if (id.length <= HASH_BYTES_LENGTH)
+            throw new IllegalArgumentException();
     }
 
     /**

@@ -1,9 +1,8 @@
 package itdlp.data;
 
-import java.util.List;
-
 import itdlp.api.Account;
 import itdlp.api.AccountId;
+import itdlp.util.Result;
 
 /**
  * An implementation of the LedgerDBlayer in Memory.
@@ -31,47 +30,45 @@ public class LedgerDBinMemory extends LedgerDBlayer
 
     }
 
-
     @Override
-    public Account createAccount(AccountId id) {
+    public Result<Account> createAccount(AccountId accountId) {
         // TODO Auto-generated method stub
         return null;
     }
 
     @Override
-    public Account getAccount(AccountId id) {
+    public Result<Account> getAccount(AccountId accountId) {
         // TODO Auto-generated method stub
         return null;
     }
 
     @Override
-    public int getBalance(AccountId id) {
+    public Result<Integer> getBalance(AccountId accountId) {
         // TODO Auto-generated method stub
-        return 0;
+        return null;
     }
 
     @Override
-    public int getTotalValue(List<AccountId> accounts) {
+    public Result<Integer> getTotalValue(AccountId[] accounts) {
         // TODO Auto-generated method stub
-        return 0;
+        return null;
     }
 
     @Override
-    public int getGlobalLedgerValue() {
+    public Result<Integer> getGlobalLedgerValue() {
         // TODO Auto-generated method stub
-        return 0;
+        return null;
     }
 
     @Override
-    public int loadMoney(AccountId id, int value) {
+    public Result<Integer> loadMoney(AccountId id, int value) {
         // TODO Auto-generated method stub
-        return 0;
+        return null;
     }
 
     @Override
-    public void sendTransaction(AccountId origin, AccountId dest, int value) {
+    public Result<Void> sendTransaction(AccountId origin, AccountId dest, int value) {
         // TODO Auto-generated method stub
-        
+        return null;
     }
-    
 }

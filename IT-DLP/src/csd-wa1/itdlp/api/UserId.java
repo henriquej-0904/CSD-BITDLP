@@ -32,6 +32,9 @@ public class UserId extends ObjectId
      */
     public UserId(byte[] id) {
         super(id);
+
+        if (id.length <= HASH_BYTES_LENGTH)
+            throw new IllegalArgumentException();
     }
 
     /**
