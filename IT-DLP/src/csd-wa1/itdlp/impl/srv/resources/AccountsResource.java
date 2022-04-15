@@ -1,5 +1,6 @@
 package itdlp.impl.srv.resources;
 
+import java.util.logging.Logger;
 import java.util.stream.Stream;
 
 import itdlp.api.Account;
@@ -9,9 +10,12 @@ import itdlp.data.LedgerDBlayer;
 import itdlp.data.LedgerDBlayerException;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.InternalServerErrorException;
+import jakarta.ws.rs.WebApplicationException;
 
 public abstract class AccountsResource implements Accounts
 {
+    protected static final Logger LOG = Logger.getLogger(AccountsResource.class.getSimpleName());
+
     protected LedgerDBlayer db;
 
     /**
@@ -44,8 +48,17 @@ public abstract class AccountsResource implements Accounts
 
     @Override
     public final Account createAccount(byte[] accountId) {
-        init();
-        return createAccount(getAccountId(accountId));
+        try {
+            init();
+
+            AccountId id = getAccountId(accountId);
+            LOG.info(id.toString());
+
+            return createAccount(id);
+        } catch (WebApplicationException e) {
+            LOG.info(e.getMessage());
+            throw e;
+        }
     }
 
     /**
@@ -61,8 +74,17 @@ public abstract class AccountsResource implements Accounts
 
     @Override
     public final Account getAccount(byte[] accountId) {
-        init();
-        return getAccount(getAccountId(accountId));
+        try {
+            init();
+            
+            AccountId id = getAccountId(accountId);
+            LOG.info(id.toString());
+
+            return getAccount(id);
+        } catch (WebApplicationException e) {
+            LOG.info(e.getMessage());
+            throw e;
+        }
     }
 
     /**
@@ -78,8 +100,17 @@ public abstract class AccountsResource implements Accounts
 
     @Override
     public final int getBalance(byte[] accountId) {
-        init();
-        return getBalance(getAccountId(accountId));
+        try {
+            init();
+            
+            AccountId id = getAccountId(accountId);
+            LOG.info(id.toString());
+
+            return getBalance(id);
+        } catch (WebApplicationException e) {
+            LOG.info(e.getMessage());
+            throw e;
+        }
     }
 
     /**
@@ -95,16 +126,21 @@ public abstract class AccountsResource implements Accounts
 
     @Override
     public final int getTotalValue(byte[][] accounts) {
-        init();
-        
-        if (accounts == null || accounts.length == 0)
-            throw new BadRequestException();
+        try {
+            init();
+            
+            if (accounts == null || accounts.length == 0)
+                throw new BadRequestException();
 
-        AccountId[] accountIds = (AccountId[]) Stream.of(accounts)
-            .map(this::getAccountId)
-            .toArray();
+            AccountId[] accountIds = (AccountId[]) Stream.of(accounts)
+                .map(this::getAccountId)
+                .toArray();
 
-        return getTotalValue(accountIds);
+            return getTotalValue(accountIds);
+        } catch (WebApplicationException e) {
+            LOG.info(e.getMessage());
+            throw e;
+        }
     }
 
     /**
@@ -118,8 +154,17 @@ public abstract class AccountsResource implements Accounts
 
     @Override
     public final void loadMoney(byte[] accountId, int value) {
-        init();
-        loadMoney(getAccountId(accountId), value);
+        try {
+            init();
+            
+            AccountId id = getAccountId(accountId);
+            LOG.info(String.format("%s, value=%d", id, value));
+
+            loadMoney(id, value);
+        } catch (WebApplicationException e) {
+            LOG.info(e.getMessage());
+            throw e;
+        }
     }
 
     /**
@@ -134,8 +179,19 @@ public abstract class AccountsResource implements Accounts
 
     @Override
     public final void sendTransaction(byte[] origin, byte[] dest, int value) {
-        init();
-        sendTransaction(getAccountId(origin), getAccountId(dest), value);
+        try {
+            init();
+            
+            AccountId originId = getAccountId(origin);
+            AccountId destId = getAccountId(dest);
+            LOG.info(String.format("Origin %s, Dest %s, value=%d",
+                originId, destId, value));
+
+            sendTransaction(originId, destId, value);
+        } catch (WebApplicationException e) {
+            LOG.info(e.getMessage());
+            throw e;
+        }
     }
 
     /**
