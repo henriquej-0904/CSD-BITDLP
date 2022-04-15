@@ -19,7 +19,7 @@ public interface Accounts {
     /**
 	 * Creates a new account.
 	 *
-	 * @param user object
+	 * @param id account id
 	 */
 	@POST
     @Consumes(MediaType.APPLICATION_JSON)
