@@ -1,7 +1,5 @@
 package itdlp.data;
 
-import java.util.List;
-
 import itdlp.api.Account;
 import itdlp.api.AccountId;
 import itdlp.util.Result;
@@ -75,10 +73,10 @@ public abstract class LedgerDBlayer
     
     /**
      * Return total balance of account list
-     * @param accs
+     * @param accounts
      * @return total balance
      */
-    public abstract Result<Integer> getTotalValue(List<AccountId> accounts);
+    public abstract Result<Integer> getTotalValue(AccountId[] accounts);
 
     /**
      * Return total amount of value registered in the ledger

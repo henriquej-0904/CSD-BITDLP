@@ -1,7 +1,5 @@
 package itdlp.data;
 
-import java.util.List;
-
 import itdlp.api.Account;
 import itdlp.api.AccountId;
 import itdlp.util.Result;
@@ -51,7 +49,7 @@ public class LedgerDBinMemory extends LedgerDBlayer
     }
 
     @Override
-    public Result<Integer> getTotalValue(List<AccountId> accounts) {
+    public Result<Integer> getTotalValue(AccountId[] accounts) {
         // TODO Auto-generated method stub
         return null;
     }
