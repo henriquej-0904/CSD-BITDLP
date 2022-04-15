@@ -1,58 +1,55 @@
 package itdlp.impl.srv.resources;
 
-import java.util.List;
-
 import itdlp.api.Account;
 import itdlp.api.AccountId;
-import itdlp.api.service.Accounts;
+import jakarta.ws.rs.WebApplicationException;
 
 /**
  * A centralized implementation of the Accounts API
  */
-public class AccountsResourceCentralized implements Accounts
+public class AccountsResourceCentralized extends AccountsResource
 {
-    
 
     @Override
-    public Account createAccount(AccountId id) {
-        // TODO Auto-generated method stub
-        return null;
+    public Account createAccount(AccountId accountId) {
+        return this.db.createAccount(accountId).resultOrThrow();
     }
 
     @Override
-    public Account getAccount(AccountId id) {
-        // TODO Auto-generated method stub
-        return null;
+    public Account getAccount(AccountId accountId) {
+        return this.db.getAccount(accountId).resultOrThrow();
     }
 
     @Override
-    public int getBalance(AccountId id) {
-        // TODO Auto-generated method stub
-        return 0;
+    public int getBalance(AccountId accountId) {
+        return this.db.getBalance(accountId).resultOrThrow();
     }
 
     @Override
-    public int getTotalValue(List<AccountId> accounts) {
-        // TODO Auto-generated method stub
-        return 0;
+    public int getTotalValue(AccountId[] accounts) {
+        return this.db.getTotalValue(accounts).resultOrThrow();
     }
 
     @Override
     public int getGlobalLedgerValue() {
-        // TODO Auto-generated method stub
-        return 0;
+        try {
+            init();
+            
+            return this.db.getGlobalLedgerValue().resultOrThrow();
+        } catch (WebApplicationException e) {
+            LOG.info(e.getMessage());
+            throw e;
+        }
     }
 
     @Override
-    public int loadMoney(AccountId id, int value) {
-        // TODO Auto-generated method stub
-        return 0;
+    public void loadMoney(AccountId accountId, int value) {
+        this.db.loadMoney(accountId, value);
     }
 
     @Override
     public void sendTransaction(AccountId origin, AccountId dest, int value) {
-        // TODO Auto-generated method stub
-        
+        this.db.sendTransaction(origin, dest, value);
     }
-    
+
 }
