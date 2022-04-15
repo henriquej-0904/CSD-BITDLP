@@ -7,6 +7,7 @@ import itdlp.api.AccountId;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
@@ -22,37 +23,41 @@ public interface Accounts {
     /**
 	 * Creates a new account.
 	 *
-	 * @param id account id
+	 * @param accountId account id
 	 */
 	@POST
-    @Consumes(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.APPLICATION_OCTET_STREAM)
     @Produces(MediaType.APPLICATION_JSON)
-    Account createAccount(AccountId id);
+    Account createAccount(byte[] accountId);
 
     /**
 	 * Returns an account with the extract.
 	 *
-	 * @param id account id
+	 * @param accountId account id
+     * 
+     * @return The account object.
 	 */
     @GET
-    @Consumes(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.APPLICATION_OCTET_STREAM)
     @Produces(MediaType.APPLICATION_JSON)
-    Account getAccount(AccountId id);
+    Account getAccount(byte[] accountId);
 
     /**
 	 * Returns the balance of an account.
 	 *
-	 * @param id account id
+	 * @param accountId account id
+     * 
+     * @return The balance of the account.
 	 */
     @Path("/balance")
     @GET
-    @Consumes(MediaType.APPLICATION_JSON)
-    int getBalance(AccountId id);
+    @Consumes(MediaType.APPLICATION_OCTET_STREAM)
+    int getBalance(byte[] accountId);
 
     
     /**
      * Return total balance of account list
-     * @param accs
+     * @param accounts
      * @return total balance
      */
     @Path("/balance/sum")
@@ -71,13 +76,13 @@ public interface Accounts {
     /**
 	 * Loads money into an account.
 	 *
-	 * @param id account id
+	 * @param accountId account id
      * @param value value to be loaded
 	 */
-    @Path("/balance")
+    @Path("/balance/{value}")
     @POST
-    @Consumes(MediaType.APPLICATION_JSON)
-    int loadMoney(AccountId id, int value);
+    @Consumes(MediaType.APPLICATION_OCTET_STREAM)
+    void loadMoney(byte[] accountId, @PathParam("value") int value);
 
     /**
 	 * Transfers money from an origin to a destination.
@@ -86,10 +91,10 @@ public interface Accounts {
      * @param dest destination account id
      * @param value value to be transfered
 	 */
-    @Path("/transaction")
+    @Path("/transaction/{value}")
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
-    void sendTransaction(AccountId origin, AccountId dest, int value);
+    void sendTransaction(AccountId origin, AccountId dest, @PathParam("value") int value);
 
     /**
      * Obtains the current Ledger.
