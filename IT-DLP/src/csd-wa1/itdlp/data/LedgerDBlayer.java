@@ -8,28 +8,62 @@ import itdlp.api.AccountId;
 /**
  * The interface to the Ledger DB Layer.
  */
-public interface LedgerDBlayer
+public abstract class LedgerDBlayer
 {
+    /**
+     * The type of the LedgerDB.
+     */
+    public static enum DBtype
+    {
+        /**
+         * Represents a DB stored in memory.
+         */
+        IN_MEMORY;
+    }
+
+    public static final DBtype dbType = DBtype.IN_MEMORY;
+
+    private static LedgerDBlayer instance;
+    
+    /**
+     * Get the current instance of the Ledger DB.
+     * @return The Ledger DB.
+     */
+    public static LedgerDBlayer getInstance()
+    {
+        if (instance == null)
+        {
+            switch (dbType) {
+                case IN_MEMORY:
+                    instance = LedgerDBinMemory.getInstance();
+                    break;
+            }
+        }
+
+        return instance;
+    }
+
+
     /**
 	 * Creates a new account.
 	 *
 	 * @param id account id
 	 */
-    Account createAccount(AccountId id);
+    public abstract Account createAccount(AccountId id);
 
     /**
 	 * Returns an account with the extract.
 	 *
 	 * @param id account id
 	 */
-    Account getAccount(AccountId id);
+    public abstract Account getAccount(AccountId id);
 
     /**
 	 * Returns the balance of an account.
 	 *
 	 * @param id account id
 	 */
-    int getBalance(AccountId id);
+    public abstract int getBalance(AccountId id);
 
     
     /**
@@ -37,13 +71,13 @@ public interface LedgerDBlayer
      * @param accs
      * @return total balance
      */
-    int getTotalValue(List<AccountId> accounts);
+    public abstract int getTotalValue(List<AccountId> accounts);
 
     /**
      * Return total amount of value registered in the ledger
      * @return total balance
      */
-    int getGlobalLedgerValue();
+    public abstract int getGlobalLedgerValue();
 
     /**
 	 * Loads money into an account.
@@ -51,7 +85,7 @@ public interface LedgerDBlayer
 	 * @param id account id
      * @param value value to be loaded
 	 */
-    int loadMoney(AccountId id, int value);
+    public abstract int loadMoney(AccountId id, int value);
 
     /**
 	 * Transfers money from an origin to a destination.
@@ -60,11 +94,11 @@ public interface LedgerDBlayer
      * @param dest destination account id
      * @param value value to be transfered
 	 */
-    void sendTransaction(AccountId origin, AccountId dest, int value);
+    public abstract void sendTransaction(AccountId origin, AccountId dest, int value);
 
     /**
      * Obtains the current Ledger.
      * @return The current Ledger.
      */
-    //Ledger getLedger();
+    //public abstract Ledger getLedger();
 }
