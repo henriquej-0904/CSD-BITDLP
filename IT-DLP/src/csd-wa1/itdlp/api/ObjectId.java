@@ -1,6 +1,7 @@
 package itdlp.api;
 
 import java.security.PublicKey;
+import java.util.Arrays;
 
 public abstract class ObjectId {
 
@@ -31,6 +32,11 @@ public abstract class ObjectId {
      * @return The public key.
      */
     public abstract PublicKey getPublicKey();
+
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + "=" + Arrays.toString(this.id);
+    }
     
 }
 
