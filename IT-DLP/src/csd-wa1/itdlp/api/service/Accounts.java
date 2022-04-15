@@ -11,6 +11,9 @@ import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 
+/**
+ * The Accounts API
+ */
 @Path(Accounts.PATH)
 public interface Accounts {
 
