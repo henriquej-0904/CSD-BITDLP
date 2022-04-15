@@ -12,6 +12,9 @@ public abstract class ObjectId {
      * @param id The object id.
      */
     protected ObjectId(byte[] id) {
+        if (id == null)
+            throw new IllegalArgumentException();
+        
         this.id = id;
     }
 
