@@ -3,7 +3,7 @@ package itdlp.api.service;
 import java.util.List;
 
 import itdlp.api.Account;
-import itdlp.api.Account.AccountId;
+import itdlp.api.AccountId;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
@@ -27,7 +27,7 @@ public interface Accounts {
     Account createAccount(AccountId id);
 
     /**
-	 * Returns an account.
+	 * Returns an account with the extract.
 	 *
 	 * @param id account id
 	 */
@@ -48,17 +48,17 @@ public interface Accounts {
 
     
     /**
-     * return total balance of account list
+     * Return total balance of account list
      * @param accs
      * @return total balance
      */
     @Path("/balance/sum")
     @GET
     @Consumes(MediaType.APPLICATION_JSON)
-    int getTotalValue(List<AccountId> accs);
+    int getTotalValue(List<AccountId> accounts);
 
     /**
-     * return total amount of value registered in the ledger
+     * Return total amount of value registered in the ledger
      * @return total balance
      */
     @Path("/balance/ledger")
@@ -88,5 +88,10 @@ public interface Accounts {
     @Consumes(MediaType.APPLICATION_JSON)
     void sendTransaction(AccountId origin, AccountId dest, int value);
 
+    /**
+     * Obtains the current Ledger.
+     * @return The current Ledger.
+     */
+    //Ledger getLedger();
 
 }
