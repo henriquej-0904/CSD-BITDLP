@@ -70,6 +70,11 @@ public class AccountId extends ObjectId
     public PublicKey getPublicKey() {
         throw new NotImplementedException();
     }
+
+    @Override
+    public boolean equals(Object obj) {
+        return (obj instanceof AccountId) && super.equals(obj);
+    }
     
 }
 

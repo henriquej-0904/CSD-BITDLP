@@ -61,6 +61,11 @@ public class UserId extends ObjectId
     public PublicKey getPublicKey() {
         throw new NotImplementedException();
     }
+
+    @Override
+    public boolean equals(Object obj) {
+        return (obj instanceof UserId) && super.equals(obj);
+    }
     
 }
 

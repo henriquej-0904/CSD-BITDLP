@@ -37,6 +37,23 @@ public abstract class ObjectId {
     public String toString() {
         return getClass().getSimpleName() + "=" + Arrays.toString(this.id);
     }
-    
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+
+        if (obj == null || !(obj instanceof ObjectId))
+            return false;
+
+        ObjectId other = (ObjectId)obj;
+        return Arrays.equals(getId(), other.getId());
+    }
+
+    @Override
+    public int hashCode() {
+        return Arrays.hashCode(getId());
+    }
+
 }
 
