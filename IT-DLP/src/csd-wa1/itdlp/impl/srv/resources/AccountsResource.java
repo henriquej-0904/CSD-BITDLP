@@ -5,6 +5,7 @@ import java.util.stream.Stream;
 
 import itdlp.api.Account;
 import itdlp.api.AccountId;
+import itdlp.api.UserId;
 import itdlp.api.service.Accounts;
 import itdlp.data.LedgerDBlayer;
 import itdlp.data.LedgerDBlayerException;
@@ -44,17 +45,34 @@ public abstract class AccountsResource implements Accounts
             throw new BadRequestException(e);
         }
     }
+
+    /**
+     * Get the userId from the specified id.
+     * @param userId
+     * @return The UserId object.
+     * @throws BadRequestException if the id is not valid.
+     */
+    protected UserId getUserId(byte[] userId) throws BadRequestException
+    {
+        try {
+            return new UserId(userId);
+        } catch (Exception e) {
+            throw new BadRequestException(e);
+        }
+    }
     
 
     @Override
-    public final Account createAccount(byte[] accountId) {
+    public final Account createAccount(byte[] accountId, byte[] ownerId) {
         try {
             init();
 
-            AccountId id = getAccountId(accountId);
-            LOG.info(id.toString());
+            AccountId account = getAccountId(accountId);
+            UserId owner = getUserId(ownerId);
 
-            return createAccount(id);
+            LOG.info(String.format("accountId=%s, ownerId=%s", account, owner));
+
+            return createAccount(new Account(account, owner));
         } catch (WebApplicationException e) {
             LOG.info(e.getMessage());
             throw e;
@@ -64,11 +82,11 @@ public abstract class AccountsResource implements Accounts
     /**
 	 * Creates a new account.
 	 *
-	 * @param accountId account id
+	 * @param account The new account
      * 
-     * @return The account object.
+     * @return The created account object.
 	 */
-    public abstract Account createAccount(AccountId accountId);
+    public abstract Account createAccount(Account account);
 
 
 

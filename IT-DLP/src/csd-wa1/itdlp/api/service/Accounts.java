@@ -21,13 +21,14 @@ public interface Accounts {
 	 * Creates a new account.
 	 *
 	 * @param accountId account id
+     * @param ownerId the owner of the account
      * 
      * @return The account object.
 	 */
 	@POST
-    @Consumes(MediaType.APPLICATION_OCTET_STREAM)
+    @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    Account createAccount(byte[] accountId);
+    Account createAccount(byte[] accountId, byte[] ownerId);
 
     /**
 	 * Returns an account with the extract.

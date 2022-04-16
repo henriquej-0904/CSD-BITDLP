@@ -46,11 +46,11 @@ public abstract class LedgerDBlayer
     /**
 	 * Creates a new account.
 	 *
-	 * @param accountId account id
+	 * @param account The new account
      * 
-     * @return The account object.
+     * @return The created account object.
 	 */
-    public abstract Result<Account> createAccount(AccountId accountId);
+    public abstract Result<Account> createAccount(Account account);
 
     /**
 	 * Returns an account with the extract.

@@ -11,8 +11,8 @@ public class AccountsResourceCentralized extends AccountsResource
 {
 
     @Override
-    public Account createAccount(AccountId accountId) {
-        return this.db.createAccount(accountId).resultOrThrow();
+    public Account createAccount(Account account) {
+        return this.db.createAccount(account).resultOrThrow();
     }
 
     @Override

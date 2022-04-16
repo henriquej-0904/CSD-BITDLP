@@ -1,5 +1,8 @@
 package itdlp.data;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import itdlp.api.Account;
 import itdlp.api.AccountId;
 import itdlp.util.Result;
@@ -11,6 +14,10 @@ import itdlp.util.Result;
 public class LedgerDBinMemory extends LedgerDBlayer
 {
     private static LedgerDBinMemory instance;
+
+
+    private Map<AccountId, Account> accounts;
+
 
     /**
      * Get the current instance of the Ledger DB.
@@ -27,11 +34,11 @@ public class LedgerDBinMemory extends LedgerDBlayer
 
     private LedgerDBinMemory()
     {
-
+        this.accounts = new HashMap<>();
     }
 
     @Override
-    public Result<Account> createAccount(AccountId accountId) {
+    public Result<Account> createAccount(Account account) {
         // TODO Auto-generated method stub
         return null;
     }
