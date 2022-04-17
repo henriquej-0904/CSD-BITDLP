@@ -8,6 +8,8 @@ public class Account {
     private final AccountId id;
     private final UserId owner;
 
+    private int balance;
+
     /**
      * Create an account from the specified id and owner.
      * @param id
@@ -16,6 +18,7 @@ public class Account {
     public Account(AccountId id, UserId owner){
         this.owner = owner;
         this.id = id;
+        this.balance = 0;
     }
 
     /**
@@ -32,6 +35,20 @@ public class Account {
      */
     public UserId getOwner(){
         return owner;
+    }
+
+    /**
+     * @return the balance
+     */
+    public int getBalance() {
+        return balance;
+    }
+
+    /**
+     * @param balance the balance to set
+     */
+    public void setBalance(int balance) {
+        this.balance = balance;
     }
 
 }
