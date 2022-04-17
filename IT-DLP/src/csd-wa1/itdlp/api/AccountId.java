@@ -35,7 +35,7 @@ public class AccountId extends ObjectId
         super(id);
         
         if (id.length <= HASH_BYTES_LENGTH)
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException("Invalid Account Id.");
     }
 
     /**
