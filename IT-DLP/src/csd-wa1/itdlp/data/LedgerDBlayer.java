@@ -3,6 +3,9 @@ package itdlp.data;
 import itdlp.api.Account;
 import itdlp.api.AccountId;
 import itdlp.util.Result;
+import jakarta.ws.rs.NotFoundException;
+import jakarta.ws.rs.WebApplicationException;
+import jakarta.ws.rs.core.Response.Status;
 
 /**
  * The interface to the Ledger DB Layer.
@@ -106,4 +109,15 @@ public abstract class LedgerDBlayer
      * @return The current Ledger.
      */
     //public abstract Result<Ledger> getLedger();
+
+
+    protected <T> Result<T> accountAlreadyExistsConflict(AccountId id)
+    {
+        return Result.error(new WebApplicationException(String.format("Account %s already exists.", id), Status.CONFLICT));
+    }
+
+    protected <T> Result<T> accountNotFound(AccountId id)
+    {
+        return Result.error(new NotFoundException(String.format("Account %s does not exist.", id)));
+    }
 }
