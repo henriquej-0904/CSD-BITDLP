@@ -1,5 +1,7 @@
 package itdlp.util;
 
+import jakarta.ws.rs.WebApplicationException;
+
 class OkResult<T> implements Result<T> {
     final T result;
 
@@ -30,4 +32,11 @@ class OkResult<T> implements Result<T> {
     public T resultOrThrow() {
         return this.result;
     }
+
+    @Override
+    public WebApplicationException errorException() {
+        return null;
+    }
+
+    
 }

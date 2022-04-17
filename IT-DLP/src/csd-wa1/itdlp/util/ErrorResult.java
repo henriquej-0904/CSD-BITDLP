@@ -36,4 +36,11 @@ class ErrorResult<T> implements Result<T> {
     public T resultOrThrow() {
         throw this.ex;
     }
+
+    @Override
+    public WebApplicationException errorException() {
+        return ex;
+    }
+
+    
 }

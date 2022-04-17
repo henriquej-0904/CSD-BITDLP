@@ -11,6 +11,8 @@ public interface Result<T> {
 
     int error();
 
+    WebApplicationException errorException();
+
     static <T> Result<T> ok(T result) {
         return new OkResult<T>(result);
     }
