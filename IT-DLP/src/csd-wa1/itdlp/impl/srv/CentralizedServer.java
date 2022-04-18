@@ -22,6 +22,8 @@ public class CentralizedServer
 			config.register(AccountsResourceCentralized.class);
             
 			JdkHttpServerFactory.createHttpServer( uri, config);
+
+			System.out.println("Centralized Server is running!!!");
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

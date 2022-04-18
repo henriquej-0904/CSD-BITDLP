@@ -2,6 +2,8 @@ package itdlp.api.service;
 
 import java.util.Map;
 
+import org.apache.commons.lang3.tuple.Pair;
+
 import itdlp.api.Account;
 import itdlp.api.AccountId;
 import jakarta.ws.rs.Consumes;
@@ -23,15 +25,14 @@ public interface Accounts {
     /**
 	 * Creates a new account.
 	 *
-	 * @param accountId account id
-     * @param ownerId the owner of the account
+     * @param accountUserPair - A pair of accountId and ownerId.
      * 
      * @return The account object.
 	 */
 	@POST
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    Account createAccount(byte[] accountId, byte[] ownerId);
+    Account createAccount(Pair<byte[],byte[]> accountUserPair);
 
     /**
 	 * Returns an account with the extract.
@@ -41,9 +42,9 @@ public interface Accounts {
      * @return The account object.
 	 */
     @GET
-    @Consumes(MediaType.APPLICATION_OCTET_STREAM)
+    @Path("/{accountId}")
     @Produces(MediaType.APPLICATION_JSON)
-    Account getAccount(byte[] accountId);
+    Account getAccount(@PathParam("accountId") byte[] accountId);
 
     /**
 	 * Returns the balance of an account.
@@ -52,10 +53,9 @@ public interface Accounts {
      * 
      * @return The balance of the account.
 	 */
-    @Path("/balance")
+    @Path("/balance/{accountId}")
     @GET
-    @Consumes(MediaType.APPLICATION_OCTET_STREAM)
-    int getBalance(byte[] accountId);
+    int getBalance(@PathParam("accountId") byte[] accountId);
 
     
     /**
@@ -64,7 +64,7 @@ public interface Accounts {
      * @return total balance
      */
     @Path("/balance/sum")
-    @GET
+    @POST
     @Consumes(MediaType.APPLICATION_JSON)
     int getTotalValue(byte[][] accounts);
 
@@ -90,19 +90,21 @@ public interface Accounts {
     /**
 	 * Transfers money from an origin to a destination.
 	 *
-	 * @param origin origin account id
-     * @param dest destination account id
+     * @param originDestPair A pair of origin and destination accounts.
      * @param value value to be transfered
 	 */
     @Path("/transaction/{value}")
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
-    void sendTransaction(byte[] origin, byte[] dest, @PathParam("value") int value);
+    void sendTransaction(Pair<byte[],byte[]> originDestPair, @PathParam("value") int value);
 
     /**
      * Obtains the current Ledger.
      * @return The current Ledger.
      */
+    @Path("/ledger")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
     Map<AccountId,Account> getLedger();
 
 }

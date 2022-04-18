@@ -3,6 +3,8 @@ package itdlp.impl.srv.resources;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
+import org.apache.commons.lang3.tuple.Pair;
+
 import itdlp.api.Account;
 import itdlp.api.AccountId;
 import itdlp.api.UserId;
@@ -66,12 +68,12 @@ public abstract class AccountsResource implements Accounts
     
 
     @Override
-    public final Account createAccount(byte[] accountId, byte[] ownerId) {
+    public final Account createAccount(Pair<byte[],byte[]> accountUserPair) {
         try {
             init();
 
-            AccountId account = getAccountId(accountId);
-            UserId owner = getUserId(ownerId);
+            AccountId account = getAccountId(accountUserPair.getLeft());
+            UserId owner = getUserId(accountUserPair.getRight());
 
             LOG.info(String.format("accountId=%s, ownerId=%s", account, owner));
 
@@ -204,13 +206,12 @@ public abstract class AccountsResource implements Accounts
 
 
     @Override
-    public final void sendTransaction(byte[] origin, byte[] dest, int value) {
+    public final void sendTransaction(Pair<byte[],byte[]> originDestPair, int value) {
         try {
             init();
             
-            AccountId originId = getAccountId(origin);
-            AccountId destId = getAccountId(dest);
-            
+            AccountId originId = getAccountId(originDestPair.getLeft());
+            AccountId destId = getAccountId(originDestPair.getRight());
             
             LedgerTransaction transaction = new LedgerTransaction(originId, destId, value);
 

@@ -39,7 +39,11 @@ public class AccountsResourceCentralized extends AccountsResource
         try {
             init();
             
-            return this.db.getGlobalLedgerValue().resultOrThrow();
+            int value = this.db.getGlobalLedgerValue().resultOrThrow();
+
+            LOG.info("Global Ledger Value: " + value);
+
+            return value;
         } catch (WebApplicationException e) {
             LOG.info(e.getMessage());
             throw e;
@@ -58,6 +62,17 @@ public class AccountsResourceCentralized extends AccountsResource
 
     @Override
     public Map<AccountId, Account> getLedger() {
-        return this.db.getLedger().resultOrThrow();
+        try {
+            init();
+
+            Map<AccountId, Account> result = this.db.getLedger().resultOrThrow();
+
+            LOG.info(String.format("Get Ledger with %d accounts.", result.size()));
+
+            return result;
+        } catch (WebApplicationException e) {
+            LOG.info(e.getMessage());
+            throw e;
+        }
     }
 }
