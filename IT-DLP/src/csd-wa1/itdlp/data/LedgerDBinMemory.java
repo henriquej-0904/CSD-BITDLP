@@ -8,6 +8,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import itdlp.api.Account;
 import itdlp.api.AccountId;
+import itdlp.api.operations.LedgerDeposit;
+import itdlp.api.operations.LedgerTransaction;
 import itdlp.util.Result;
 
 /**
@@ -48,7 +50,7 @@ public class LedgerDBinMemory extends LedgerDBlayer
         try
         {
             // check if account already exists.
-            lock(true);
+            getReadLock().lock();
 
             if (this.accounts.containsKey(account.getId()))
                 return accountAlreadyExistsConflict(account.getId());
@@ -56,8 +58,8 @@ public class LedgerDBinMemory extends LedgerDBlayer
             // insert account
             try 
             {
-                unlock(true);
-                lock(false);
+                getReadLock().unlock();
+                getWriteLock().lock();
 
                 if (this.accounts.putIfAbsent(account.getId(), account) != null)
                     return accountAlreadyExistsConflict(account.getId());
@@ -66,13 +68,13 @@ public class LedgerDBinMemory extends LedgerDBlayer
 
             } finally
             {
-                lock(true);
-                unlock(false);
+                getReadLock().lock();
+                getWriteLock().unlock();
             }
 
         } finally
         {
-            unlock(true);
+            getReadLock().unlock();
         }        
     }
 
@@ -80,7 +82,7 @@ public class LedgerDBinMemory extends LedgerDBlayer
     public Result<Account> getAccount(AccountId accountId) {
         try
         {
-            lock(true);
+            getReadLock().lock();
 
             Account account = this.accounts.get(accountId);
 
@@ -90,7 +92,7 @@ public class LedgerDBinMemory extends LedgerDBlayer
             return Result.ok(account);
         } finally
         {
-            unlock(true);
+            getReadLock().unlock();
         }
     }
 
@@ -107,7 +109,7 @@ public class LedgerDBinMemory extends LedgerDBlayer
     public Result<Integer> getTotalValue(AccountId[] accounts) {
         try
         {
-            lock(true);
+            getReadLock().lock();
 
             int total = 0;
 
@@ -123,7 +125,7 @@ public class LedgerDBinMemory extends LedgerDBlayer
             return Result.ok(total);
         } finally
         {
-            unlock(true);
+            getReadLock().unlock();
         }
     }
 
@@ -131,7 +133,7 @@ public class LedgerDBinMemory extends LedgerDBlayer
     public Result<Integer> getGlobalLedgerValue() {
         try
         {
-            lock(true);
+            getReadLock().lock();
 
             int total = this.accounts.values().stream()
                 .mapToInt(Account::getBalance)
@@ -140,31 +142,33 @@ public class LedgerDBinMemory extends LedgerDBlayer
             return Result.ok(total);
         } finally
         {
-            unlock(true);
+            getReadLock().unlock();
         }
     }
 
     @Override
-    public Result<Integer> loadMoney(AccountId id, int value) {
-        // TODO Auto-generated method stub
-        return null;
+    public Result<Integer> loadMoney(AccountId id, LedgerDeposit deposit)
+    {
+        Result<Account> accountRes = getAccount(id);
+        if (!accountRes.isOK())
+            return Result.error(accountRes.errorException());
+
+        
     }
 
     @Override
-    public Result<Void> sendTransaction(AccountId origin, AccountId dest, int value) {
+    public Result<Void> sendTransaction(LedgerTransaction transaction) {
         // TODO Auto-generated method stub
         return null;
     }
 
-    private void lock(boolean read)
+    private Lock getReadLock()
     {
-        Lock lock = read ? this.lock.readLock() : this.lock.writeLock();
-        lock.lock();
+        return this.lock.readLock();
     }
 
-    private void unlock(boolean read)
+    private Lock getWriteLock()
     {
-        Lock lock = read ? this.lock.readLock() : this.lock.writeLock();
-        lock.unlock();
+        return this.lock.writeLock();
     }
 }

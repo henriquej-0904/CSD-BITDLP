@@ -2,6 +2,8 @@ package itdlp.data;
 
 import itdlp.api.Account;
 import itdlp.api.AccountId;
+import itdlp.api.operations.LedgerDeposit;
+import itdlp.api.operations.LedgerTransaction;
 import itdlp.util.Result;
 import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.WebApplicationException;
@@ -91,18 +93,16 @@ public abstract class LedgerDBlayer
 	 * Loads money into an account.
 	 *
 	 * @param id account id
-     * @param value value to be loaded
+     * @param deposit The value to load into the account.
 	 */
-    public abstract Result<Integer> loadMoney(AccountId id, int value);
+    public abstract Result<Integer> loadMoney(AccountId id, LedgerDeposit deposit);
 
     /**
 	 * Transfers money from an origin to a destination.
 	 *
-	 * @param origin origin account id
-     * @param dest destination account id
-     * @param value value to be transfered
+	 * @param transaction The transaction to perform.
 	 */
-    public abstract Result<Void> sendTransaction(AccountId origin, AccountId dest, int value);
+    public abstract Result<Void> sendTransaction(LedgerTransaction transaction);
 
     /**
      * Obtains the current Ledger.
