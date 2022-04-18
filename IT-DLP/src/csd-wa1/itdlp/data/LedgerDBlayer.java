@@ -95,7 +95,7 @@ public abstract class LedgerDBlayer
 	 * @param id account id
      * @param deposit The value to load into the account.
 	 */
-    public abstract Result<Integer> loadMoney(AccountId id, LedgerDeposit deposit);
+    public abstract Result<Void> loadMoney(AccountId id, LedgerDeposit deposit);
 
     /**
 	 * Transfers money from an origin to a destination.

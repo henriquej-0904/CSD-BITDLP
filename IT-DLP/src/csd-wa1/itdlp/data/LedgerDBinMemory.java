@@ -8,9 +8,14 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import itdlp.api.Account;
 import itdlp.api.AccountId;
+import itdlp.api.operations.InvalidOperationException;
 import itdlp.api.operations.LedgerDeposit;
+import itdlp.api.operations.LedgerOperation;
 import itdlp.api.operations.LedgerTransaction;
 import itdlp.util.Result;
+import jakarta.ws.rs.InternalServerErrorException;
+import jakarta.ws.rs.WebApplicationException;
+import jakarta.ws.rs.core.Response.Status;
 
 /**
  * An implementation of the LedgerDBlayer in Memory.
@@ -147,19 +152,50 @@ public class LedgerDBinMemory extends LedgerDBlayer
     }
 
     @Override
-    public Result<Integer> loadMoney(AccountId id, LedgerDeposit deposit)
+    public Result<Void> loadMoney(AccountId id, LedgerDeposit deposit)
     {
         Result<Account> accountRes = getAccount(id);
         if (!accountRes.isOK())
             return Result.error(accountRes.errorException());
 
-        
+        try
+        {
+            getWriteLock().lock();
+            accountRes.value().processOperation(deposit);
+
+            return Result.ok();
+        } catch (InvalidOperationException e){
+            return Result.error(new InternalServerErrorException(e));
+        } finally
+        {
+            getWriteLock().unlock();
+        }
     }
 
     @Override
     public Result<Void> sendTransaction(LedgerTransaction transaction) {
-        // TODO Auto-generated method stub
-        return null;
+        
+        Result<Account> accountOr = getAccount(transaction.getOrigin());
+        Result<Account> accountDest = getAccount(transaction.getDest());
+
+        if (!accountOr.isOK())
+            return Result.error(accountOr.errorException());
+        if (!accountDest.isOK())
+            return Result.error(accountDest.errorException());
+
+        try
+        {
+            getWriteLock().lock();
+            accountOr.value().processOperation(transaction);
+            accountDest.value().processOperation(transaction);
+
+            return Result.ok();
+        } catch (InvalidOperationException e){
+            return Result.error(new WebApplicationException(e, Status.CONFLICT));
+        } finally
+        {
+            getWriteLock().unlock();
+        }
     }
 
     private Lock getReadLock()
