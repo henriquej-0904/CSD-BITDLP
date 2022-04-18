@@ -1,6 +1,9 @@
 package itdlp.api.operations;
 
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
+
+import itdlp.util.Utils;
 
 public abstract class LedgerOperation {
     
@@ -19,13 +22,23 @@ public abstract class LedgerOperation {
 
     /**
      * @param value
-     * @param accountId
      * @param type
+     * @param date
      */
     protected LedgerOperation(int value, Type type, String date) {
         this.value = value;
         this.type = type;
         this.date = date;
+    }
+
+    /**
+     * @param value
+     * @param type
+     */
+    protected LedgerOperation(int value, Type type) {
+        this.value = value;
+        this.type = type;
+        this.date = Utils.printDate(DATE_FORMAT, Calendar.getInstance());
     }
 
 

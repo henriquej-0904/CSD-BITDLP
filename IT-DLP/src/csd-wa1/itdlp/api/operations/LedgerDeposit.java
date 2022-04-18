@@ -6,6 +6,13 @@ public class LedgerDeposit extends LedgerOperation
     /**
      * 
      */
+    public LedgerDeposit(int value) {
+        super(value, Type.DEPOSIT);
+    }
+
+    /**
+     * 
+     */
     public LedgerDeposit(int value, String date) {
         super(value, Type.DEPOSIT, date);
     }

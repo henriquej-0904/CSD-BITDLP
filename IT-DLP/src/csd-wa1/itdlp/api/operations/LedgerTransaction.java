@@ -6,6 +6,12 @@ public class LedgerTransaction extends LedgerOperation {
 
     private AccountId origin, dest;
 
+    public LedgerTransaction(AccountId origin, AccountId dest, int value) {
+        super(value, Type.TRANSACTION);
+        this.origin = origin;
+        this.dest = dest;
+    }
+
     public LedgerTransaction(AccountId origin, AccountId dest, int value, String date) {
         super(value, Type.TRANSACTION, date);
         this.origin = origin;
