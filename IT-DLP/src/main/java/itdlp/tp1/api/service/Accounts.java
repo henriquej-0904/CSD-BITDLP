@@ -6,7 +6,9 @@ import org.apache.commons.lang3.tuple.Pair;
 
 import itdlp.tp1.api.Account;
 import itdlp.tp1.api.AccountId;
+import jakarta.servlet.http.Cookie;
 import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.CookieParam;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
@@ -22,6 +24,8 @@ public interface Accounts {
 
     static final String PATH="/account";
 
+    static final String USER_COOKIE = "user:signature";
+
     /**
 	 * Creates a new account.
 	 *
@@ -32,7 +36,7 @@ public interface Accounts {
 	@POST
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    Account createAccount(Pair<byte[],byte[]> accountUserPair);
+    Account createAccount(Pair<byte[],byte[]> accountUserPair, @CookieParam(USER_COOKIE) Cookie signature);
 
     /**
 	 * Returns an account with the extract.

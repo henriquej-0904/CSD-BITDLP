@@ -1,5 +1,7 @@
 package itdlp.tp1.impl.srv.resources;
 
+import java.security.PublicKey;
+import java.security.spec.InvalidKeySpecException;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
@@ -7,6 +9,7 @@ import org.apache.commons.lang3.tuple.Pair;
 
 import itdlp.tp1.api.Account;
 import itdlp.tp1.api.AccountId;
+import itdlp.tp1.api.ObjectId;
 import itdlp.tp1.api.UserId;
 import itdlp.tp1.api.operations.InvalidOperationException;
 import itdlp.tp1.api.operations.LedgerDeposit;
@@ -14,6 +17,7 @@ import itdlp.tp1.api.operations.LedgerTransaction;
 import itdlp.tp1.api.service.Accounts;
 import itdlp.tp1.data.LedgerDBlayer;
 import itdlp.tp1.data.LedgerDBlayerException;
+import jakarta.servlet.http.Cookie;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.InternalServerErrorException;
 import jakarta.ws.rs.WebApplicationException;
@@ -65,10 +69,19 @@ public abstract class AccountsResource implements Accounts
             throw new BadRequestException(e);
         }
     }
+
+    protected PublicKey getPublicKey(ObjectId id)
+    {
+        try {
+            return id.getPublicKey();
+        } catch (InvalidKeySpecException e) {
+            throw new BadRequestException(e);
+        }
+    }
     
 
     @Override
-    public final Account createAccount(Pair<byte[],byte[]> accountUserPair) {
+    public final Account createAccount(Pair<byte[],byte[]> accountUserPair, Cookie signature) {
         try {
             init();
 
