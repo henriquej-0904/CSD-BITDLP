@@ -13,6 +13,7 @@ import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.HeaderParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 
@@ -24,7 +25,9 @@ public interface Accounts {
 
     static final String PATH="/account";
 
-    static final String USER_COOKIE = "user:signature";
+    static final String USER_SIG = "User-signature";
+    static final String ACC_SIG = "Account-signature";
+    static final String NONCE = "Nonce";
 
     /**
 	 * Creates a new account.
@@ -36,7 +39,7 @@ public interface Accounts {
 	@POST
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    Account createAccount(Pair<byte[],byte[]> accountUserPair, @CookieParam(USER_COOKIE) Cookie signature);
+    Account createAccount(Pair<byte[],byte[]> accountUserPair, @HeaderParam(USER_SIG) String userSignature);
 
     /**
 	 * Returns an account with the extract.
@@ -89,7 +92,7 @@ public interface Accounts {
     @Path("/balance/{value}")
     @POST
     @Consumes(MediaType.APPLICATION_OCTET_STREAM)
-    void loadMoney(byte[] accountId, @PathParam("value") int value);
+    void loadMoney(byte[] accountId, @PathParam("value") int value, @HeaderParam(ACC_SIG) String accountSignature);
 
     /**
 	 * Transfers money from an origin to a destination.
@@ -100,7 +103,7 @@ public interface Accounts {
     @Path("/transaction/{value}")
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
-    void sendTransaction(Pair<byte[],byte[]> originDestPair, @PathParam("value") int value);
+    void sendTransaction(Pair<byte[],byte[]> originDestPair, @PathParam("value") int value, @HeaderParam(ACC_SIG) String accountSignature, @HeaderParam(NONCE) int nonce);
 
     /**
      * Obtains the current Ledger.

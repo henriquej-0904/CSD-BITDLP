@@ -1,6 +1,8 @@
 package itdlp.tp1.data;
 
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -25,6 +27,7 @@ public class LedgerDBinMemory extends LedgerDBlayer
 
 
     private Map<AccountId, Account> accounts;
+    private Map<byte[], List<Integer>> nonceMap;
     private ReadWriteLock lock;
 
 
@@ -44,6 +47,7 @@ public class LedgerDBinMemory extends LedgerDBlayer
     private LedgerDBinMemory()
     {
         this.accounts = new HashMap<>();
+        this.nonceMap = new HashMap<>();
         this.lock = new ReentrantReadWriteLock();
     }
 
@@ -218,5 +222,24 @@ public class LedgerDBinMemory extends LedgerDBlayer
         {
             getReadLock().unlock();
         }
+    }
+
+    @Override
+    public Result<Boolean> nonceVerification(byte[] requestKey, int nonce){
+        boolean result = true;
+        List<Integer> res = nonceMap.get(requestKey);
+
+        if(res == null){
+            res = new LinkedList<>();
+            nonceMap.put(requestKey, res);
+        }
+        
+        if(!res.contains(nonce)){
+            res.add(nonce);
+        }else{
+            result = false;
+        }
+
+        return Result.Ok(result);
     }
 }

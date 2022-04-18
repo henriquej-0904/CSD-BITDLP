@@ -122,4 +122,6 @@ public abstract class LedgerDBlayer
     {
         return Result.error(new NotFoundException(String.format("Account %s does not exist.", id)));
     }
+
+    public abstract Result<Boolean> nonceVerification(byte[] requestKey, int nonce);
 }

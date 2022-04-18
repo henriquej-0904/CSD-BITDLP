@@ -1,6 +1,9 @@
 package itdlp.tp1.impl.srv.resources;
 
+import java.nio.ByteBuffer;
+import java.security.MessageDigest;
 import java.security.PublicKey;
+import java.security.Signature;
 import java.security.spec.InvalidKeySpecException;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
@@ -19,6 +22,7 @@ import itdlp.tp1.data.LedgerDBlayer;
 import itdlp.tp1.data.LedgerDBlayerException;
 import jakarta.servlet.http.Cookie;
 import jakarta.ws.rs.BadRequestException;
+import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.InternalServerErrorException;
 import jakarta.ws.rs.WebApplicationException;
 
@@ -78,15 +82,32 @@ public abstract class AccountsResource implements Accounts
             throw new BadRequestException(e);
         }
     }
-    
+
+    protected Signature initVerifySignature(ObjectId owner){
+        Signature verify = Crypto.createSignatureInstance();
+        verify.initVerify(owner.getPublicKey());
+
+        return verify;
+    }
+
 
     @Override
-    public final Account createAccount(Pair<byte[],byte[]> accountUserPair, Cookie signature) {
+    public final Account createAccount(Pair<byte[],byte[]> accountUserPair, String userSignature) {
         try {
             init();
 
             AccountId account = getAccountId(accountUserPair.getLeft());
             UserId owner = getUserId(accountUserPair.getRight());
+
+            Signature verify = initVerifySignature(owner);
+
+            verify.update(accountUserPair.getLeft());
+            verify.update(accountUserPair.getRight());
+
+            byte[] clientSig = Utils.fromBase64(userSignature);
+
+            if(!verify.verify(clientSig))
+                throw new ForbiddenException(" Invalid User Signature.");      
 
             LOG.info(String.format("accountId=%s, ownerId=%s", account, owner));
 
@@ -189,11 +210,25 @@ public abstract class AccountsResource implements Accounts
 
 
     @Override
-    public final void loadMoney(byte[] accountId, int value) {
+    public final void loadMoney(byte[] accountId, int value, String accountSignature) {
         try {
             init();
             
             AccountId id = getAccountId(accountId);
+
+            Signature verify = initVerifySignature(id);
+
+            ByteBuffer buffer = ByteBuffer.allocate(Integer.SIZE);
+            buffer.put(value);
+
+            verify.update(accountId);
+            verify.update(buffer.array());
+
+            byte[] clientSig = Utils.fromBase64(accountSignature);
+
+            if(!verify.verify(clientSig))
+                throw new ForbiddenException(" Invalid Account Signature.");    
+            
             LedgerDeposit deposit = new LedgerDeposit(value);
 
             LOG.info(String.format("ID: %s, TYPE: %s, VALUE: %s", id, deposit.getType(), value));
@@ -219,12 +254,39 @@ public abstract class AccountsResource implements Accounts
 
 
     @Override
-    public final void sendTransaction(Pair<byte[],byte[]> originDestPair, int value) {
+    public final void sendTransaction(Pair<byte[],byte[]> originDestPair, int value, String accountSignature, int nonce) {
         try {
             init();
             
             AccountId originId = getAccountId(originDestPair.getLeft());
             AccountId destId = getAccountId(originDestPair.getRight());
+
+            Signature verify = initVerifySignature(originId);
+
+            ByteBuffer buffer = ByteBuffer.allocate(Integer.SIZE*2);
+            buffer.put(value);
+            buffer.put(nonce);
+
+            verify.update(originDestPair.getLeft());
+            verify.update(originDestPair.getRight());
+            verify.update(buffer.array());
+
+            byte[] clientSig = Utils.fromBase64(accountSignature);
+
+            if(!verify.verify(clientSig))
+                throw new ForbiddenException(" Invalid Account Signature.");    
+
+            MessageDigest digest = Crypto.getSha256Digest();
+
+            buffer = ByteBuffer.allocate(Integer.SIZE);
+            buffer.put(value);
+
+            digest.update(originDestPair.getLeft());
+            digest.update(originDestPair.getRight());
+            digest.update(buffer.array());
+            
+            if(!db.nonceVerification(digest.digest(), nonce).resultOrThrow())
+                throw new ForbiddenException(" Invalid Nonce.");  
             
             LedgerTransaction transaction = new LedgerTransaction(originId, destId, value);
 
