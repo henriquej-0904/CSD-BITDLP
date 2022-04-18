@@ -1,5 +1,7 @@
 package itdlp.impl.srv.resources;
 
+import java.util.Map;
+
 import itdlp.api.Account;
 import itdlp.api.AccountId;
 import itdlp.api.operations.LedgerDeposit;
@@ -54,4 +56,8 @@ public class AccountsResourceCentralized extends AccountsResource
         this.db.sendTransaction(transaction);
     }
 
+    @Override
+    public Map<AccountId, Account> getLedger() {
+        return this.db.getLedger().resultOrThrow();
+    }
 }

@@ -1,6 +1,9 @@
 package itdlp.api.service;
 
+import java.util.Map;
+
 import itdlp.api.Account;
+import itdlp.api.AccountId;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
@@ -100,6 +103,6 @@ public interface Accounts {
      * Obtains the current Ledger.
      * @return The current Ledger.
      */
-    //Ledger getLedger();
+    Map<AccountId,Account> getLedger();
 
 }

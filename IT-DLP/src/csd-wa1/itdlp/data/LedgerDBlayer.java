@@ -1,5 +1,7 @@
 package itdlp.data;
 
+import java.util.Map;
+
 import itdlp.api.Account;
 import itdlp.api.AccountId;
 import itdlp.api.operations.LedgerDeposit;
@@ -108,7 +110,7 @@ public abstract class LedgerDBlayer
      * Obtains the current Ledger.
      * @return The current Ledger.
      */
-    //public abstract Result<Ledger> getLedger();
+    public abstract Result<Map<AccountId,Account>> getLedger();
 
 
     protected <T> Result<T> accountAlreadyExistsConflict(AccountId id)

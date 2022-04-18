@@ -206,4 +206,17 @@ public class LedgerDBinMemory extends LedgerDBlayer
     {
         return this.lock.writeLock();
     }
+
+    @Override
+    public Result<Map<AccountId, Account>> getLedger() {
+        try
+        {
+            getReadLock().lock();
+
+            return Result.ok(Map.copyOf(accounts));
+        } finally
+        {
+            getReadLock().unlock();
+        }
+    }
 }
