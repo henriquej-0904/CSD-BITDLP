@@ -1,6 +1,7 @@
 package itdlp.tp1.api;
 
 import java.security.PublicKey;
+import java.security.spec.InvalidKeySpecException;
 import java.util.Arrays;
 
 public abstract class ObjectId {
@@ -31,7 +32,7 @@ public abstract class ObjectId {
      * 
      * @return The public key.
      */
-    public abstract PublicKey getPublicKey();
+    public abstract PublicKey getPublicKey() throws InvalidKeySpecException;
 
     @Override
     public String toString() {

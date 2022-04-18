@@ -3,8 +3,8 @@ package itdlp.tp1.api;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.PublicKey;
-
-import org.apache.commons.lang3.NotImplementedException;
+import java.security.spec.InvalidKeySpecException;
+import java.util.Arrays;
 
 import itdlp.tp1.util.Crypto;
 
@@ -58,8 +58,9 @@ public class UserId extends ObjectId
     }
 
     @Override
-    public PublicKey getPublicKey() {
-        throw new NotImplementedException();
+    public PublicKey getPublicKey() throws InvalidKeySpecException {
+        byte[] publicKeyBytes = Arrays.copyOfRange(this.id, HASH_BYTES_LENGTH, this.id.length);
+        return Crypto.getPublicKey(publicKeyBytes);
     }
 
     @Override
