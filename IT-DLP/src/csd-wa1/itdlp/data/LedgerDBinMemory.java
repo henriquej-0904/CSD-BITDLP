@@ -10,7 +10,6 @@ import itdlp.api.Account;
 import itdlp.api.AccountId;
 import itdlp.api.operations.InvalidOperationException;
 import itdlp.api.operations.LedgerDeposit;
-import itdlp.api.operations.LedgerOperation;
 import itdlp.api.operations.LedgerTransaction;
 import itdlp.util.Result;
 import jakarta.ws.rs.InternalServerErrorException;
@@ -19,7 +18,6 @@ import jakarta.ws.rs.core.Response.Status;
 
 /**
  * An implementation of the LedgerDBlayer in Memory.
- * TODO: implement the class.
  */
 public class LedgerDBinMemory extends LedgerDBlayer
 {
@@ -186,6 +184,7 @@ public class LedgerDBinMemory extends LedgerDBlayer
         try
         {
             getWriteLock().lock();
+
             accountOr.value().processOperation(transaction);
             accountDest.value().processOperation(transaction);
 
