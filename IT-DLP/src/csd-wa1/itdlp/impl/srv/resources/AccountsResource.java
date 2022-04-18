@@ -6,6 +6,9 @@ import java.util.stream.Stream;
 import itdlp.api.Account;
 import itdlp.api.AccountId;
 import itdlp.api.UserId;
+import itdlp.api.operations.InvalidOperationException;
+import itdlp.api.operations.LedgerDeposit;
+import itdlp.api.operations.LedgerTransaction;
 import itdlp.api.service.Accounts;
 import itdlp.data.LedgerDBlayer;
 import itdlp.data.LedgerDBlayerException;
@@ -176,12 +179,17 @@ public abstract class AccountsResource implements Accounts
             init();
             
             AccountId id = getAccountId(accountId);
-            LOG.info(String.format("%s, value=%d", id, value));
+            LedgerDeposit deposit = new LedgerDeposit(value);
 
-            loadMoney(id, value);
+            LOG.info(String.format("ID: %s, TYPE: %s, VALUE: %s", id, deposit.getType(), value));
+
+            loadMoney(id, deposit);
         } catch (WebApplicationException e) {
             LOG.info(e.getMessage());
             throw e;
+        } catch (InvalidOperationException e) {
+            LOG.info(e.getMessage());
+            throw new BadRequestException(e);
         }
     }
 
@@ -191,7 +199,7 @@ public abstract class AccountsResource implements Accounts
 	 * @param accountId account id
      * @param value value to be loaded
 	 */
-    public abstract void loadMoney(AccountId accountId, int value);
+    public abstract void loadMoney(AccountId accountId, LedgerDeposit deposit);
 
 
 
@@ -202,23 +210,28 @@ public abstract class AccountsResource implements Accounts
             
             AccountId originId = getAccountId(origin);
             AccountId destId = getAccountId(dest);
-            LOG.info(String.format("Origin %s, Dest %s, value=%d",
-                originId, destId, value));
+            
+            
+            LedgerTransaction transaction = new LedgerTransaction(originId, destId, value);
 
-            sendTransaction(originId, destId, value);
+            LOG.info(String.format("ORIGIN: %s, DEST: %s, TYPE: %s, VALUE: %d", 
+                originId, destId, transaction.getType(), value));
+
+            sendTransaction(transaction);
         } catch (WebApplicationException e) {
             LOG.info(e.getMessage());
             throw e;
+        } catch (InvalidOperationException e) {
+            LOG.info(e.getMessage());
+            throw new BadRequestException(e);
         }
     }
 
     /**
 	 * Transfers money from an origin to a destination.
 	 *
-	 * @param origin origin account id
-     * @param dest destination account id
-     * @param value value to be transfered
+	 * @param transaction the ledger transaction
 	 */
-    public abstract void sendTransaction(AccountId origin, AccountId dest, int value);
+    public abstract void sendTransaction(LedgerTransaction transaction);
     
 }

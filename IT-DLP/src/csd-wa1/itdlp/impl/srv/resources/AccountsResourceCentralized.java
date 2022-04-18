@@ -2,6 +2,8 @@ package itdlp.impl.srv.resources;
 
 import itdlp.api.Account;
 import itdlp.api.AccountId;
+import itdlp.api.operations.LedgerDeposit;
+import itdlp.api.operations.LedgerTransaction;
 import jakarta.ws.rs.WebApplicationException;
 
 /**
@@ -43,13 +45,13 @@ public class AccountsResourceCentralized extends AccountsResource
     }
 
     @Override
-    public void loadMoney(AccountId accountId, int value) {
+    public void loadMoney(AccountId accountId, LedgerDeposit value) {
         this.db.loadMoney(accountId, value);
     }
 
     @Override
-    public void sendTransaction(AccountId origin, AccountId dest, int value) {
-        this.db.sendTransaction(origin, dest, value);
+    public void sendTransaction(LedgerTransaction transaction) {
+        this.db.sendTransaction(transaction);
     }
 
 }

@@ -25,7 +25,10 @@ public abstract class LedgerOperation {
      * @param type
      * @param date
      */
-    protected LedgerOperation(int value, Type type, String date) {
+    protected LedgerOperation(int value, Type type, String date) throws InvalidOperationException {
+        if(value <= 0)
+            throw new InvalidOperationException("Transaction value must be positive.");
+
         this.value = value;
         this.type = type;
         this.date = date;
@@ -34,11 +37,10 @@ public abstract class LedgerOperation {
     /**
      * @param value
      * @param type
+     * @throws InvalidOperationException
      */
-    protected LedgerOperation(int value, Type type) {
-        this.value = value;
-        this.type = type;
-        this.date = Utils.printDate(DATE_FORMAT, Calendar.getInstance());
+    protected LedgerOperation(int value, Type type) throws InvalidOperationException {
+        this(value, type, Utils.printDate(DATE_FORMAT, Calendar.getInstance()));
     }
 
 
