@@ -38,7 +38,7 @@ public interface Accounts {
 	@POST
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    Account createAccount(Pair<byte[],byte[]> accountUserPair, @HeaderParam(USER_SIG) String userSignature);
+    Account createAccount(Pair<byte[],byte[]> accountUserPair, @HeaderParam(USER_SIG) byte[] userSignature);
 
     /**
 	 * Returns an account with the extract.
@@ -92,7 +92,7 @@ public interface Accounts {
     @Path("/balance/{value}")
     @POST
     @Consumes(MediaType.APPLICATION_OCTET_STREAM)
-    void loadMoney(byte[] accountId, @PathParam("value") int value, @HeaderParam(ACC_SIG) String accountSignature);
+    void loadMoney(byte[] accountId, @PathParam("value") int value, @HeaderParam(ACC_SIG) byte[] accountSignature);
 
     /**
 	 * Transfers money from an origin to a destination.
@@ -106,7 +106,7 @@ public interface Accounts {
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
     void sendTransaction(Pair<byte[],byte[]> originDestPair, @PathParam("value") int value,
-        @HeaderParam(ACC_SIG) String accountSignature, @HeaderParam(NONCE) int nonce);
+        @HeaderParam(ACC_SIG) byte[] accountSignature, @HeaderParam(NONCE) int nonce);
 
     /**
      * Obtains the current Ledger.

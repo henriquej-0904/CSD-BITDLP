@@ -102,7 +102,7 @@ public abstract class AccountsResource implements Accounts
 
 
     @Override
-    public final Account createAccount(Pair<byte[],byte[]> accountUserPair, String userSignature) {
+    public final Account createAccount(Pair<byte[],byte[]> accountUserPair, byte[] userSignature) {
         try {
             init();
 
@@ -110,8 +110,7 @@ public abstract class AccountsResource implements Accounts
             UserId owner = getUserId(accountUserPair.getRight());
 
             // verify signature
-            byte[] clientSig = Utils.fromBase64(userSignature);
-            if (!verifySignature(owner, clientSig, accountUserPair.getLeft(),
+            if (!verifySignature(owner, userSignature, accountUserPair.getLeft(),
                 accountUserPair.getRight()))
                 throw new ForbiddenException("Invalid User Signature.");
 
@@ -217,19 +216,17 @@ public abstract class AccountsResource implements Accounts
 
 
     @Override
-    public final void loadMoney(byte[] accountId, int value, String accountSignature) {
+    public final void loadMoney(byte[] accountId, int value, byte[] accountSignature) {
         try {
             init();
             
             AccountId id = getAccountId(accountId);
 
             // verify signature
-            byte[] clientSig = Utils.fromBase64(accountSignature);
-
-            ByteBuffer buffer = ByteBuffer.allocate(Integer.SIZE);
+            ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES);
             buffer.putInt(value);
 
-            if (!verifySignature(id, clientSig, accountId, buffer.array()))
+            if (!verifySignature(id, accountSignature, accountId, buffer.array()))
                 throw new ForbiddenException("Invalid Account Signature.");   
             
             // execute operation
@@ -258,7 +255,8 @@ public abstract class AccountsResource implements Accounts
 
 
     @Override
-    public final void sendTransaction(Pair<byte[],byte[]> originDestPair, int value, String accountSignature, int nonce) {
+    public final void sendTransaction(Pair<byte[],byte[]> originDestPair, int value,
+        byte[] accountSignature, int nonce) {
         try {
             init();
             
@@ -266,20 +264,18 @@ public abstract class AccountsResource implements Accounts
             AccountId destId = getAccountId(originDestPair.getRight());
 
             // verify signature
-            byte[] clientSig = Utils.fromBase64(accountSignature);
-
-            ByteBuffer buffer = ByteBuffer.allocate(Integer.SIZE*2);
+            ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES*2);
             buffer.putInt(value);
             buffer.putInt(nonce);
 
-            if (!verifySignature(originId, clientSig, originDestPair.getLeft(),
+            if (!verifySignature(originId, accountSignature, originDestPair.getLeft(),
                 originDestPair.getRight(), buffer.array()))
                 throw new ForbiddenException("Invalid Account Signature.");    
 
             // verify nonce
             MessageDigest digest = Crypto.getSha256Digest();
 
-            buffer = ByteBuffer.allocate(Integer.SIZE);
+            buffer = ByteBuffer.allocate(Integer.BYTES);
             buffer.putInt(value);
 
             digest.update(originDestPair.getLeft());

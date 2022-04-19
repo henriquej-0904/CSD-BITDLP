@@ -1,15 +1,15 @@
 package itdlp.tp1.impl.client;
 
 import java.net.URI;
+import java.nio.ByteBuffer;
 import java.security.KeyPair;
 import java.security.Signature;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collector;
 import java.util.stream.Stream;
 
+import org.apache.commons.lang3.RandomUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.apache.commons.lang3.tuple.Pair;
 
 import itdlp.tp1.api.Account;
 import itdlp.tp1.api.AccountId;
@@ -50,7 +50,7 @@ public class LedgerClient
         this.endpoint = endpoint;
     }
 
-    protected String sign(KeyPair keys, byte[]... data)
+    protected byte[] sign(KeyPair keys, byte[]... data)
     {
         try {
             Signature signature = Crypto.createSignatureInstance();
@@ -60,16 +60,14 @@ public class LedgerClient
                 signature.update(buff);
             }
 
-            byte[] signed = signature.sign();
-            return Utils.toBase64(signed);
+            return signature.sign();
         } catch (Exception e) {
             throw new Error(e);
         }
     }
 
     public Result<Account> createAccount(AccountId accountId, UserId userId, KeyPair userKeys) {
-
-        String signature = sign(userKeys, accountId.getId(), userId.getId());
+        byte[] signature = sign(userKeys, accountId.getId(), userId.getId());
 
         return request(this.client.target(this.endpoint).path(Accounts.PATH)
         .request().accept(MediaType.APPLICATION_JSON)
@@ -80,53 +78,68 @@ public class LedgerClient
     }
 
     public Result<Account> getAccount(AccountId accountId) {
-        // TODO Auto-generated method stub
-        return request(this.client.target(this.endpoint).path(Accounts.PATH).path(Utils.toBase64(accountId.getId()))
-        .request().accept(MediaType.APPLICATION_JSON)
-        .buildGet(), Account.class);
+        return request(this.client.target(this.endpoint)
+            .path(Accounts.PATH).path(Utils.toBase64(accountId.getId()))
+            .request().accept(MediaType.APPLICATION_JSON)
+            .buildGet(), Account.class);
     }
 
     public Result<Integer> getBalance(AccountId accountId) {
-        // TODO Auto-generated method stub
         return request(this.client.target(this.endpoint)
-        .path(Accounts.PATH).path("balance").path(Utils.toBase64(accountId.getId()))
-        .request()
-        .buildGet(), Integer.class);
+            .path(Accounts.PATH).path("balance").path(Utils.toBase64(accountId.getId()))
+            .request()
+            .buildGet(), Integer.class);
     }
 
     public Result<Integer> getTotalValue(AccountId[] accounts) {
 
         byte[][] arr = (byte[][]) Stream.of(accounts).map(AccountId::getId).toArray();
 
-        // TODO Auto-generated method stub
         return request(this.client.target(this.endpoint)
-        .path(Accounts.PATH).path("balance/sum")
-        .request()
-        .buildPost(
-            Entity.json(arr)), Integer.class);
+            .path(Accounts.PATH).path("balance/sum")
+            .request()
+            .buildPost(Entity.json(arr)), Integer.class);
     }
 
     public Result<Integer> getGlobalLedgerValue() {
-        // TODO Auto-generated method stub
         return request(this.client.target(this.endpoint)
-        .path(Accounts.PATH).path("balance/ledger")
-        .request()
-        .buildGet(), Integer.class);
+            .path(Accounts.PATH).path("balance/ledger")
+            .request()
+            .buildGet(), Integer.class);
     }
 
-    public Result<Void> loadMoney(AccountId accountId, int value, KeyPair accountKeys) {
-        // TODO Auto-generated method stub
-        
+    public Result<Void> loadMoney(AccountId accountId, int value, KeyPair accountKeys)
+    {
+        ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES);
+        buffer.putInt(value);
+
+        byte[] signature = sign(accountKeys, accountId.getId(), buffer.array());
+
+        return request(this.client.target(this.endpoint).path(Accounts.PATH)
+            .path("balance").path(Integer.toString(value))
+            .request()
+            .header(Accounts.ACC_SIG, signature)
+            .buildPost(Entity.entity(accountId.getId(), MediaType.APPLICATION_OCTET_STREAM)),
+                Void.class);
     }
 
-    public Result<Void> sendTransaction(AccountId originId, AccountId destId, int value, KeyPair originAccountKeys) {
-        // TODO Auto-generated method stub
-        
+    public Result<Void> sendTransaction(AccountId originId, AccountId destId, int value, KeyPair originAccountKeys)
+    {
+        ByteBuffer buffer = ByteBuffer.allocate(2 * Integer.BYTES);
+        buffer.putInt(value);
+        buffer.putInt(RandomUtils.nextInt());
+
+        byte[] signature = sign(originAccountKeys, originId.getId(), destId.getId(), buffer.array());
+
+        return request(this.client.target(this.endpoint).path(Accounts.PATH)
+            .path("transaction").path(Integer.toString(value))
+            .request()
+            .header(Accounts.ACC_SIG, signature)
+            .buildPost(Entity.json(new ImmutablePair<>(originId.getId(), destId.getId()))),
+                Void.class);
     }
 
     public Result<Map<AccountId, Account>> getLedger() {
-        // TODO Auto-generated method stub
-
         return request(this.client.target(this.endpoint)
         .path(Accounts.PATH).path("ledger")
         .request()
