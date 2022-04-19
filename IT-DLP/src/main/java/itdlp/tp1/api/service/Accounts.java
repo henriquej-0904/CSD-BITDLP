@@ -50,7 +50,7 @@ public interface Accounts {
     @GET
     @Path("/{accountId}")
     @Produces(MediaType.APPLICATION_JSON)
-    Account getAccount(@PathParam("accountId") byte[] accountId);
+    Account getAccount(@PathParam("accountId") String accountId);
 
     /**
 	 * Returns the balance of an account.
@@ -61,7 +61,7 @@ public interface Accounts {
 	 */
     @Path("/balance/{accountId}")
     @GET
-    int getBalance(@PathParam("accountId") byte[] accountId);
+    int getBalance(@PathParam("accountId") String accountId);
 
     
     /**

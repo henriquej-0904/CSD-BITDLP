@@ -137,11 +137,11 @@ public abstract class AccountsResource implements Accounts
 
 
     @Override
-    public final Account getAccount(byte[] accountId) {
+    public final Account getAccount(String accountId) {
         try {
             init();
             
-            AccountId id = getAccountId(accountId);
+            AccountId id = getAccountId(Utils.fromBase64(accountId));
             LOG.info(id.toString());
 
             return getAccount(id);
@@ -163,11 +163,11 @@ public abstract class AccountsResource implements Accounts
 
 
     @Override
-    public final int getBalance(byte[] accountId) {
+    public final int getBalance(String accountId) {
         try {
             init();
             
-            AccountId id = getAccountId(accountId);
+            AccountId id = getAccountId(Utils.fromBase64(accountId));
             LOG.info(id.toString());
 
             return getBalance(id);
