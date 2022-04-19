@@ -6,9 +6,7 @@ import org.apache.commons.lang3.tuple.Pair;
 
 import itdlp.tp1.api.Account;
 import itdlp.tp1.api.AccountId;
-import jakarta.servlet.http.Cookie;
 import jakarta.ws.rs.Consumes;
-import jakarta.ws.rs.CookieParam;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
@@ -33,6 +31,7 @@ public interface Accounts {
 	 * Creates a new account.
 	 *
      * @param accountUserPair - A pair of accountId and ownerId.
+     * @param userSignature The signature of the user
      * 
      * @return The account object.
 	 */
@@ -88,6 +87,7 @@ public interface Accounts {
 	 *
 	 * @param accountId account id
      * @param value value to be loaded
+     * @param accountSignature The signature of the account.
 	 */
     @Path("/balance/{value}")
     @POST
@@ -99,11 +99,14 @@ public interface Accounts {
 	 *
      * @param originDestPair A pair of origin and destination accounts.
      * @param value value to be transfered
+     * @param accountSignature The signature of the account.
+     * @param nonce The nonce.
 	 */
     @Path("/transaction/{value}")
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
-    void sendTransaction(Pair<byte[],byte[]> originDestPair, @PathParam("value") int value, @HeaderParam(ACC_SIG) String accountSignature, @HeaderParam(NONCE) int nonce);
+    void sendTransaction(Pair<byte[],byte[]> originDestPair, @PathParam("value") int value,
+        @HeaderParam(ACC_SIG) String accountSignature, @HeaderParam(NONCE) int nonce);
 
     /**
      * Obtains the current Ledger.

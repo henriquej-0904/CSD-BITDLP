@@ -1,9 +1,11 @@
 package itdlp.tp1.impl.srv.resources;
 
 import java.nio.ByteBuffer;
+import java.security.InvalidKeyException;
 import java.security.MessageDigest;
 import java.security.PublicKey;
 import java.security.Signature;
+import java.security.SignatureException;
 import java.security.spec.InvalidKeySpecException;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
@@ -20,7 +22,8 @@ import itdlp.tp1.api.operations.LedgerTransaction;
 import itdlp.tp1.api.service.Accounts;
 import itdlp.tp1.data.LedgerDBlayer;
 import itdlp.tp1.data.LedgerDBlayerException;
-import jakarta.servlet.http.Cookie;
+import itdlp.tp1.util.Crypto;
+import itdlp.tp1.util.Utils;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.InternalServerErrorException;
@@ -83,11 +86,18 @@ public abstract class AccountsResource implements Accounts
         }
     }
 
-    protected Signature initVerifySignature(ObjectId owner){
-        Signature verify = Crypto.createSignatureInstance();
-        verify.initVerify(owner.getPublicKey());
+    protected boolean verifySignature(ObjectId id, byte[] signature, byte[]... data){
+        try {
+            Signature verify = Crypto.createSignatureInstance();
+            verify.initVerify(getPublicKey(id));
 
-        return verify;
+            for (byte[] buff : data)
+                verify.update(buff);
+
+            return verify.verify(signature);
+        } catch (InvalidKeyException | SignatureException e) {
+            throw new InternalServerErrorException(e);
+        }
     }
 
 
@@ -99,16 +109,13 @@ public abstract class AccountsResource implements Accounts
             AccountId account = getAccountId(accountUserPair.getLeft());
             UserId owner = getUserId(accountUserPair.getRight());
 
-            Signature verify = initVerifySignature(owner);
-
-            verify.update(accountUserPair.getLeft());
-            verify.update(accountUserPair.getRight());
-
+            // verify signature
             byte[] clientSig = Utils.fromBase64(userSignature);
+            if (!verifySignature(owner, clientSig, accountUserPair.getLeft(),
+                accountUserPair.getRight()))
+                throw new ForbiddenException("Invalid User Signature.");
 
-            if(!verify.verify(clientSig))
-                throw new ForbiddenException(" Invalid User Signature.");      
-
+            // execute operation
             LOG.info(String.format("accountId=%s, ownerId=%s", account, owner));
 
             return createAccount(new Account(account, owner));
@@ -216,19 +223,16 @@ public abstract class AccountsResource implements Accounts
             
             AccountId id = getAccountId(accountId);
 
-            Signature verify = initVerifySignature(id);
-
-            ByteBuffer buffer = ByteBuffer.allocate(Integer.SIZE);
-            buffer.put(value);
-
-            verify.update(accountId);
-            verify.update(buffer.array());
-
+            // verify signature
             byte[] clientSig = Utils.fromBase64(accountSignature);
 
-            if(!verify.verify(clientSig))
-                throw new ForbiddenException(" Invalid Account Signature.");    
+            ByteBuffer buffer = ByteBuffer.allocate(Integer.SIZE);
+            buffer.putInt(value);
+
+            if (!verifySignature(id, clientSig, accountId, buffer.array()))
+                throw new ForbiddenException("Invalid Account Signature.");   
             
+            // execute operation
             LedgerDeposit deposit = new LedgerDeposit(value);
 
             LOG.info(String.format("ID: %s, TYPE: %s, VALUE: %s", id, deposit.getType(), value));
@@ -261,33 +265,31 @@ public abstract class AccountsResource implements Accounts
             AccountId originId = getAccountId(originDestPair.getLeft());
             AccountId destId = getAccountId(originDestPair.getRight());
 
-            Signature verify = initVerifySignature(originId);
-
-            ByteBuffer buffer = ByteBuffer.allocate(Integer.SIZE*2);
-            buffer.put(value);
-            buffer.put(nonce);
-
-            verify.update(originDestPair.getLeft());
-            verify.update(originDestPair.getRight());
-            verify.update(buffer.array());
-
+            // verify signature
             byte[] clientSig = Utils.fromBase64(accountSignature);
 
-            if(!verify.verify(clientSig))
-                throw new ForbiddenException(" Invalid Account Signature.");    
+            ByteBuffer buffer = ByteBuffer.allocate(Integer.SIZE*2);
+            buffer.putInt(value);
+            buffer.putInt(nonce);
 
+            if (!verifySignature(originId, clientSig, originDestPair.getLeft(),
+                originDestPair.getRight(), buffer.array()))
+                throw new ForbiddenException("Invalid Account Signature.");    
+
+            // verify nonce
             MessageDigest digest = Crypto.getSha256Digest();
 
             buffer = ByteBuffer.allocate(Integer.SIZE);
-            buffer.put(value);
+            buffer.putInt(value);
 
             digest.update(originDestPair.getLeft());
             digest.update(originDestPair.getRight());
             digest.update(buffer.array());
             
             if(!db.nonceVerification(digest.digest(), nonce).resultOrThrow())
-                throw new ForbiddenException(" Invalid Nonce.");  
-            
+                throw new ForbiddenException(" Invalid Nonce.");
+
+            // execute operation            
             LedgerTransaction transaction = new LedgerTransaction(originId, destId, value);
 
             LOG.info(String.format("ORIGIN: %s, DEST: %s, TYPE: %s, VALUE: %d", 

@@ -112,6 +112,15 @@ public abstract class LedgerDBlayer
      */
     public abstract Result<Map<AccountId,Account>> getLedger();
 
+    /**
+     * Verify if the nonce is valid for the given operation.
+     * 
+     * @param requestKey The request id
+     * @param nonce The nonce to verify
+     * @return true if the nonce is valid or false otherwise.
+     */
+    public abstract Result<Boolean> nonceVerification(byte[] requestKey, int nonce);
+
 
     protected <T> Result<T> accountAlreadyExistsConflict(AccountId id)
     {
@@ -122,6 +131,4 @@ public abstract class LedgerDBlayer
     {
         return Result.error(new NotFoundException(String.format("Account %s does not exist.", id)));
     }
-
-    public abstract Result<Boolean> nonceVerification(byte[] requestKey, int nonce);
 }

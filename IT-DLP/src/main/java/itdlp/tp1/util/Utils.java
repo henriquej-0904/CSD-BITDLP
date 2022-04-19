@@ -24,6 +24,6 @@ public class Utils
     }
 
     public static String toBase64(byte[] value){
-        return Base64.getEncoder().encode(value);
+        return Base64.getEncoder().encodeToString(value);
     }
 }

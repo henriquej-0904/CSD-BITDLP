@@ -27,8 +27,9 @@ public class LedgerDBinMemory extends LedgerDBlayer
 
 
     private Map<AccountId, Account> accounts;
-    private Map<byte[], List<Integer>> nonceMap;
     private ReadWriteLock lock;
+
+    private Map<byte[], List<Integer>> nonceMap;
 
 
     /**
@@ -201,16 +202,6 @@ public class LedgerDBinMemory extends LedgerDBlayer
         }
     }
 
-    private Lock getReadLock()
-    {
-        return this.lock.readLock();
-    }
-
-    private Lock getWriteLock()
-    {
-        return this.lock.writeLock();
-    }
-
     @Override
     public Result<Map<AccountId, Account>> getLedger() {
         try
@@ -225,7 +216,7 @@ public class LedgerDBinMemory extends LedgerDBlayer
     }
 
     @Override
-    public Result<Boolean> nonceVerification(byte[] requestKey, int nonce){
+    public synchronized Result<Boolean> nonceVerification(byte[] requestKey, int nonce){
         boolean result = true;
         List<Integer> res = nonceMap.get(requestKey);
 
@@ -234,12 +225,21 @@ public class LedgerDBinMemory extends LedgerDBlayer
             nonceMap.put(requestKey, res);
         }
         
-        if(!res.contains(nonce)){
+        if(!res.contains(nonce))
             res.add(nonce);
-        }else{
+        else
             result = false;
-        }
 
-        return Result.Ok(result);
+        return Result.ok(result);
+    }
+
+    private Lock getReadLock()
+    {
+        return this.lock.readLock();
+    }
+
+    private Lock getWriteLock()
+    {
+        return this.lock.writeLock();
     }
 }
