@@ -1,4 +1,4 @@
-package itdlp.util;
+package itdlp.tp1.util;
 
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response.Status;
@@ -36,4 +36,11 @@ class ErrorResult<T> implements Result<T> {
     public T resultOrThrow() {
         throw this.ex;
     }
+
+    @Override
+    public WebApplicationException errorException() {
+        return ex;
+    }
+
+    
 }

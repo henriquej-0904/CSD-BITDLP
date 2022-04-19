@@ -1,4 +1,4 @@
-package itdlp.util;
+package itdlp.tp1.util;
 
 import jakarta.ws.rs.WebApplicationException;
 
@@ -10,6 +10,8 @@ public interface Result<T> {
     T value();
 
     int error();
+
+    WebApplicationException errorException();
 
     static <T> Result<T> ok(T result) {
         return new OkResult<T>(result);

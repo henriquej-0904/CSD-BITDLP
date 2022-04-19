@@ -1,13 +1,13 @@
-package itdlp.api;
+package itdlp.tp1.api;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.PublicKey;
+import java.security.spec.InvalidKeySpecException;
+import java.util.Arrays;
 
-import org.apache.commons.lang3.NotImplementedException;
-
-import itdlp.util.Crypto;
+import itdlp.tp1.util.Crypto;
 
 /**
  * Represents an AccountId = SHA256(email || timestamp) || public key
@@ -35,7 +35,7 @@ public class AccountId extends ObjectId
         super(id);
         
         if (id.length <= HASH_BYTES_LENGTH)
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException("Invalid Account Id.");
     }
 
     /**
@@ -67,8 +67,14 @@ public class AccountId extends ObjectId
     }
 
     @Override
-    public PublicKey getPublicKey() {
-        throw new NotImplementedException();
+    public PublicKey getPublicKey() throws InvalidKeySpecException {
+        byte[] publicKeyBytes = Arrays.copyOfRange(this.id, HASH_BYTES_LENGTH, this.id.length);
+        return Crypto.getPublicKey(publicKeyBytes);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        return (obj instanceof AccountId) && super.equals(obj);
     }
     
 }

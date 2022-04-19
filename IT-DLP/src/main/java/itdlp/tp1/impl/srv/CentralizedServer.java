@@ -1,4 +1,4 @@
-package itdlp;
+package itdlp.tp1.impl.srv;
 
 import java.net.InetAddress;
 import java.net.URI;
@@ -6,7 +6,9 @@ import java.net.URI;
 import org.glassfish.jersey.jdkhttp.JdkHttpServerFactory;
 import org.glassfish.jersey.server.ResourceConfig;
 
-public class Main
+import itdlp.tp1.impl.srv.resources.AccountsResourceCentralized;
+
+public class CentralizedServer
 {
 	public static final int PORT = 8080;
 
@@ -17,9 +19,11 @@ public class Main
 			URI uri = new URI(String.format("http://%s:%s/rest", ip, PORT));
 
 			ResourceConfig config = new ResourceConfig();
-			//config.register(App.class);
+			config.register(AccountsResourceCentralized.class);
             
 			JdkHttpServerFactory.createHttpServer( uri, config);
+
+			System.out.println("Centralized Server is running!!!");
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

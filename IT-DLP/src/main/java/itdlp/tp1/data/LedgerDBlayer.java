@@ -1,8 +1,15 @@
-package itdlp.data;
+package itdlp.tp1.data;
 
-import itdlp.api.Account;
-import itdlp.api.AccountId;
-import itdlp.util.Result;
+import java.util.Map;
+
+import itdlp.tp1.api.Account;
+import itdlp.tp1.api.AccountId;
+import itdlp.tp1.api.operations.LedgerDeposit;
+import itdlp.tp1.api.operations.LedgerTransaction;
+import itdlp.tp1.util.Result;
+import jakarta.ws.rs.NotFoundException;
+import jakarta.ws.rs.WebApplicationException;
+import jakarta.ws.rs.core.Response.Status;
 
 /**
  * The interface to the Ledger DB Layer.
@@ -46,11 +53,11 @@ public abstract class LedgerDBlayer
     /**
 	 * Creates a new account.
 	 *
-	 * @param accountId account id
+	 * @param account The new account
      * 
-     * @return The account object.
+     * @return The created account object.
 	 */
-    public abstract Result<Account> createAccount(AccountId accountId);
+    public abstract Result<Account> createAccount(Account account);
 
     /**
 	 * Returns an account with the extract.
@@ -88,22 +95,40 @@ public abstract class LedgerDBlayer
 	 * Loads money into an account.
 	 *
 	 * @param id account id
-     * @param value value to be loaded
+     * @param deposit The value to load into the account.
 	 */
-    public abstract Result<Integer> loadMoney(AccountId id, int value);
+    public abstract Result<Void> loadMoney(AccountId id, LedgerDeposit deposit);
 
     /**
 	 * Transfers money from an origin to a destination.
 	 *
-	 * @param origin origin account id
-     * @param dest destination account id
-     * @param value value to be transfered
+	 * @param transaction The transaction to perform.
 	 */
-    public abstract Result<Void> sendTransaction(AccountId origin, AccountId dest, int value);
+    public abstract Result<Void> sendTransaction(LedgerTransaction transaction);
 
     /**
      * Obtains the current Ledger.
      * @return The current Ledger.
      */
-    //public abstract Result<Ledger> getLedger();
+    public abstract Result<Map<AccountId,Account>> getLedger();
+
+    /**
+     * Verify if the nonce is valid for the given operation.
+     * 
+     * @param requestKey The request id
+     * @param nonce The nonce to verify
+     * @return true if the nonce is valid or false otherwise.
+     */
+    public abstract Result<Boolean> nonceVerification(byte[] requestKey, int nonce);
+
+
+    protected <T> Result<T> accountAlreadyExistsConflict(AccountId id)
+    {
+        return Result.error(new WebApplicationException(String.format("Account %s already exists.", id), Status.CONFLICT));
+    }
+
+    protected <T> Result<T> accountNotFound(AccountId id)
+    {
+        return Result.error(new NotFoundException(String.format("Account %s does not exist.", id)));
+    }
 }
