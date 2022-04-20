@@ -128,7 +128,8 @@ public class LedgerClient implements Closeable
     {
         ByteBuffer buffer = ByteBuffer.allocate(2 * Integer.BYTES);
         buffer.putInt(value);
-        buffer.putInt(RandomUtils.nextInt());
+        int nonce = RandomUtils.nextInt();
+        buffer.putInt(nonce);
 
         String signature = sign(originAccountKeys, originId.getId(), destId.getId(), buffer.array());
 
@@ -136,6 +137,7 @@ public class LedgerClient implements Closeable
             .path("transaction").path(Integer.toString(value))
             .request()
             .header(Accounts.ACC_SIG, signature)
+            .header(Accounts.NONCE, nonce)
             .buildPost(Entity.json(new Pair<>(originId.getId(), destId.getId()))),
                 Void.class);
     }
