@@ -5,7 +5,6 @@ import java.net.URI;
 import java.nio.ByteBuffer;
 import java.security.KeyPair;
 import java.security.Signature;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -24,7 +23,6 @@ import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.client.Invocation;
-import jakarta.ws.rs.core.GenericType;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
@@ -145,11 +143,11 @@ public class LedgerClient implements Closeable
                 Void.class);
     }
 
-    public Result<Map<AccountId, Account>> getLedger() {
+    public Result<Account[]> getLedger() {
         return request(this.client.target(this.endpoint)
         .path(Accounts.PATH).path("ledger")
         .request()
-        .buildGet(), new GenericType<Map<AccountId, Account>>() {} );
+        .buildGet(), Account[].class);
     }
 
     @Override
@@ -186,57 +184,8 @@ public class LedgerClient implements Closeable
         throw error;
     }
 
-    private <T> Result<T> request(Invocation invocation, GenericType<T> responseType)
-    {
-        int numberTries = MAX_TRIES;
-        RuntimeException error = null;
-
-        while (numberTries > 0)
-        {
-            try (Response response = invocation.invoke();)
-            {
-                Result<T> result = parseResponse(response, responseType);
-                return result;
-            }
-            catch (Exception e) {
-                error = new RuntimeException(e.getMessage(), e);
-            }
-
-            if (error != null)
-            {
-                numberTries--;
-
-                try {
-                    Thread.sleep(TIMEOUT_MILLIS);
-                } catch (Exception e) {}
-            }
-        }
-
-        throw error;
-    }
-
     
     private <T> Result<T> parseResponse(Response response, Class<T> responseType)
-    {
-        Status status = response.getStatusInfo().toEnum();
-        if (status == Status.OK)
-        {
-            try
-            {
-                T value = response.readEntity(responseType);
-                return Result.ok(value);
-            } catch (Exception e)
-            {
-                throw new RuntimeException(e.getMessage(), e);
-            }
-        }
-        else if (status == Status.NO_CONTENT)
-            return Result.ok();
-        else
-            return Result.error(status.getStatusCode());
-    }
-
-    private <T> Result<T> parseResponse(Response response, GenericType<T> responseType)
     {
         Status status = response.getStatusInfo().toEnum();
         if (status == Status.OK)

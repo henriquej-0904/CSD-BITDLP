@@ -1,9 +1,6 @@
 package itdlp.tp1.api.service;
 
-import java.util.Map;
-
 import itdlp.tp1.api.Account;
-import itdlp.tp1.api.AccountId;
 import itdlp.tp1.util.Pair;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.POST;
@@ -114,6 +111,6 @@ public interface Accounts {
     @Path("/ledger")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    Map<AccountId,Account> getLedger();
+    Account[] getLedger();
 
 }

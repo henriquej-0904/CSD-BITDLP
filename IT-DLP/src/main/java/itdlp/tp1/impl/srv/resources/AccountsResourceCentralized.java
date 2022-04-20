@@ -1,7 +1,5 @@
 package itdlp.tp1.impl.srv.resources;
 
-import java.util.Map;
-
 import itdlp.tp1.api.Account;
 import itdlp.tp1.api.AccountId;
 import itdlp.tp1.api.operations.LedgerDeposit;
@@ -61,13 +59,13 @@ public class AccountsResourceCentralized extends AccountsResource
     }
 
     @Override
-    public Map<AccountId, Account> getLedger() {
+    public Account[] getLedger() {
         try {
             init();
 
-            Map<AccountId, Account> result = this.db.getLedger().resultOrThrow();
+            Account[] result = this.db.getLedger().resultOrThrow();
 
-            LOG.info(String.format("Get Ledger with %d accounts.", result.size()));
+            LOG.info(String.format("Get Ledger with %d accounts.", result.length));
 
             return result;
         } catch (WebApplicationException e) {

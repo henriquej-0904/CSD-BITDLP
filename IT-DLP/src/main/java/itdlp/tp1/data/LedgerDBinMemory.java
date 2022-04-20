@@ -203,12 +203,11 @@ public class LedgerDBinMemory extends LedgerDBlayer
     }
 
     @Override
-    public Result<Map<AccountId, Account>> getLedger() {
+    public Result<Account[]> getLedger() {
         try
         {
             getReadLock().lock();
-
-            return Result.ok(Map.copyOf(accounts));
+            return Result.ok(accounts.values().toArray(new Account[0]));
         } finally
         {
             getReadLock().unlock();
