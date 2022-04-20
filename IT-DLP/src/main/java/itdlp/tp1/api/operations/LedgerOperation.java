@@ -46,7 +46,7 @@ public abstract class LedgerOperation {
     /**
      * 
      */
-    public LedgerOperation() {
+    protected LedgerOperation() {
     }
 
     /**
