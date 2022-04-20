@@ -168,7 +168,7 @@ public class LedgerDBinMemory extends LedgerDBlayer
 
             return Result.ok();
         } catch (InvalidOperationException e){
-            return Result.error(new InternalServerErrorException(e));
+            return Result.error(new InternalServerErrorException(e.getMessage(), e));
         } finally
         {
             getWriteLock().unlock();
@@ -195,7 +195,7 @@ public class LedgerDBinMemory extends LedgerDBlayer
 
             return Result.ok();
         } catch (InvalidOperationException e){
-            return Result.error(new WebApplicationException(e, Status.CONFLICT));
+            return Result.error(new WebApplicationException(e.getMessage(), e, Status.CONFLICT));
         } finally
         {
             getWriteLock().unlock();
@@ -203,12 +203,11 @@ public class LedgerDBinMemory extends LedgerDBlayer
     }
 
     @Override
-    public Result<Map<AccountId, Account>> getLedger() {
+    public Result<Account[]> getLedger() {
         try
         {
             getReadLock().lock();
-
-            return Result.ok(Map.copyOf(accounts));
+            return Result.ok(accounts.values().toArray(new Account[0]));
         } finally
         {
             getReadLock().unlock();

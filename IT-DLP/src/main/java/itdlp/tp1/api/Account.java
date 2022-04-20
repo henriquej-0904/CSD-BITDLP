@@ -4,6 +4,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 import itdlp.tp1.api.operations.InvalidOperationException;
+import itdlp.tp1.api.operations.LedgerDeposit;
 import itdlp.tp1.api.operations.LedgerOperation;
 import itdlp.tp1.api.operations.LedgerTransaction;
 
@@ -15,7 +16,8 @@ public class Account {
     private AccountId id;
     private UserId owner;
 
-    private List<LedgerOperation> operations;
+    private List<LedgerDeposit> deposits;
+    private List<LedgerTransaction> transactions;
 
     private int balance;
 
@@ -27,8 +29,15 @@ public class Account {
     public Account(AccountId id, UserId owner){
         this.owner = owner;
         this.id = id;
-        this.operations = new LinkedList<>();
+        this.deposits = new LinkedList<>();
+        this.transactions = new LinkedList<>();
         this.balance = 0;
+    }
+
+    /**
+     * 
+     */
+    public Account() {
     }
 
     /**
@@ -74,20 +83,22 @@ public class Account {
     public void setBalance(int balance) {
         this.balance = balance;
     }
+   
 
-
-    /**
-     * @return the operations
-     */
-    public List<LedgerOperation> getOperations() {
-        return operations;
+    public List<LedgerDeposit> getDeposits() {
+        return deposits;
     }
 
-    /**
-     * @param operations the operations to set
-     */
-    public void setOperations(List<LedgerOperation> operations) {
-        this.operations = operations;
+    public void setDeposits(List<LedgerDeposit> deposits) {
+        this.deposits = deposits;
+    }
+
+    public List<LedgerTransaction> getTransactions() {
+        return transactions;
+    }
+
+    public void setTransactions(List<LedgerTransaction> transactions) {
+        this.transactions = transactions;
     }
 
     /**
@@ -102,13 +113,13 @@ public class Account {
         switch (operation.getType()) {
             case DEPOSIT:
                 value = operation.getValue();
+                this.deposits.add((LedgerDeposit)operation);
                 break;
             case TRANSACTION:
                 value = processTransaction((LedgerTransaction)operation);
+                this.transactions.add((LedgerTransaction)operation);
                 break;
         }
-
-        this.operations.add(operation);
         this.balance += value;
     }
 

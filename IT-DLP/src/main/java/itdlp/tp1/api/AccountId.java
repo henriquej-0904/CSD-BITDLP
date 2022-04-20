@@ -39,6 +39,12 @@ public class AccountId extends ObjectId
     }
 
     /**
+     * 
+     */
+    public AccountId() {
+    }
+
+    /**
      * Generate the account id from the specified email and public key.
      * 
      * @param email The user email.

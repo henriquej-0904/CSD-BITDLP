@@ -43,6 +43,11 @@ public abstract class LedgerOperation {
         this(value, type, Utils.printDate(DATE_FORMAT, Calendar.getInstance()));
     }
 
+    /**
+     * 
+     */
+    protected LedgerOperation() {
+    }
 
     /**
      * @return the value
@@ -83,14 +88,12 @@ public abstract class LedgerOperation {
         return date;
     }
 
-
     /**
      * @param date the date to set
      */
     public void setDate(String date) {
         this.date = date;
     }
-
 
     @Override
     public String toString() {

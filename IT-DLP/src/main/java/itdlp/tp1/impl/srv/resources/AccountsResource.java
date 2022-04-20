@@ -8,9 +8,8 @@ import java.security.Signature;
 import java.security.SignatureException;
 import java.security.spec.InvalidKeySpecException;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import org.apache.commons.lang3.tuple.Pair;
 
 import itdlp.tp1.api.Account;
 import itdlp.tp1.api.AccountId;
@@ -23,6 +22,7 @@ import itdlp.tp1.api.service.Accounts;
 import itdlp.tp1.data.LedgerDBlayer;
 import itdlp.tp1.data.LedgerDBlayerException;
 import itdlp.tp1.util.Crypto;
+import itdlp.tp1.util.Pair;
 import itdlp.tp1.util.Utils;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.ForbiddenException;
@@ -43,7 +43,7 @@ public abstract class AccountsResource implements Accounts
         try {
             this.db = LedgerDBlayer.getInstance();
         } catch (LedgerDBlayerException e) {
-            throw new InternalServerErrorException(e);
+            throw new InternalServerErrorException(e.getMessage(), e);
         }
     }
 
@@ -58,7 +58,7 @@ public abstract class AccountsResource implements Accounts
         try {
             return new AccountId(accountId);
         } catch (Exception e) {
-            throw new BadRequestException(e);
+            throw new BadRequestException(e.getMessage(), e);
         }
     }
 
@@ -73,7 +73,7 @@ public abstract class AccountsResource implements Accounts
         try {
             return new UserId(userId);
         } catch (Exception e) {
-            throw new BadRequestException(e);
+            throw new BadRequestException(e.getMessage(), e);
         }
     }
 
@@ -82,7 +82,7 @@ public abstract class AccountsResource implements Accounts
         try {
             return id.getPublicKey();
         } catch (InvalidKeySpecException e) {
-            throw new BadRequestException(e);
+            throw new BadRequestException(e.getMessage(), e);
         }
     }
 
@@ -96,7 +96,7 @@ public abstract class AccountsResource implements Accounts
 
             return verify.verify(signature);
         } catch (InvalidKeyException | SignatureException e) {
-            throw new InternalServerErrorException(e);
+            throw new InternalServerErrorException(e.getMessage(), e);
         }
     }
 
@@ -106,19 +106,19 @@ public abstract class AccountsResource implements Accounts
         try {
             init();
 
-            AccountId account = getAccountId(accountUserPair.getLeft());
+            AccountId accountId = getAccountId(accountUserPair.getLeft());
             UserId owner = getUserId(accountUserPair.getRight());
 
             // verify signature
-            byte[] clientSig = Utils.fromBase64(userSignature);
-            if (!verifySignature(owner, clientSig, accountUserPair.getLeft(),
+            if (!verifySignature(owner, Utils.fromHex(userSignature), accountUserPair.getLeft(),
                 accountUserPair.getRight()))
                 throw new ForbiddenException("Invalid User Signature.");
 
             // execute operation
-            LOG.info(String.format("accountId=%s, ownerId=%s", account, owner));
+            Account account = createAccount(new Account(accountId, owner));
+            LOG.info(String.format("Created account with %s,\n%s\n", accountId, owner));
 
-            return createAccount(new Account(account, owner));
+            return account;
         } catch (WebApplicationException e) {
             LOG.info(e.getMessage());
             throw e;
@@ -137,11 +137,11 @@ public abstract class AccountsResource implements Accounts
 
 
     @Override
-    public final Account getAccount(byte[] accountId) {
+    public final Account getAccount(String accountId) {
         try {
             init();
             
-            AccountId id = getAccountId(accountId);
+            AccountId id = getAccountId(Utils.fromHex(accountId));
             LOG.info(id.toString());
 
             return getAccount(id);
@@ -163,14 +163,16 @@ public abstract class AccountsResource implements Accounts
 
 
     @Override
-    public final int getBalance(byte[] accountId) {
+    public final int getBalance(String accountId) {
         try {
             init();
             
-            AccountId id = getAccountId(accountId);
-            LOG.info(id.toString());
+            AccountId id = getAccountId(Utils.fromHex(accountId));
+            
+            int result = getBalance(id);
+            LOG.info(String.format("Balance - %d, %s\n", result, accountId));
 
-            return getBalance(id);
+            return result;
         } catch (WebApplicationException e) {
             LOG.info(e.getMessage());
             throw e;
@@ -196,11 +198,14 @@ public abstract class AccountsResource implements Accounts
             if (accounts == null || accounts.length == 0)
                 throw new BadRequestException();
 
-            AccountId[] accountIds = (AccountId[]) Stream.of(accounts)
-                .map(this::getAccountId)
-                .toArray();
+            AccountId[] accountIds = Stream.of(accounts)
+                .map(this::getAccountId).collect(Collectors.toList())
+                .toArray(new AccountId[0]);
 
-            return getTotalValue(accountIds);
+            int result = getTotalValue(accountIds);
+            LOG.info(String.format("Total value for %d accounts: %d\n", accountIds.length, result));
+
+            return result;
         } catch (WebApplicationException e) {
             LOG.info(e.getMessage());
             throw e;
@@ -224,12 +229,10 @@ public abstract class AccountsResource implements Accounts
             AccountId id = getAccountId(accountId);
 
             // verify signature
-            byte[] clientSig = Utils.fromBase64(accountSignature);
-
-            ByteBuffer buffer = ByteBuffer.allocate(Integer.SIZE);
+            ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES);
             buffer.putInt(value);
 
-            if (!verifySignature(id, clientSig, accountId, buffer.array()))
+            if (!verifySignature(id, Utils.fromHex(accountSignature), accountId, buffer.array()))
                 throw new ForbiddenException("Invalid Account Signature.");   
             
             // execute operation
@@ -243,7 +246,7 @@ public abstract class AccountsResource implements Accounts
             throw e;
         } catch (InvalidOperationException e) {
             LOG.info(e.getMessage());
-            throw new BadRequestException(e);
+            throw new BadRequestException(e.getMessage(), e);
         }
     }
 
@@ -258,7 +261,8 @@ public abstract class AccountsResource implements Accounts
 
 
     @Override
-    public final void sendTransaction(Pair<byte[],byte[]> originDestPair, int value, String accountSignature, int nonce) {
+    public final void sendTransaction(Pair<byte[],byte[]> originDestPair, int value,
+        String accountSignature, int nonce) {
         try {
             init();
             
@@ -266,20 +270,18 @@ public abstract class AccountsResource implements Accounts
             AccountId destId = getAccountId(originDestPair.getRight());
 
             // verify signature
-            byte[] clientSig = Utils.fromBase64(accountSignature);
-
-            ByteBuffer buffer = ByteBuffer.allocate(Integer.SIZE*2);
+            ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES*2);
             buffer.putInt(value);
             buffer.putInt(nonce);
 
-            if (!verifySignature(originId, clientSig, originDestPair.getLeft(),
+            if (!verifySignature(originId, Utils.fromHex(accountSignature), originDestPair.getLeft(),
                 originDestPair.getRight(), buffer.array()))
                 throw new ForbiddenException("Invalid Account Signature.");    
 
             // verify nonce
             MessageDigest digest = Crypto.getSha256Digest();
 
-            buffer = ByteBuffer.allocate(Integer.SIZE);
+            buffer = ByteBuffer.allocate(Integer.BYTES);
             buffer.putInt(value);
 
             digest.update(originDestPair.getLeft());
@@ -301,7 +303,7 @@ public abstract class AccountsResource implements Accounts
             throw e;
         } catch (InvalidOperationException e) {
             LOG.info(e.getMessage());
-            throw new BadRequestException(e);
+            throw new BadRequestException(e.getMessage(), e);
         }
     }
 

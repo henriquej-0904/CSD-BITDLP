@@ -1,11 +1,7 @@
 package itdlp.tp1.api.service;
 
-import java.util.Map;
-
-import org.apache.commons.lang3.tuple.Pair;
-
 import itdlp.tp1.api.Account;
-import itdlp.tp1.api.AccountId;
+import itdlp.tp1.util.Pair;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
@@ -50,7 +46,7 @@ public interface Accounts {
     @GET
     @Path("/{accountId}")
     @Produces(MediaType.APPLICATION_JSON)
-    Account getAccount(@PathParam("accountId") byte[] accountId);
+    Account getAccount(@PathParam("accountId") String accountId);
 
     /**
 	 * Returns the balance of an account.
@@ -61,7 +57,7 @@ public interface Accounts {
 	 */
     @Path("/balance/{accountId}")
     @GET
-    int getBalance(@PathParam("accountId") byte[] accountId);
+    int getBalance(@PathParam("accountId") String accountId);
 
     
     /**
@@ -115,6 +111,6 @@ public interface Accounts {
     @Path("/ledger")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    Map<AccountId,Account> getLedger();
+    Account[] getLedger();
 
 }

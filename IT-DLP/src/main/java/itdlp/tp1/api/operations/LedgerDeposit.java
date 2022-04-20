@@ -19,6 +19,12 @@ public class LedgerDeposit extends LedgerOperation
         super(value, Type.DEPOSIT, date);
     }
 
+    /**
+     * 
+     */
+    public LedgerDeposit() {
+    }
+
     @Override
     public String toString() {
         return super.toString() + getValue();

@@ -1,7 +1,5 @@
 package itdlp.tp1.data;
 
-import java.util.Map;
-
 import itdlp.tp1.api.Account;
 import itdlp.tp1.api.AccountId;
 import itdlp.tp1.api.operations.LedgerDeposit;
@@ -110,7 +108,7 @@ public abstract class LedgerDBlayer
      * Obtains the current Ledger.
      * @return The current Ledger.
      */
-    public abstract Result<Map<AccountId,Account>> getLedger();
+    public abstract Result<Account[]> getLedger();
 
     /**
      * Verify if the nonce is valid for the given operation.

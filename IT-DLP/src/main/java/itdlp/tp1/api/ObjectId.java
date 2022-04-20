@@ -4,9 +4,13 @@ import java.security.PublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.util.Arrays;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
+import itdlp.tp1.util.Utils;
+
 public abstract class ObjectId {
 
-    protected final byte[] id;
+    protected byte[] id;
 
     /**
      * Create an ObjectId object from the specified id.
@@ -17,6 +21,19 @@ public abstract class ObjectId {
         if (id == null)
             throw new IllegalArgumentException();
         
+        this.id = id;
+    }
+
+    /**
+     * 
+     */
+    protected ObjectId() {
+    }
+
+    /**
+     * @param id the id to set
+     */
+    public void setId(byte[] id) {
         this.id = id;
     }
 
@@ -32,11 +49,12 @@ public abstract class ObjectId {
      * 
      * @return The public key.
      */
+    @JsonIgnore
     public abstract PublicKey getPublicKey() throws InvalidKeySpecException;
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + "=" + Arrays.toString(this.id);
+        return getClass().getSimpleName() + "=" + Utils.toHex(getId());
     }
 
     @Override

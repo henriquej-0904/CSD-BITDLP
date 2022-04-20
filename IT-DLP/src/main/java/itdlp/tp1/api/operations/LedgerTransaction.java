@@ -19,6 +19,12 @@ public class LedgerTransaction extends LedgerOperation {
     }
 
     /**
+     * 
+     */
+    public LedgerTransaction() {
+    }
+
+    /**
      * @return the origin
      */
     public AccountId getOrigin() {
