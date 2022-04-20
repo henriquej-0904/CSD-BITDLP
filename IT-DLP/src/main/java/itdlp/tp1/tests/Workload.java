@@ -96,6 +96,7 @@ public class Workload implements Runnable
         )
         {
             createAccounts(client);
+            loadMoney(client);
         }
     }
 
@@ -112,6 +113,20 @@ public class Workload implements Runnable
                     Operation.CREATE_ACCOUNT);
         }
     }
+
+    private void loadMoney(LedgerClient client)
+    {
+        // send loadMoney requests
+        for (Map<AccountId, KeyPair> accounts : this.accounts.values())
+        {
+            for (Entry<AccountId, KeyPair> account : accounts.entrySet())
+            {
+                request(() -> client.loadMoney(account.getKey(), 100, account.getValue()),
+                    Operation.LOAD_MONEY);
+            }
+        }
+    }
+
 
     private <T> Result<T> request(Request<T> request, Operation operation)
     {
