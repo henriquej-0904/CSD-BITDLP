@@ -1,6 +1,5 @@
 package itdlp.tp1.util;
 
-import java.security.InvalidAlgorithmParameterException;
 import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -25,11 +24,14 @@ public class Crypto {
 
 
     public static KeyPair createKeyPairForEcc256bits(SecureRandom random)
-        throws NoSuchAlgorithmException, InvalidAlgorithmParameterException
     {
-        KeyPairGenerator generator = KeyPairGenerator.getInstance(DEFAULT_ASYMMETRIC_ALGORITHM);
-        generator.initialize(DEFAULT_ASYMMETRIC_GEN_KEY_SPEC, random);
-        return generator.generateKeyPair();
+        try {
+            KeyPairGenerator generator = KeyPairGenerator.getInstance(DEFAULT_ASYMMETRIC_ALGORITHM);
+            generator.initialize(DEFAULT_ASYMMETRIC_GEN_KEY_SPEC, random);
+            return generator.generateKeyPair();
+        } catch (Exception e) {
+            throw new Error(e);
+        }
     }
 
     public static Signature createSignatureInstance()
