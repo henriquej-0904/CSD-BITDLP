@@ -42,7 +42,7 @@ public abstract class AccountsResource implements Accounts
         try {
             this.db = LedgerDBlayer.getInstance();
         } catch (LedgerDBlayerException e) {
-            throw new InternalServerErrorException(e);
+            throw new InternalServerErrorException(e.getMessage(), e);
         }
     }
 
@@ -57,7 +57,7 @@ public abstract class AccountsResource implements Accounts
         try {
             return new AccountId(accountId);
         } catch (Exception e) {
-            throw new BadRequestException(e);
+            throw new BadRequestException(e.getMessage(), e);
         }
     }
 
@@ -72,7 +72,7 @@ public abstract class AccountsResource implements Accounts
         try {
             return new UserId(userId);
         } catch (Exception e) {
-            throw new BadRequestException(e);
+            throw new BadRequestException(e.getMessage(), e);
         }
     }
 
@@ -81,7 +81,7 @@ public abstract class AccountsResource implements Accounts
         try {
             return id.getPublicKey();
         } catch (InvalidKeySpecException e) {
-            throw new BadRequestException(e);
+            throw new BadRequestException(e.getMessage(), e);
         }
     }
 
@@ -95,7 +95,7 @@ public abstract class AccountsResource implements Accounts
 
             return verify.verify(signature);
         } catch (InvalidKeyException | SignatureException e) {
-            throw new InternalServerErrorException(e);
+            throw new InternalServerErrorException(e.getMessage(), e);
         }
     }
 
@@ -240,7 +240,7 @@ public abstract class AccountsResource implements Accounts
             throw e;
         } catch (InvalidOperationException e) {
             LOG.info(e.getMessage());
-            throw new BadRequestException(e);
+            throw new BadRequestException(e.getMessage(), e);
         }
     }
 
@@ -297,7 +297,7 @@ public abstract class AccountsResource implements Accounts
             throw e;
         } catch (InvalidOperationException e) {
             LOG.info(e.getMessage());
-            throw new BadRequestException(e);
+            throw new BadRequestException(e.getMessage(), e);
         }
     }
 
