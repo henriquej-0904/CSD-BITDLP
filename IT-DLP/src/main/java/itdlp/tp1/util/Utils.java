@@ -51,6 +51,22 @@ public class Utils
         
         return buf.toString();
     }
+
+    public static byte[] fromHex(String data)
+    {
+        byte[] res = new byte[data.length()/2];
+        int f = 0;
+        
+        for (int i = 0; i != res.length; i++)
+        {
+            res[i] = (byte) ((digits.indexOf(String.valueOf(data.charAt(f++))) & 0x0f) << 4);
+            res[i] = (byte) (res[i] | (digits.indexOf(String.valueOf(data.charAt(f++))) & 0x0f));
+        }
+        
+        return res;
+    }
+
+
     
     /**
      * Retorna dados passados como byte array numa string hexadecimal
