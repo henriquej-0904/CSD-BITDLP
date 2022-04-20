@@ -99,6 +99,8 @@ public class Workload implements Runnable
             createAccounts(client);
             loadMoney(client);
             sendTransaction(client);
+            
+            getLedger(client);
         }
     }
 
@@ -145,6 +147,11 @@ public class Workload implements Runnable
                         Operation.SEND_TRANSACTION);
             }
         }
+    }
+
+    private void getLedger(LedgerClient client)
+    {
+        request(() -> client.getLedger(), Operation.GET_LEDGER);
     }
 
     private <T> Result<T> request(Request<T> request, Operation operation)
