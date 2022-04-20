@@ -30,11 +30,11 @@ import jakarta.ws.rs.core.Response.Status;
 
 public class LedgerClient implements Closeable
 {
-    private static final int MAX_TRIES = 3;
+    private static final int MAX_TRIES = 1;
     private static final int TIMEOUT_MILLIS = 3 * 1000;
 
-    private static final int CONNECT_TIMEOUT = 10;
-    private static final int READ_TIMEOUT = 10;
+    private static final int CONNECT_TIMEOUT = 60 * 3;
+    private static final int READ_TIMEOUT = 60 * 3;
 
     private Client client;
 
@@ -51,7 +51,7 @@ public class LedgerClient implements Closeable
         this.endpoint = endpoint;
     }
 
-    protected byte[] sign(KeyPair keys, byte[]... data)
+    protected String sign(KeyPair keys, byte[]... data)
     {
         try {
             Signature signature = Crypto.createSignatureInstance();
@@ -61,18 +61,18 @@ public class LedgerClient implements Closeable
                 signature.update(buff);
             }
 
-            return signature.sign();
+            return Utils.toBase64(signature.sign());
         } catch (Exception e) {
             throw new Error(e);
         }
     }
 
     public Result<Account> createAccount(AccountId accountId, UserId userId, KeyPair userKeys) {
-        byte[] signature = sign(userKeys, accountId.getId(), userId.getId());
+        String signature = sign(userKeys, accountId.getId(), userId.getId());
 
         return request(this.client.target(this.endpoint).path(Accounts.PATH)
         .request().accept(MediaType.APPLICATION_JSON)
-        .header(Accounts.USER_SIG, Utils.toBase64(signature))
+        .header(Accounts.USER_SIG, signature)
         .buildPost(
             Entity.json(new Pair<>(accountId.getId(), userId.getId()))
             ), Account.class);
@@ -114,7 +114,7 @@ public class LedgerClient implements Closeable
         ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES);
         buffer.putInt(value);
 
-        byte[] signature = sign(accountKeys, accountId.getId(), buffer.array());
+        String signature = sign(accountKeys, accountId.getId(), buffer.array());
 
         return request(this.client.target(this.endpoint).path(Accounts.PATH)
             .path("balance").path(Integer.toString(value))
@@ -130,7 +130,7 @@ public class LedgerClient implements Closeable
         buffer.putInt(value);
         buffer.putInt(RandomUtils.nextInt());
 
-        byte[] signature = sign(originAccountKeys, originId.getId(), destId.getId(), buffer.array());
+        String signature = sign(originAccountKeys, originId.getId(), destId.getId(), buffer.array());
 
         return request(this.client.target(this.endpoint).path(Accounts.PATH)
             .path("transaction").path(Integer.toString(value))
