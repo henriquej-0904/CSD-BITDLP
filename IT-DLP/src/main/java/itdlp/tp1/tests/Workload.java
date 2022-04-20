@@ -100,6 +100,7 @@ public class Workload implements Runnable
             loadMoney(client);
             sendTransaction(client);
             
+            getGlobalLedgerValue(client);
             getLedger(client);
         }
     }
@@ -147,6 +148,11 @@ public class Workload implements Runnable
                         Operation.SEND_TRANSACTION);
             }
         }
+    }
+
+    private void getGlobalLedgerValue(LedgerClient client)
+    {
+        request(() -> client.getGlobalLedgerValue(), Operation.GET_LEDGER);
     }
 
     private void getLedger(LedgerClient client)
