@@ -1,5 +1,6 @@
 package itdlp.tp1.impl.client;
 
+import java.io.Closeable;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.security.KeyPair;
@@ -27,7 +28,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
 
-public class LedgerClient
+public class LedgerClient implements Closeable
 {
     private static final int MAX_TRIES = 3;
     private static final int TIMEOUT_MILLIS = 3 * 1000;
@@ -146,6 +147,11 @@ public class LedgerClient
         .buildGet(), new GenericType<Map<AccountId, Account>>() {} );
     }
 
+    @Override
+    public void close() {
+        this.client.close();
+    }
+
     private <T> Result<T> request(Invocation invocation, Class<T> responseType)
     {
         int numberTries = MAX_TRIES;
@@ -244,5 +250,4 @@ public class LedgerClient
         else
             return Result.error(status.getStatusCode());
     }
-    
 }
