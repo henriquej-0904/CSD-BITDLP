@@ -8,6 +8,7 @@ import java.security.Signature;
 import java.security.SignatureException;
 import java.security.spec.InvalidKeySpecException;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import itdlp.tp1.api.Account;
@@ -167,9 +168,11 @@ public abstract class AccountsResource implements Accounts
             init();
             
             AccountId id = getAccountId(Utils.fromHex(accountId));
-            LOG.info(id.toString());
+            
+            int result = getBalance(id);
+            LOG.info(String.format("Balance - %d, %s\n", result, accountId));
 
-            return getBalance(id);
+            return result;
         } catch (WebApplicationException e) {
             LOG.info(e.getMessage());
             throw e;
@@ -195,11 +198,14 @@ public abstract class AccountsResource implements Accounts
             if (accounts == null || accounts.length == 0)
                 throw new BadRequestException();
 
-            AccountId[] accountIds = (AccountId[]) Stream.of(accounts)
-                .map(this::getAccountId)
-                .toArray();
+            AccountId[] accountIds = Stream.of(accounts)
+                .map(this::getAccountId).collect(Collectors.toList())
+                .toArray(new AccountId[0]);
 
-            return getTotalValue(accountIds);
+            int result = getTotalValue(accountIds);
+            LOG.info(String.format("Total value for %d accounts: %d\n", accountIds.length, result));
+
+            return result;
         } catch (WebApplicationException e) {
             LOG.info(e.getMessage());
             throw e;

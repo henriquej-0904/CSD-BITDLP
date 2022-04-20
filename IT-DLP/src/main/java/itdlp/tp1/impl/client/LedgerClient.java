@@ -5,6 +5,7 @@ import java.net.URI;
 import java.nio.ByteBuffer;
 import java.security.KeyPair;
 import java.security.Signature;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -95,7 +96,7 @@ public class LedgerClient implements Closeable
 
     public Result<Integer> getTotalValue(AccountId[] accounts) {
 
-        byte[][] arr = Stream.of(accounts).map(AccountId::getId).collect(Collectors.toList()).toArray(new byte[0][0]);
+        List<byte[]> arr = Stream.of(accounts).map(AccountId::getId).collect(Collectors.toList());
 
         return request(this.client.target(this.endpoint)
             .path(Accounts.PATH).path("balance/sum")
