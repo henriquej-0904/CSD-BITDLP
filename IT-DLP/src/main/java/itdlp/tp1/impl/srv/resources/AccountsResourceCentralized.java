@@ -52,12 +52,12 @@ public class AccountsResourceCentralized extends AccountsResource
 
     @Override
     public void loadMoney(AccountId accountId, LedgerDeposit value) {
-        this.db.loadMoney(accountId, value);
+        this.db.loadMoney(accountId, value).resultOrThrow();
     }
 
     @Override
     public void sendTransaction(LedgerTransaction transaction) {
-        this.db.sendTransaction(transaction);
+        this.db.sendTransaction(transaction).resultOrThrow();
     }
 
     @Override

@@ -4,6 +4,7 @@ import java.net.URI;
 import java.security.KeyPair;
 import java.security.SecureRandom;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -101,6 +102,8 @@ public class Workload implements Runnable
             getBalance(client);
             getTotalValue(client);
             getGlobalLedgerValue(client);
+            sendTransaction(client);
+            getLedger(client);
         }
     }
 
@@ -172,6 +175,28 @@ public class Workload implements Runnable
         }
     }
 
+    private void sendTransaction(LedgerClient client)
+    {
+        // sendTransaction requests
+
+        Iterator<Map<AccountId, KeyPair>> accountsIt = this.accounts.values().iterator();
+        Map<AccountId, KeyPair> accounts1 = accountsIt.next();
+        Map<AccountId, KeyPair> accounts2 = accountsIt.next();
+
+        for (Entry<AccountId, KeyPair> originAccount : accounts1.entrySet()) {
+            
+            for (AccountId destAccountId : accounts2.keySet()) {
+                request(() -> client.sendTransaction(originAccount.getKey(), destAccountId,
+                    55, originAccount.getValue()),
+                        Operation.SEND_TRANSACTION);
+            }
+        }
+    }
+
+    private void getLedger(LedgerClient client)
+    {
+        request(() -> client.getLedger(), Operation.GET_LEDGER);
+    }
 
     private <T> Result<T> request(Request<T> request, Operation operation)
     {
