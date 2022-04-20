@@ -8,14 +8,21 @@ import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.PublicKey;
 import java.security.SecureRandom;
+import java.security.Security;
 import java.security.Signature;
 import java.security.spec.AlgorithmParameterSpec;
 import java.security.spec.ECGenParameterSpec;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
 
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+
 public class Crypto {
     
+    static{
+        Security.addProvider(new BouncyCastleProvider());
+    }
+
     public static final String DEFAULT_SIGNATURE_TRANSFORMATION = "SHA256withECDSA";
 	public static final String DEFAULT_SIGNATURE_PROVIDER = "BC";
 
