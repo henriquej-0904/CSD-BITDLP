@@ -109,7 +109,7 @@ public abstract class AccountsResource implements Accounts
             UserId owner = getUserId(accountUserPair.getRight());
 
             // verify signature
-            if (!verifySignature(owner, Utils.fromBase64(userSignature), accountUserPair.getLeft(),
+            if (!verifySignature(owner, Utils.fromHex(userSignature), accountUserPair.getLeft(),
                 accountUserPair.getRight()))
                 throw new ForbiddenException("Invalid User Signature.");
 
@@ -140,7 +140,7 @@ public abstract class AccountsResource implements Accounts
         try {
             init();
             
-            AccountId id = getAccountId(Utils.fromBase64(accountId));
+            AccountId id = getAccountId(Utils.fromHex(accountId));
             LOG.info(id.toString());
 
             return getAccount(id);
@@ -166,7 +166,7 @@ public abstract class AccountsResource implements Accounts
         try {
             init();
             
-            AccountId id = getAccountId(Utils.fromBase64(accountId));
+            AccountId id = getAccountId(Utils.fromHex(accountId));
             LOG.info(id.toString());
 
             return getBalance(id);
@@ -226,7 +226,7 @@ public abstract class AccountsResource implements Accounts
             ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES);
             buffer.putInt(value);
 
-            if (!verifySignature(id, Utils.fromBase64(accountSignature), accountId, buffer.array()))
+            if (!verifySignature(id, Utils.fromHex(accountSignature), accountId, buffer.array()))
                 throw new ForbiddenException("Invalid Account Signature.");   
             
             // execute operation
@@ -268,7 +268,7 @@ public abstract class AccountsResource implements Accounts
             buffer.putInt(value);
             buffer.putInt(nonce);
 
-            if (!verifySignature(originId, Utils.fromBase64(accountSignature), originDestPair.getLeft(),
+            if (!verifySignature(originId, Utils.fromHex(accountSignature), originDestPair.getLeft(),
                 originDestPair.getRight(), buffer.array()))
                 throw new ForbiddenException("Invalid Account Signature.");    
 

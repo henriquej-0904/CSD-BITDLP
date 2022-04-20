@@ -97,6 +97,10 @@ public class Workload implements Runnable
         {
             createAccounts(client);
             loadMoney(client);
+            getAccounts(client);
+            getBalance(client);
+            getTotalValue(client);
+            getGlobalLedgerValue(client);
         }
     }
 
@@ -112,6 +116,47 @@ public class Workload implements Runnable
                 request(() -> client.createAccount(accountId, userId, userKeys),
                     Operation.CREATE_ACCOUNT);
         }
+    }
+
+    
+    private void getAccounts(LedgerClient client)
+    {
+        // send get account requests
+        for (Entry<UserId, Map<AccountId, KeyPair>> entry : this.accounts.entrySet())
+        {
+            for (AccountId accountId : entry.getValue().keySet())
+                request(() -> client.getAccount(accountId),
+                    Operation.GET_ACCOUNT);
+        }
+    }
+
+    private void getBalance(LedgerClient client)
+    {
+        // send get balance requests
+        for (Entry<UserId, Map<AccountId, KeyPair>> entry : this.accounts.entrySet())
+        {
+            for (AccountId accountId : entry.getValue().keySet())
+                request(() -> client.getBalance(accountId),
+                    Operation.GET_BALANCE);
+        }
+    }
+
+    private void getTotalValue(LedgerClient client)
+    {
+        // send create account requests
+        for (Entry<UserId, Map<AccountId, KeyPair>> entry : this.accounts.entrySet())
+        {
+            request(() -> client.getTotalValue( entry.getValue().keySet().toArray(new AccountId[0])),
+                    Operation.GET_TOTAL_VALUE);
+        }
+    }
+
+    private void getGlobalLedgerValue(LedgerClient client)
+    {
+        // send getGlovalLedgerValue requests
+        request(() -> client.getGlobalLedgerValue(),
+            Operation.GET_GLOBAL_LEDGER_VALUE);
+        
     }
 
     private void loadMoney(LedgerClient client)

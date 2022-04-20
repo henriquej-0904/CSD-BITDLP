@@ -7,6 +7,7 @@ import java.security.KeyPair;
 import java.security.Signature;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.apache.commons.lang3.RandomUtils;
@@ -61,7 +62,7 @@ public class LedgerClient implements Closeable
                 signature.update(buff);
             }
 
-            return Utils.toBase64(signature.sign());
+            return Utils.toHex(signature.sign());
         } catch (Exception e) {
             throw new Error(e);
         }
@@ -79,22 +80,24 @@ public class LedgerClient implements Closeable
     }
 
     public Result<Account> getAccount(AccountId accountId) {
+
+
         return request(this.client.target(this.endpoint)
-            .path(Accounts.PATH).path(Utils.toBase64(accountId.getId()))
+            .path(Accounts.PATH).path(Utils.toHex(accountId.getId()))
             .request().accept(MediaType.APPLICATION_JSON)
             .buildGet(), Account.class);
     }
 
     public Result<Integer> getBalance(AccountId accountId) {
         return request(this.client.target(this.endpoint)
-            .path(Accounts.PATH).path("balance").path(Utils.toBase64(accountId.getId()))
+            .path(Accounts.PATH).path("balance").path(Utils.toHex(accountId.getId()))
             .request()
             .buildGet(), Integer.class);
     }
 
     public Result<Integer> getTotalValue(AccountId[] accounts) {
 
-        byte[][] arr = (byte[][]) Stream.of(accounts).map(AccountId::getId).toArray();
+        byte[][] arr = Stream.of(accounts).map(AccountId::getId).collect(Collectors.toList()).toArray(new byte[0][0]);
 
         return request(this.client.target(this.endpoint)
             .path(Accounts.PATH).path("balance/sum")
