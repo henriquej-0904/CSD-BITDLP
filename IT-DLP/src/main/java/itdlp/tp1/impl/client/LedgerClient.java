@@ -10,13 +10,13 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 import org.apache.commons.lang3.RandomUtils;
-import org.apache.commons.lang3.tuple.ImmutablePair;
 
 import itdlp.tp1.api.Account;
 import itdlp.tp1.api.AccountId;
 import itdlp.tp1.api.UserId;
 import itdlp.tp1.api.service.Accounts;
 import itdlp.tp1.util.Crypto;
+import itdlp.tp1.util.Pair;
 import itdlp.tp1.util.Result;
 import itdlp.tp1.util.Utils;
 import jakarta.ws.rs.client.Client;
@@ -72,9 +72,9 @@ public class LedgerClient implements Closeable
 
         return request(this.client.target(this.endpoint).path(Accounts.PATH)
         .request().accept(MediaType.APPLICATION_JSON)
-        .header(Accounts.USER_SIG, signature)
+        .header(Accounts.USER_SIG, Utils.toBase64(signature))
         .buildPost(
-            Entity.json(new ImmutablePair<>(accountId.getId(), userId.getId()))
+            Entity.json(new Pair<>(accountId.getId(), userId.getId()))
             ), Account.class);
     }
 
@@ -136,7 +136,7 @@ public class LedgerClient implements Closeable
             .path("transaction").path(Integer.toString(value))
             .request()
             .header(Accounts.ACC_SIG, signature)
-            .buildPost(Entity.json(new ImmutablePair<>(originId.getId(), destId.getId()))),
+            .buildPost(Entity.json(new Pair<>(originId.getId(), destId.getId()))),
                 Void.class);
     }
 

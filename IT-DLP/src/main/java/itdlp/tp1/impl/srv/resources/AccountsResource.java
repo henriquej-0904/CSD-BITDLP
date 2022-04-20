@@ -10,8 +10,6 @@ import java.security.spec.InvalidKeySpecException;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
-import org.apache.commons.lang3.tuple.Pair;
-
 import itdlp.tp1.api.Account;
 import itdlp.tp1.api.AccountId;
 import itdlp.tp1.api.ObjectId;
@@ -23,6 +21,7 @@ import itdlp.tp1.api.service.Accounts;
 import itdlp.tp1.data.LedgerDBlayer;
 import itdlp.tp1.data.LedgerDBlayerException;
 import itdlp.tp1.util.Crypto;
+import itdlp.tp1.util.Pair;
 import itdlp.tp1.util.Utils;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.ForbiddenException;
@@ -102,22 +101,23 @@ public abstract class AccountsResource implements Accounts
 
 
     @Override
-    public final Account createAccount(Pair<byte[],byte[]> accountUserPair, byte[] userSignature) {
+    public final Account createAccount(Pair<byte[],byte[]> accountUserPair, String userSignature) {
         try {
             init();
 
-            AccountId account = getAccountId(accountUserPair.getLeft());
+            AccountId accountId = getAccountId(accountUserPair.getLeft());
             UserId owner = getUserId(accountUserPair.getRight());
 
             // verify signature
-            if (!verifySignature(owner, userSignature, accountUserPair.getLeft(),
+            if (!verifySignature(owner, Utils.fromBase64(userSignature), accountUserPair.getLeft(),
                 accountUserPair.getRight()))
                 throw new ForbiddenException("Invalid User Signature.");
 
             // execute operation
-            LOG.info(String.format("accountId=%s, ownerId=%s", account, owner));
+            Account account = createAccount(new Account(accountId, owner));
+            LOG.info(String.format("Created account with %s,\n%s\n", accountId, owner));
 
-            return createAccount(new Account(account, owner));
+            return account;
         } catch (WebApplicationException e) {
             LOG.info(e.getMessage());
             throw e;
@@ -216,7 +216,7 @@ public abstract class AccountsResource implements Accounts
 
 
     @Override
-    public final void loadMoney(byte[] accountId, int value, byte[] accountSignature) {
+    public final void loadMoney(byte[] accountId, int value, String accountSignature) {
         try {
             init();
             
@@ -226,7 +226,7 @@ public abstract class AccountsResource implements Accounts
             ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES);
             buffer.putInt(value);
 
-            if (!verifySignature(id, accountSignature, accountId, buffer.array()))
+            if (!verifySignature(id, Utils.fromBase64(accountSignature), accountId, buffer.array()))
                 throw new ForbiddenException("Invalid Account Signature.");   
             
             // execute operation
@@ -256,7 +256,7 @@ public abstract class AccountsResource implements Accounts
 
     @Override
     public final void sendTransaction(Pair<byte[],byte[]> originDestPair, int value,
-        byte[] accountSignature, int nonce) {
+        String accountSignature, int nonce) {
         try {
             init();
             
@@ -268,7 +268,7 @@ public abstract class AccountsResource implements Accounts
             buffer.putInt(value);
             buffer.putInt(nonce);
 
-            if (!verifySignature(originId, accountSignature, originDestPair.getLeft(),
+            if (!verifySignature(originId, Utils.fromBase64(accountSignature), originDestPair.getLeft(),
                 originDestPair.getRight(), buffer.array()))
                 throw new ForbiddenException("Invalid Account Signature.");    
 

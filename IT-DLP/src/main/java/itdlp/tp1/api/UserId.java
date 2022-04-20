@@ -38,6 +38,12 @@ public class UserId extends ObjectId
     }
 
     /**
+     * 
+     */
+    public UserId() {
+    }
+
+    /**
      * Generate the user id from the specified email and public key.
      * 
      * @param email The user email.

@@ -32,6 +32,12 @@ public class Account {
     }
 
     /**
+     * 
+     */
+    public Account() {
+    }
+
+    /**
      * Get the account id.
      * @return The account id.
      */
