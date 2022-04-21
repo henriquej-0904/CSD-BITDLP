@@ -2,14 +2,11 @@ package itdlp.tp1.impl.srv.resources.bft;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.io.OutputStream;
 
 import bftsmart.tom.MessageContext;
 import bftsmart.tom.ServiceProxy;
-import bftsmart.tom.server.defaultservices.DefaultRecoverable;
 import bftsmart.tom.server.defaultservices.DefaultSingleRecoverable;
 import itdlp.tp1.api.Account;
 import itdlp.tp1.api.AccountId;
@@ -18,12 +15,13 @@ import itdlp.tp1.api.operations.LedgerTransaction;
 import itdlp.tp1.impl.srv.resources.AccountsResource;
 import itdlp.tp1.impl.srv.resources.requests.CreateAccount;
 import itdlp.tp1.impl.srv.resources.requests.GetBalance;
+import itdlp.tp1.impl.srv.resources.requests.GetFullLedger;
 import itdlp.tp1.impl.srv.resources.requests.GetGlobalValue;
 import itdlp.tp1.impl.srv.resources.requests.GetAccount;
 import itdlp.tp1.impl.srv.resources.requests.GetTotalValue;
+import itdlp.tp1.impl.srv.resources.requests.SendTransaction;
 import itdlp.tp1.util.Result;
 import jakarta.ws.rs.InternalServerErrorException;
-import jakarta.ws.rs.WebApplicationException;
 
 /**
  * An implementation of the Accounts API with BFT SMaRt
@@ -52,7 +50,6 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
         }
     }
 
-    @SuppressWarnings("unchecked")
     protected <T> byte[] writeRequest(T req){
         try ( ByteArrayOutputStream outputArr = new ByteArrayOutputStream();
               ObjectOutputStream os = new ObjectOutputStream(outputArr);
@@ -60,7 +57,7 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
                 os.writeObject(req);
                 os.flush();
 
-                return  outputArr.toByteArray();
+                return outputArr.toByteArray();
         } catch (Exception e) {
                 throw new InternalServerErrorException(e.getMessage(), e);
         }
@@ -113,10 +110,18 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
 
     @Override
     public void sendTransaction(LedgerTransaction transaction) {
+        byte[] request = writeRequest(new SendTransaction(transaction));
+        byte[] result = proxy.invokeOrdered(request);
+
+        this.<Void>readResult(result).resultOrThrow();
     }
 
     @Override
-    public Account[] getLedger() {
+    public Account[] getFullLedger() {
+        byte[] request = writeRequest(new GetFullLedger());
+        byte[] result = proxy.invokeUnordered(request);
+
+        return this.<Account[]>readResult(result).resultOrThrow();
     }
 
     protected class BFTSMaRtServerReplica extends DefaultSingleRecoverable{
