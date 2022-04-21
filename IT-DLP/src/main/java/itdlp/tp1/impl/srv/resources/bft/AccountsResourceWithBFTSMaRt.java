@@ -19,6 +19,8 @@ import itdlp.tp1.impl.srv.resources.AccountsResource;
 import itdlp.tp1.impl.srv.resources.requests.CreateAccount;
 import itdlp.tp1.impl.srv.resources.requests.GetBalance;
 import itdlp.tp1.impl.srv.resources.requests.GetGlobalValue;
+import itdlp.tp1.impl.srv.resources.requests.GetAccount;
+import itdlp.tp1.impl.srv.resources.requests.GetTotalValue;
 import itdlp.tp1.util.Result;
 import jakarta.ws.rs.InternalServerErrorException;
 import jakarta.ws.rs.WebApplicationException;
@@ -75,6 +77,10 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
 
     @Override
     public Account getAccount(AccountId accountId) {
+        byte[] request = writeRequest(new GetAccount(accountId));
+        byte[] result = proxy.invokeUnordered(request);
+
+        return this.<Account>readResult(result).resultOrThrow();
     }
 
     @Override
@@ -87,6 +93,10 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
 
     @Override
     public int getTotalValue(AccountId[] accounts) {
+        byte[] request = writeRequest(new GetTotalValue(accounts));
+        byte[] result = proxy.invokeUnordered(request);
+
+        return this.<Integer>readResult(result).resultOrThrow();
     }
 
     @Override

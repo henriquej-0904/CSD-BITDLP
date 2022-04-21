@@ -4,7 +4,7 @@ import java.io.Serializable;
 
 import itdlp.tp1.api.Account;
 
-public class CreateAccount implements Serializable{
+public class CreateAccount implements Serializable {
 
     private  Account account;
 
@@ -21,8 +21,6 @@ public class CreateAccount implements Serializable{
     public void setAccount(Account account) {
         this.account = account;
     }
-
-    
 }
 
 
