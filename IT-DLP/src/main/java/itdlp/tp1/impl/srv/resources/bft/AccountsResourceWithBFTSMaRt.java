@@ -178,6 +178,7 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
                 case LOAD_MONEY:
                     break;
                 case SEND_TRANSACTION:
+                    result = sendTransaction((SendTransaction)request);
                     break;
                 default:
                     break;
@@ -222,6 +223,11 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
         protected Result<Integer> getTotalValue(GetTotalValue request)
         {
             return AccountsResourceWithBFTSMaRt.this.db.getTotalValue(request.getAccounts());
+        }
+
+        protected Result<Void> sendTransaction(SendTransaction request)
+        {
+            return AccountsResourceWithBFTSMaRt.this.db.sendTransaction(request.getTransaction());
         }
     }
 }
