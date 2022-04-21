@@ -174,8 +174,10 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
 
             switch (request.getOperation()) {
                 case CREATE_ACCOUNT:
+                    result = createAccount((CreateAccount) request);
                     break;
                 case LOAD_MONEY:
+                    result = loadMoney((LoadMoney) request);
                     break;
                 case SEND_TRANSACTION:
                     break;
@@ -186,6 +188,7 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
 
             return writeObject(result);
         }
+
 
         @Override
         public byte[] getSnapshot() {
@@ -222,6 +225,14 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
         protected Result<Integer> getTotalValue(GetTotalValue request)
         {
             return AccountsResourceWithBFTSMaRt.this.db.getTotalValue(request.getAccounts());
+        }
+
+        protected Result<Account> createAccount(CreateAccount request) {
+            return AccountsResourceWithBFTSMaRt.this.db.createAccount(request.getAccount());
+        }
+
+        protected Result<Void> loadMoney(LoadMoney request) {
+            return AccountsResourceWithBFTSMaRt.this.db.loadMoney(request.getId(), request.getValue());
         }
     }
 }
