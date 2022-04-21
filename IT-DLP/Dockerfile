@@ -2,9 +2,9 @@ FROM openjdk:17
 
 WORKDIR /app
 
+RUN echo "security.provider.13=org.bouncycastle.jce.provider.BouncyCastleProvider" >> /usr/java/openjdk-17/conf/security/java.security
+
 COPY target/IT-DLP-1.0-jar-with-dependencies.jar /app/app.jar
-COPY bft-smart /app/bft-smart
+COPY bft-smart/ /app/
 
-EXPOSE 8080
-
-ENTRYPOINT ["java", "--class-path", "app.jar:bft-smart/lib/*"]
+ENTRYPOINT ["java", "--class-path", "app.jar:lib/*"]
