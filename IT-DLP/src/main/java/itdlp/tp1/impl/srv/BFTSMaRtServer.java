@@ -7,7 +7,7 @@ import org.glassfish.jersey.jdkhttp.JdkHttpServerFactory;
 import org.glassfish.jersey.server.ResourceConfig;
 
 import bftsmart.tom.ServiceProxy;
-import itdlp.tp1.impl.srv.resources.AccountsResourceWithBFTSMaRt;
+import itdlp.tp1.impl.srv.resources.bft.AccountsResourceWithBFTSMaRt;
 
 
 public class BFTSMaRtServer
@@ -19,7 +19,7 @@ public class BFTSMaRtServer
 		{
             ServiceProxy proxy = new ServiceProxy(Integer.parseInt(args[0]));
             AccountsResourceWithBFTSMaRt.setProxy(proxy);
-            
+
             String ip = InetAddress.getLocalHost().getHostAddress();
 			URI uri = new URI(String.format("http://%s:%s/rest", ip, PORT));
 
