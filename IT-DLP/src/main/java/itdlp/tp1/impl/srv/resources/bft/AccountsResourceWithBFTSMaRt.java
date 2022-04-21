@@ -151,8 +151,10 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
                 case GET_GLOBAL_LEDGER_VALUE:
                     break;
                 case GET_LEDGER:
+                    result = getLedger((GetFullLedger) request);
                     break;
                 case GET_TOTAL_VALUE:
+                    result = getTotalValue((GetTotalValue) request);
                     break;
                 default:
                     break;
@@ -185,5 +187,14 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
             return AccountsResourceWithBFTSMaRt.this.db.getAccount(request.getId());
         }
         
+        protected Result<Account[]> getLedger(GetFullLedger request)
+        {
+            return AccountsResourceWithBFTSMaRt.this.db.getLedger();
+        }
+
+        protected Result<Integer> getTotalValue(GetTotalValue request)
+        {
+            return AccountsResourceWithBFTSMaRt.this.db.getTotalValue(request.getAccounts());
+        }
     }
 }
