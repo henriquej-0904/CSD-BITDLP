@@ -1,16 +1,15 @@
 package itdlp.tp1.impl.srv.resources.requests;
 
-import java.io.Serializable;
-
 import itdlp.tp1.api.Account;
 
-public class CreateAccount implements Serializable {
+public class CreateAccount extends Request {
 
-    private  Account account;
+    private Account account;
 
     private static final long serialVersionUID = 1L;
 
     public CreateAccount(Account account){
+        super(Operation.CREATE_ACCOUNT);
         this.account = account;
     }
 

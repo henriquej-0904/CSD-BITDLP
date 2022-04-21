@@ -1,11 +1,9 @@
 package itdlp.tp1.impl.srv.resources.requests;
 
-import java.io.Serializable;
-
 import itdlp.tp1.api.AccountId;
 import itdlp.tp1.api.operations.LedgerDeposit;
 
-public class LoadMoney implements Serializable{
+public class LoadMoney extends Request {
 
     private static final long serialVersionUID = 4L;
 
@@ -13,6 +11,7 @@ public class LoadMoney implements Serializable{
     private LedgerDeposit value;
 
     public LoadMoney(AccountId id, LedgerDeposit value){
+        super(Operation.LOAD_MONEY);
         this.id = id;
         this.value = value;
     }

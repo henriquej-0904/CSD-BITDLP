@@ -1,10 +1,8 @@
 package itdlp.tp1.impl.srv.resources.requests;
 
-import java.io.Serializable;
-
 import itdlp.tp1.api.operations.LedgerTransaction;
 
-public class SendTransaction implements Serializable {
+public class SendTransaction extends Request {
     private static final long serialVersionUID = 9032490L;
 
     private LedgerTransaction transaction;
@@ -13,6 +11,7 @@ public class SendTransaction implements Serializable {
      * @param transaction
      */
     public SendTransaction(LedgerTransaction transaction) {
+        super(Operation.SEND_TRANSACTION);
         this.transaction = transaction;
     }
 

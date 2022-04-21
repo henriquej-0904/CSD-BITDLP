@@ -21,27 +21,14 @@ import jakarta.ws.rs.core.Response.Status;
 
 public class Workload implements Runnable
 {
-    public static enum Operation
-    {
-        CREATE_ACCOUNT,
-        LOAD_MONEY,
-        SEND_TRANSACTION,
-
-        GET_ACCOUNT,
-        GET_BALANCE,
-        GET_TOTAL_VALUE,
-        GET_GLOBAL_LEDGER_VALUE,
-        GET_LEDGER
-    }
-
     private static interface Request<T>
     {
         Result<T> request();
     }
 
     // statistics
-    private Map<Operation, List<Long>> latencies;
-    private Map<Operation, Map<Status, Integer>> statusCodes;
+    private Map<itdlp.tp1.impl.srv.resources.requests.Request.Operation, List<Long>> latencies;
+    private Map<itdlp.tp1.impl.srv.resources.requests.Request.Operation, Map<Status, Integer>> statusCodes;
     private int nUsers, nAccounts;
 
     // state
@@ -54,10 +41,10 @@ public class Workload implements Runnable
 
     public Workload(URI endpoint, int nUsers, int nAccounts)
     {
-        this.latencies = Stream.of(Operation.values())
+        this.latencies = Stream.of(itdlp.tp1.impl.srv.resources.requests.Request.Operation.values())
             .collect(Collectors.toUnmodifiableMap((op) -> op, (op) -> new LinkedList<>()));
         
-        this.statusCodes = Stream.of(Operation.values())
+        this.statusCodes = Stream.of(itdlp.tp1.impl.srv.resources.requests.Request.Operation.values())
             .collect(Collectors.toUnmodifiableMap((op) -> op, (op) -> new HashMap<>()));
 
         this.nUsers = nUsers;
@@ -117,7 +104,7 @@ public class Workload implements Runnable
 
             for (AccountId accountId : entry.getValue().keySet())
                 request(() -> client.createAccount(accountId, userId, userKeys),
-                    Operation.CREATE_ACCOUNT);
+                    itdlp.tp1.impl.srv.resources.requests.Request.Operation.CREATE_ACCOUNT);
         }
     }
 
@@ -129,7 +116,7 @@ public class Workload implements Runnable
         {
             for (AccountId accountId : entry.getValue().keySet())
                 request(() -> client.getAccount(accountId),
-                    Operation.GET_ACCOUNT);
+                itdlp.tp1.impl.srv.resources.requests.Request.Operation.GET_ACCOUNT);
         }
     }
 
@@ -140,7 +127,7 @@ public class Workload implements Runnable
         {
             for (AccountId accountId : entry.getValue().keySet())
                 request(() -> client.getBalance(accountId),
-                    Operation.GET_BALANCE);
+                itdlp.tp1.impl.srv.resources.requests.Request.Operation.GET_BALANCE);
         }
     }
 
@@ -150,7 +137,7 @@ public class Workload implements Runnable
         for (Entry<UserId, Map<AccountId, KeyPair>> entry : this.accounts.entrySet())
         {
             request(() -> client.getTotalValue( entry.getValue().keySet().toArray(new AccountId[0])),
-                    Operation.GET_TOTAL_VALUE);
+            itdlp.tp1.impl.srv.resources.requests.Request.Operation.GET_TOTAL_VALUE);
         }
     }
 
@@ -158,7 +145,7 @@ public class Workload implements Runnable
     {
         // send getGlovalLedgerValue requests
         request(() -> client.getGlobalLedgerValue(),
-            Operation.GET_GLOBAL_LEDGER_VALUE);
+        itdlp.tp1.impl.srv.resources.requests.Request.Operation.GET_GLOBAL_LEDGER_VALUE);
         
     }
 
@@ -170,7 +157,7 @@ public class Workload implements Runnable
             for (Entry<AccountId, KeyPair> account : accounts.entrySet())
             {
                 request(() -> client.loadMoney(account.getKey(), 100, account.getValue()),
-                    Operation.LOAD_MONEY);
+                itdlp.tp1.impl.srv.resources.requests.Request.Operation.LOAD_MONEY);
             }
         }
     }
@@ -188,17 +175,17 @@ public class Workload implements Runnable
             for (AccountId destAccountId : accounts2.keySet()) {
                 request(() -> client.sendTransaction(originAccount.getKey(), destAccountId,
                     55, originAccount.getValue()),
-                        Operation.SEND_TRANSACTION);
+                    itdlp.tp1.impl.srv.resources.requests.Request.Operation.SEND_TRANSACTION);
             }
         }
     }
 
     private void getLedger(LedgerClient client)
     {
-        request(() -> client.getLedger(), Operation.GET_LEDGER);
+        request(() -> client.getLedger(), itdlp.tp1.impl.srv.resources.requests.Request.Operation.GET_LEDGER);
     }
 
-    private <T> Result<T> request(Request<T> request, Operation operation)
+    private <T> Result<T> request(Request<T> request, itdlp.tp1.impl.srv.resources.requests.Request.Operation operation)
     {
         long before = System.currentTimeMillis();
         Result<T> result = request.request();
