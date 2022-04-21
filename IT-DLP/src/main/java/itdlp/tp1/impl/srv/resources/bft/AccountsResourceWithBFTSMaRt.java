@@ -147,8 +147,10 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
                     result = getAccount((GetAccount)request);
                     break;
                 case GET_BALANCE:
+                    result = getBalance((GetBalance)request);
                     break;
                 case GET_GLOBAL_LEDGER_VALUE:
+                    result = this.getGlobalLedgerValue();
                     break;
                 case GET_LEDGER:
                     break;
@@ -163,9 +165,24 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
 
         
         @Override
-        public byte[] appExecuteOrdered(byte[] arg0, MessageContext arg1) {
-            // TODO Auto-generated method stub
-            return null;
+        public byte[] appExecuteOrdered(byte[] arg0, MessageContext arg1)
+        {
+            Request request = (Request) readObject(arg0);
+            Result<?> result = null;
+
+            switch (request.getOperation()) {
+                case CREATE_ACCOUNT:
+                    break;
+                case LOAD_MONEY:
+                    break;
+                case SEND_TRANSACTION:
+                    break;
+                default:
+                    break;
+                
+            }
+
+            return writeObject(result);
         }
 
         @Override
@@ -183,6 +200,16 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
         protected Result<Account> getAccount(GetAccount request)
         {
             return AccountsResourceWithBFTSMaRt.this.db.getAccount(request.getId());
+        }
+
+        protected Result<Integer> getBalance(GetBalance request)
+        {
+            return AccountsResourceWithBFTSMaRt.this.db.getBalance(request.getAccount());
+        }
+
+        protected Result<Integer> getGlobalLedgerValue()
+        {
+            return AccountsResourceWithBFTSMaRt.this.db.getGlobalLedgerValue();
         }
         
     }
