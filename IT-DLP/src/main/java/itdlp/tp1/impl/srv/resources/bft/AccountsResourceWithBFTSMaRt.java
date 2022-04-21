@@ -20,6 +20,7 @@ import itdlp.tp1.impl.srv.resources.requests.GetGlobalValue;
 import itdlp.tp1.impl.srv.resources.requests.GetAccount;
 import itdlp.tp1.impl.srv.resources.requests.GetTotalValue;
 import itdlp.tp1.impl.srv.resources.requests.SendTransaction;
+import itdlp.tp1.impl.srv.resources.requests.LoadMoney;
 import itdlp.tp1.util.Result;
 import jakarta.ws.rs.InternalServerErrorException;
 
@@ -106,6 +107,10 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
 
     @Override
     public void loadMoney(AccountId accountId, LedgerDeposit value) {
+        byte[] request = writeRequest(new LoadMoney(accountId, value));
+        byte[] result = proxy.invokeOrdered(request);
+
+        this.<Void>readResult(result).resultOrThrow();
     }
 
     @Override
