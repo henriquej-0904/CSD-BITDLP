@@ -4,7 +4,6 @@ import itdlp.tp1.api.Account;
 import itdlp.tp1.api.AccountId;
 import itdlp.tp1.api.operations.LedgerDeposit;
 import itdlp.tp1.api.operations.LedgerTransaction;
-import jakarta.ws.rs.WebApplicationException;
 
 /**
  * A centralized implementation of the Accounts API
@@ -33,19 +32,8 @@ public class AccountsResourceCentralized extends AccountsResource
     }
 
     @Override
-    public int getGlobalLedgerValue() {
-        try {
-            init();
-            
-            int value = this.db.getGlobalLedgerValue().resultOrThrow();
-
-            LOG.info("Global Ledger Value: " + value);
-
-            return value;
-        } catch (WebApplicationException e) {
-            LOG.info(e.getMessage());
-            throw e;
-        }
+    public int getGlobalValue() {
+            return this.db.getGlobalLedgerValue().resultOrThrow();
     }
 
     @Override
@@ -59,18 +47,7 @@ public class AccountsResourceCentralized extends AccountsResource
     }
 
     @Override
-    public Account[] getLedger() {
-        try {
-            init();
-
-            Account[] result = this.db.getLedger().resultOrThrow();
-
-            LOG.info(String.format("Get Ledger with %d accounts.", result.length));
-
-            return result;
-        } catch (WebApplicationException e) {
-            LOG.info(e.getMessage());
-            throw e;
-        }
+    public Account[] getFullLedger() {
+        return this.db.getLedger().resultOrThrow();
     }
 }

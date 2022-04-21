@@ -219,7 +219,27 @@ public abstract class AccountsResource implements Accounts
      */
     public abstract int getTotalValue(AccountId[] accounts);
 
+    @Override
+    public final int getGlobalLedgerValue() {
+        try {
+            init();
+            
+            int value = getGlobalValue();
 
+            LOG.info("Global Ledger Value: " + value);
+
+            return value;
+        } catch (WebApplicationException e) {
+            LOG.info(e.getMessage());
+            throw e;
+        }
+    }
+
+    /**
+     * Return total amount of value registered in the ledger
+     * @return total balance
+     */
+    public abstract int getGlobalValue();
 
     @Override
     public final void loadMoney(byte[] accountId, int value, String accountSignature) {
@@ -313,5 +333,27 @@ public abstract class AccountsResource implements Accounts
 	 * @param transaction the ledger transaction
 	 */
     public abstract void sendTransaction(LedgerTransaction transaction);
+
+    @Override
+    public final Account[] getLedger() {
+        try {
+            init();
+
+            Account[] result = getFullLedger();
+
+            LOG.info(String.format("Get Ledger with %d accounts.", result.length));
+
+            return result;
+        } catch (WebApplicationException e) {
+            LOG.info(e.getMessage());
+            throw e;
+        }
+    }
+
+     /**
+     * Obtains the current Ledger.
+     * @return The current Ledger.
+     */
+    public abstract Account[] getFullLedger();
     
 }
