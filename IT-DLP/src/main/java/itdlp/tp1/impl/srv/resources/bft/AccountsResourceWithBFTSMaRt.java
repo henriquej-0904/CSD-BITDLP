@@ -17,6 +17,8 @@ import itdlp.tp1.api.operations.LedgerDeposit;
 import itdlp.tp1.api.operations.LedgerTransaction;
 import itdlp.tp1.impl.srv.resources.AccountsResource;
 import itdlp.tp1.impl.srv.resources.requests.CreateAccount;
+import itdlp.tp1.impl.srv.resources.requests.GetBalance;
+import itdlp.tp1.impl.srv.resources.requests.GetGlobalValue;
 import itdlp.tp1.util.Result;
 import jakarta.ws.rs.InternalServerErrorException;
 import jakarta.ws.rs.WebApplicationException;
@@ -77,7 +79,10 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
 
     @Override
     public int getBalance(AccountId accountId) {
+        byte[] request = writeRequest(new GetBalance(accountId));
+        byte[] result = proxy.invokeUnordered(request);
 
+        return this.<Integer>readResult(result).resultOrThrow();
     }
 
     @Override
@@ -85,7 +90,11 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
     }
 
     @Override
-    public int getGlobalLedgerValue() {
+    public int getGlobalValue() {
+        byte[] request = writeRequest(new GetGlobalValue());
+        byte[] result = proxy.invokeUnordered(request);
+
+        return this.<Integer>readResult(result).resultOrThrow();
     }
 
     @Override
