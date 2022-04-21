@@ -40,18 +40,17 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
         AccountsResourceWithBFTSMaRt.proxy = proxy;
     }
 
-    @SuppressWarnings("unchecked")
-    protected <T> Result<T> readResult(byte[] arr){
+    protected Object readObject(byte[] arr){
         try ( ByteArrayInputStream inputArr = new ByteArrayInputStream(arr);
               ObjectInputStream as = new ObjectInputStream(inputArr);
             ){
-                return (Result<T>) as.readObject();
+                return as.readObject();
         } catch (Exception e) {
                 throw new InternalServerErrorException(e.getMessage(), e);
         }
     }
 
-    protected <T> byte[] writeRequest(T req){
+    protected byte[] writeObject(Object req){
         try ( ByteArrayOutputStream outputArr = new ByteArrayOutputStream();
               ObjectOutputStream os = new ObjectOutputStream(outputArr);
             ){
@@ -64,10 +63,15 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
         }
     }
 
+    @SuppressWarnings("unchecked")
+    protected <T> Result<T> readResult(byte[] arr){
+        return (Result<T>) readObject(arr);
+    }
+
 
     @Override
     public Account createAccount(Account account) {
-        byte[] request = writeRequest(new CreateAccount(account));
+        byte[] request = writeObject(new CreateAccount(account));
         byte[] result = proxy.invokeOrdered(request);
 
         return this.<Account>readResult(result).resultOrThrow();
@@ -75,7 +79,7 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
 
     @Override
     public Account getAccount(AccountId accountId) {
-        byte[] request = writeRequest(new GetAccount(accountId));
+        byte[] request = writeObject(new GetAccount(accountId));
         byte[] result = proxy.invokeUnordered(request);
 
         return this.<Account>readResult(result).resultOrThrow();
@@ -83,7 +87,7 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
 
     @Override
     public int getBalance(AccountId accountId) {
-        byte[] request = writeRequest(new GetBalance(accountId));
+        byte[] request = writeObject(new GetBalance(accountId));
         byte[] result = proxy.invokeUnordered(request);
 
         return this.<Integer>readResult(result).resultOrThrow();
@@ -91,7 +95,7 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
 
     @Override
     public int getTotalValue(AccountId[] accounts) {
-        byte[] request = writeRequest(new GetTotalValue(accounts));
+        byte[] request = writeObject(new GetTotalValue(accounts));
         byte[] result = proxy.invokeUnordered(request);
 
         return this.<Integer>readResult(result).resultOrThrow();
@@ -99,7 +103,7 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
 
     @Override
     public int getGlobalValue() {
-        byte[] request = writeRequest(new GetGlobalValue());
+        byte[] request = writeObject(new GetGlobalValue());
         byte[] result = proxy.invokeUnordered(request);
 
         return this.<Integer>readResult(result).resultOrThrow();
@@ -107,7 +111,7 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
 
     @Override
     public void loadMoney(AccountId accountId, LedgerDeposit value) {
-        byte[] request = writeRequest(new LoadMoney(accountId, value));
+        byte[] request = writeObject(new LoadMoney(accountId, value));
         byte[] result = proxy.invokeOrdered(request);
 
         this.<Void>readResult(result).resultOrThrow();
@@ -115,7 +119,7 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
 
     @Override
     public void sendTransaction(LedgerTransaction transaction) {
-        byte[] request = writeRequest(new SendTransaction(transaction));
+        byte[] request = writeObject(new SendTransaction(transaction));
         byte[] result = proxy.invokeOrdered(request);
 
         this.<Void>readResult(result).resultOrThrow();
@@ -123,7 +127,7 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
 
     @Override
     public Account[] getFullLedger() {
-        byte[] request = writeRequest(new GetFullLedger());
+        byte[] request = writeObject(new GetFullLedger());
         byte[] result = proxy.invokeUnordered(request);
 
         return this.<Account[]>readResult(result).resultOrThrow();
@@ -133,9 +137,7 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
 
         @Override
         public byte[] appExecuteUnordered(byte[] arg0, MessageContext arg1) {
-            // TODO Auto-generated method stub
-            
-            return null;
+            Object request = readObject(arg0);
         }
 
         
