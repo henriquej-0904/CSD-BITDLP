@@ -21,8 +21,6 @@ public class CreateAccount implements Serializable {
     public void setAccount(Account account) {
         this.account = account;
     }
-
-    
 }
 
 
