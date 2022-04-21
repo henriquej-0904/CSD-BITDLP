@@ -14,6 +14,8 @@ import itdlp.tp1.util.Crypto;
  */
 public class AccountId extends ObjectId
 {
+    private static final long serialVersionUID = 995623L;
+
     private static final int HASH_BYTES_LENGTH = 256/8;
 
     /**

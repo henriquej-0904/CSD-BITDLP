@@ -14,6 +14,7 @@ import itdlp.tp1.api.AccountId;
 import itdlp.tp1.api.operations.LedgerDeposit;
 import itdlp.tp1.api.operations.LedgerTransaction;
 import itdlp.tp1.data.LedgerDBlayer;
+import itdlp.tp1.data.LedgerDBlayerException;
 import itdlp.tp1.impl.srv.resources.AccountsResource;
 import itdlp.tp1.impl.srv.resources.requests.CreateAccount;
 import itdlp.tp1.impl.srv.resources.requests.GetBalance;
@@ -30,11 +31,9 @@ import jakarta.ws.rs.InternalServerErrorException;
 /**
  * An implementation of the Accounts API with BFT SMaRt
  */
-public class AccountsResourceWithBFTSMaRt extends AccountsResource
-{
-    private static BFTSMaRtServerReplica replica;    
+public class AccountsResourceWithBFTSMaRt extends AccountsResource {
+    private static BFTSMaRtServerReplica replica;
     private static ServiceProxy proxy;
-
 
     public static ServiceProxy getProxy() {
         return proxy;
@@ -58,41 +57,44 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
         AccountsResourceWithBFTSMaRt.replica = replica;
     }
 
-    protected static Object readObject(byte[] arr){
-        try ( ByteArrayInputStream inputArr = new ByteArrayInputStream(arr);
-              ObjectInputStream as = new ObjectInputStream(inputArr);
-            ){
-                return as.readObject();
+    protected static Object readObject(byte[] arr) {
+        try (ByteArrayInputStream inputArr = new ByteArrayInputStream(arr);
+                ObjectInputStream as = new ObjectInputStream(inputArr);) {
+            return as.readObject();
         } catch (Exception e) {
-                throw new InternalServerErrorException(e.getMessage(), e);
+            throw new InternalServerErrorException(e.getMessage(), e);
         }
     }
 
-    protected static byte[] writeObject(Object req){
-        try ( ByteArrayOutputStream outputArr = new ByteArrayOutputStream();
-              ObjectOutputStream os = new ObjectOutputStream(outputArr);
-            ){
-                os.writeObject(req);
-                os.flush();
+    protected static byte[] writeObject(Object req) {
+        try (ByteArrayOutputStream outputArr = new ByteArrayOutputStream();
+                ObjectOutputStream os = new ObjectOutputStream(outputArr);) {
+            os.writeObject(req);
+            os.flush();
 
-                return outputArr.toByteArray();
+            return outputArr.toByteArray();
         } catch (Exception e) {
-                throw new InternalServerErrorException(e.getMessage(), e);
+            throw new InternalServerErrorException(e.getMessage(), e);
         }
     }
 
     @SuppressWarnings("unchecked")
-    protected <T> Result<T> readResult(byte[] arr){
+    protected <T> Result<T> readResult(byte[] arr) {
         return (Result<T>) readObject(arr);
     }
 
-
     @Override
     public Account createAccount(Account account) {
-        byte[] request = writeObject(new CreateAccount(account));
-        byte[] result = proxy.invokeOrdered(request);
+        try {
+            byte[] request = writeObject(new CreateAccount(account));
+            byte[] result = proxy.invokeOrdered(request);
 
-        return this.<Account>readResult(result).resultOrThrow();
+            return this.<Account>readResult(result).resultOrThrow();
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new InternalServerErrorException(e.getMessage(), e);
+        }
+
     }
 
     @Override
@@ -151,28 +153,37 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
         return this.<Account[]>readResult(result).resultOrThrow();
     }
 
-    public static class BFTSMaRtServerReplica extends DefaultSingleRecoverable
-    {
+    public static class BFTSMaRtServerReplica extends DefaultSingleRecoverable {
         private LedgerDBlayer db;
-        
-        public BFTSMaRtServerReplica(int id, LedgerDBlayer db) {
+
+        public BFTSMaRtServerReplica(int id) {
             new ServiceReplica(id, this, this);
-            this.db = db;
         }
 
+        /**
+         * Init the db layer instance.
+         */
+        protected void init() {
+            try {
+                this.db = LedgerDBlayer.getInstance();
+            } catch (LedgerDBlayerException e) {
+                throw new InternalServerErrorException(e.getMessage(), e);
+            }
+        }
 
         @Override
-        public byte[] appExecuteUnordered(byte[] arg0, MessageContext arg1)
-        {
+        public byte[] appExecuteUnordered(byte[] arg0, MessageContext arg1) {
+            init();
+
             Request request = (Request) readObject(arg0);
             Result<?> result = null;
 
             switch (request.getOperation()) {
                 case GET_ACCOUNT:
-                    result = getAccount((GetAccount)request);
+                    result = getAccount((GetAccount) request);
                     break;
                 case GET_BALANCE:
-                    result = getBalance((GetBalance)request);
+                    result = getBalance((GetBalance) request);
                     break;
                 case GET_GLOBAL_LEDGER_VALUE:
                     result = this.getGlobalLedgerValue();
@@ -190,10 +201,10 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
             return writeObject(result);
         }
 
-        
         @Override
-        public byte[] appExecuteOrdered(byte[] arg0, MessageContext arg1)
-        {
+        public byte[] appExecuteOrdered(byte[] arg0, MessageContext arg1) {
+            init();
+            
             Request request = (Request) readObject(arg0);
             Result<?> result = null;
 
@@ -205,16 +216,15 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
                     result = loadMoney((LoadMoney) request);
                     break;
                 case SEND_TRANSACTION:
-                    result = sendTransaction((SendTransaction)request);
+                    result = sendTransaction((SendTransaction) request);
                     break;
                 default:
                     break;
-                
+
             }
 
             return writeObject(result);
         }
-
 
         @Override
         public byte[] getSnapshot() {
@@ -225,39 +235,33 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
         @Override
         public void installSnapshot(byte[] arg0) {
             // TODO Auto-generated method stub
-            
+
         }
 
-        protected Result<Account> getAccount(GetAccount request)
-        {
+        protected Result<Account> getAccount(GetAccount request) {
             return this.db.getAccount(request.getId());
         }
 
-        protected Result<Integer> getBalance(GetBalance request)
-        {
+        protected Result<Integer> getBalance(GetBalance request) {
             return this.db.getBalance(request.getAccount());
         }
 
-        protected Result<Integer> getGlobalLedgerValue()
-        {
+        protected Result<Integer> getGlobalLedgerValue() {
             return this.db.getGlobalLedgerValue();
         }
-        
-        protected Result<Account[]> getLedger(GetFullLedger request)
-        {
+
+        protected Result<Account[]> getLedger(GetFullLedger request) {
             return this.db.getLedger();
         }
 
-        protected Result<Integer> getTotalValue(GetTotalValue request)
-        {
+        protected Result<Integer> getTotalValue(GetTotalValue request) {
             return this.db.getTotalValue(request.getAccounts());
         }
 
-        protected Result<Void> sendTransaction(SendTransaction request)
-        {
+        protected Result<Void> sendTransaction(SendTransaction request) {
             return this.db.sendTransaction(request.getTransaction());
         }
-        
+
         protected Result<Account> createAccount(CreateAccount request) {
             return this.db.createAccount(request.getAccount());
         }

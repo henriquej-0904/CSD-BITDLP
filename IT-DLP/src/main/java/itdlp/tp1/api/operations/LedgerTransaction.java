@@ -4,6 +4,8 @@ import itdlp.tp1.api.AccountId;
 
 public class LedgerTransaction extends LedgerOperation {
 
+    private static final long serialVersionUID = 232326588562L;
+
     private AccountId origin, dest;
 
     public LedgerTransaction(AccountId origin, AccountId dest, int value) throws InvalidOperationException {

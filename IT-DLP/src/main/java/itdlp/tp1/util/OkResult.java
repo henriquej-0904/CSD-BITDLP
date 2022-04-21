@@ -3,6 +3,9 @@ package itdlp.tp1.util;
 import jakarta.ws.rs.WebApplicationException;
 
 class OkResult<T> implements Result<T> {
+
+    private static final long serialVersionUID = 12432446L;
+
     final T result;
 
     OkResult(T result) {

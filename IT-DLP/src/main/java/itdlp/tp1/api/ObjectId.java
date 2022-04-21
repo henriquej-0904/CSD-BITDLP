@@ -1,5 +1,6 @@
 package itdlp.tp1.api;
 
+import java.io.Serializable;
 import java.security.PublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.util.Arrays;
@@ -8,7 +9,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import itdlp.tp1.util.Utils;
 
-public abstract class ObjectId {
+public abstract class ObjectId implements Serializable {
 
     protected byte[] id;
 

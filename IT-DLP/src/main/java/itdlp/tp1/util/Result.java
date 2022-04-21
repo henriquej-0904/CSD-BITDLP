@@ -1,8 +1,10 @@
 package itdlp.tp1.util;
 
+import java.io.Serializable;
+
 import jakarta.ws.rs.WebApplicationException;
 
-public interface Result<T> {
+public interface Result<T> extends Serializable {
     boolean isOK();
 
     T resultOrThrow() throws WebApplicationException;

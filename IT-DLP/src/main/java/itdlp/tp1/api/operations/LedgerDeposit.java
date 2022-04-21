@@ -2,6 +2,7 @@ package itdlp.tp1.api.operations;
 
 public class LedgerDeposit extends LedgerOperation
 {
+    private static final long serialVersionUID = 44444451312312L;
 
     /**
      * @throws InvalidOperationException

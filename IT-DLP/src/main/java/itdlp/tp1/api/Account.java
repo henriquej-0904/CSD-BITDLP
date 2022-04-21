@@ -1,5 +1,6 @@
 package itdlp.tp1.api;
 
+import java.io.Serializable;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -11,7 +12,9 @@ import itdlp.tp1.api.operations.LedgerTransaction;
 /**
  * Represents an Account in the system.
  */
-public class Account {
+public class Account implements Serializable {
+
+    private static final long serialVersionUID = 1548556626L;
 
     private AccountId id;
     private UserId owner;

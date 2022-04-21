@@ -1,11 +1,12 @@
 package itdlp.tp1.api.operations;
 
+import java.io.Serializable;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 
 import itdlp.tp1.util.Utils;
 
-public abstract class LedgerOperation {
+public abstract class LedgerOperation implements Serializable {
     
     public static enum Type
     {

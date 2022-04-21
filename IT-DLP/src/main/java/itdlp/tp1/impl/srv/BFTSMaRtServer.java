@@ -7,7 +7,6 @@ import org.glassfish.jersey.jdkhttp.JdkHttpServerFactory;
 import org.glassfish.jersey.server.ResourceConfig;
 
 import bftsmart.tom.ServiceProxy;
-import itdlp.tp1.data.LedgerDBlayer;
 import itdlp.tp1.impl.srv.resources.bft.AccountsResourceWithBFTSMaRt;
 import itdlp.tp1.impl.srv.resources.bft.AccountsResourceWithBFTSMaRt.BFTSMaRtServerReplica;
 
@@ -24,11 +23,11 @@ public class BFTSMaRtServer
 		try
 		{
 			try {
-				AccountsResourceWithBFTSMaRt.setReplica(
-				new BFTSMaRtServerReplica(Integer.parseInt(args[0]), LedgerDBlayer.getInstance()));
-
 				ServiceProxy proxy = new ServiceProxy(Integer.parseInt(args[1]));
             	AccountsResourceWithBFTSMaRt.setProxy(proxy);
+
+				AccountsResourceWithBFTSMaRt.setReplica(
+				new BFTSMaRtServerReplica(Integer.parseInt(args[0])));		
 			} catch (Exception e) {}
 			
 
