@@ -228,14 +228,13 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource {
 
         @Override
         public byte[] getSnapshot() {
-            // TODO Auto-generated method stub
-            return null;
+            init();
+            return new byte[0];
         }
 
         @Override
         public void installSnapshot(byte[] arg0) {
-            // TODO Auto-generated method stub
-
+            init();
         }
 
         protected Result<Account> getAccount(GetAccount request) {

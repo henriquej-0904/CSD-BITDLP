@@ -22,15 +22,12 @@ public class BFTSMaRtServer
 	public static void main(String[] args) {
 		try
 		{
-			try {
-				ServiceProxy proxy = new ServiceProxy(Integer.parseInt(args[1]));
-            	AccountsResourceWithBFTSMaRt.setProxy(proxy);
+			ServiceProxy proxy = new ServiceProxy(Integer.parseInt(args[1]));
+            AccountsResourceWithBFTSMaRt.setProxy(proxy);
 
-				AccountsResourceWithBFTSMaRt.setReplica(
-				new BFTSMaRtServerReplica(Integer.parseInt(args[0])));		
-			} catch (Exception e) {}
+			AccountsResourceWithBFTSMaRt.setReplica(
+				new BFTSMaRtServerReplica(Integer.parseInt(args[0])));
 			
-
             String ip = InetAddress.getLocalHost().getHostAddress();
 			URI uri = new URI(String.format("http://%s:%s/rest", ip, args[2]));
 
@@ -39,7 +36,7 @@ public class BFTSMaRtServer
             
 			JdkHttpServerFactory.createHttpServer( uri, config);
 
-			System.out.println("BFT SMaRt Server is running!!!");
+			//System.out.println("BFT SMaRt Server is running!!!");
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
