@@ -71,10 +71,29 @@
       <artifactId>bcprov-jdk15on</artifactId>  
       <version>1.69</version> 
     </dependency>
+    <dependency>
+      <groupId>org.bouncycastle</groupId>
+      <artifactId>bcpkix-jdk15on</artifactId>
+      <version>1.69</version>
+    </dependency>
+    <dependency>
+      <groupId>org.bouncycastle</groupId>
+      <artifactId>bcutil-jdk15on</artifactId>
+      <version>1.69</version>
+    </dependency>
     <dependency> 
       <groupId>org.bouncycastle</groupId>
       <artifactId>bcprov-ext-jdk15on</artifactId>  
       <version>1.69</version> 
+    </dependency>
+
+    <!-- Dependencies for bft-smart-->
+    <dependency>
+      <groupId>com.github.bft-smart</groupId>
+      <artifactId>library</artifactId>
+      <version>1.2</version>
+      <scope>system</scope>
+      <systemPath>${project.basedir}/bft-smart/lib/BFT-SMaRt.jar</systemPath>
     </dependency>
 
     <dependency>
