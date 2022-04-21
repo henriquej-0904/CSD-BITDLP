@@ -7,11 +7,13 @@ import java.io.ObjectOutputStream;
 
 import bftsmart.tom.MessageContext;
 import bftsmart.tom.ServiceProxy;
+import bftsmart.tom.ServiceReplica;
 import bftsmart.tom.server.defaultservices.DefaultSingleRecoverable;
 import itdlp.tp1.api.Account;
 import itdlp.tp1.api.AccountId;
 import itdlp.tp1.api.operations.LedgerDeposit;
 import itdlp.tp1.api.operations.LedgerTransaction;
+import itdlp.tp1.data.LedgerDBlayer;
 import itdlp.tp1.impl.srv.resources.AccountsResource;
 import itdlp.tp1.impl.srv.resources.requests.CreateAccount;
 import itdlp.tp1.impl.srv.resources.requests.GetBalance;
@@ -30,8 +32,9 @@ import jakarta.ws.rs.InternalServerErrorException;
  */
 public class AccountsResourceWithBFTSMaRt extends AccountsResource
 {
-
+    private static BFTSMaRtServerReplica replica;    
     private static ServiceProxy proxy;
+
 
     public static ServiceProxy getProxy() {
         return proxy;
@@ -41,7 +44,21 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
         AccountsResourceWithBFTSMaRt.proxy = proxy;
     }
 
-    protected Object readObject(byte[] arr){
+    /**
+     * @return the replica
+     */
+    public static BFTSMaRtServerReplica getReplica() {
+        return replica;
+    }
+
+    /**
+     * @param replica the replica to set
+     */
+    public static void setReplica(BFTSMaRtServerReplica replica) {
+        AccountsResourceWithBFTSMaRt.replica = replica;
+    }
+
+    protected static Object readObject(byte[] arr){
         try ( ByteArrayInputStream inputArr = new ByteArrayInputStream(arr);
               ObjectInputStream as = new ObjectInputStream(inputArr);
             ){
@@ -51,7 +68,7 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
         }
     }
 
-    protected byte[] writeObject(Object req){
+    protected static byte[] writeObject(Object req){
         try ( ByteArrayOutputStream outputArr = new ByteArrayOutputStream();
               ObjectOutputStream os = new ObjectOutputStream(outputArr);
             ){
@@ -134,7 +151,15 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
         return this.<Account[]>readResult(result).resultOrThrow();
     }
 
-    protected class BFTSMaRtServerReplica extends DefaultSingleRecoverable{
+    public static class BFTSMaRtServerReplica extends DefaultSingleRecoverable
+    {
+        private LedgerDBlayer db;
+        
+        public BFTSMaRtServerReplica(int id, LedgerDBlayer db) {
+            new ServiceReplica(id, this, this);
+            this.db = db;
+        }
+
 
         @Override
         public byte[] appExecuteUnordered(byte[] arg0, MessageContext arg1)
@@ -205,40 +230,40 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
 
         protected Result<Account> getAccount(GetAccount request)
         {
-            return AccountsResourceWithBFTSMaRt.this.db.getAccount(request.getId());
+            return this.db.getAccount(request.getId());
         }
 
         protected Result<Integer> getBalance(GetBalance request)
         {
-            return AccountsResourceWithBFTSMaRt.this.db.getBalance(request.getAccount());
+            return this.db.getBalance(request.getAccount());
         }
 
         protected Result<Integer> getGlobalLedgerValue()
         {
-            return AccountsResourceWithBFTSMaRt.this.db.getGlobalLedgerValue();
+            return this.db.getGlobalLedgerValue();
         }
         
         protected Result<Account[]> getLedger(GetFullLedger request)
         {
-            return AccountsResourceWithBFTSMaRt.this.db.getLedger();
+            return this.db.getLedger();
         }
 
         protected Result<Integer> getTotalValue(GetTotalValue request)
         {
-            return AccountsResourceWithBFTSMaRt.this.db.getTotalValue(request.getAccounts());
+            return this.db.getTotalValue(request.getAccounts());
         }
 
         protected Result<Void> sendTransaction(SendTransaction request)
         {
-            return AccountsResourceWithBFTSMaRt.this.db.sendTransaction(request.getTransaction());
+            return this.db.sendTransaction(request.getTransaction());
         }
         
         protected Result<Account> createAccount(CreateAccount request) {
-            return AccountsResourceWithBFTSMaRt.this.db.createAccount(request.getAccount());
+            return this.db.createAccount(request.getAccount());
         }
 
         protected Result<Void> loadMoney(LoadMoney request) {
-            return AccountsResourceWithBFTSMaRt.this.db.loadMoney(request.getId(), request.getValue());
+            return this.db.loadMoney(request.getId(), request.getValue());
         }
     }
 }

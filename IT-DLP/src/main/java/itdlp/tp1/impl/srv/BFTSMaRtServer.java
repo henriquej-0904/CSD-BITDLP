@@ -7,21 +7,33 @@ import org.glassfish.jersey.jdkhttp.JdkHttpServerFactory;
 import org.glassfish.jersey.server.ResourceConfig;
 
 import bftsmart.tom.ServiceProxy;
+import itdlp.tp1.data.LedgerDBlayer;
 import itdlp.tp1.impl.srv.resources.bft.AccountsResourceWithBFTSMaRt;
+import itdlp.tp1.impl.srv.resources.bft.AccountsResourceWithBFTSMaRt.BFTSMaRtServerReplica;
 
 
 public class BFTSMaRtServer
 {
-	public static final int PORT = 8080;
-
+	/**
+	 * args[0] -> replicaId
+	 * args[1] -> proxyId
+	 * args[2] -> Server Port
+	 * @param args
+	 */
 	public static void main(String[] args) {
 		try
 		{
-            ServiceProxy proxy = new ServiceProxy(Integer.parseInt(args[0]));
-            AccountsResourceWithBFTSMaRt.setProxy(proxy);
+			try {
+				AccountsResourceWithBFTSMaRt.setReplica(
+				new BFTSMaRtServerReplica(Integer.parseInt(args[0]), LedgerDBlayer.getInstance()));
+
+				ServiceProxy proxy = new ServiceProxy(Integer.parseInt(args[1]));
+            	AccountsResourceWithBFTSMaRt.setProxy(proxy);
+			} catch (Exception e) {}
+			
 
             String ip = InetAddress.getLocalHost().getHostAddress();
-			URI uri = new URI(String.format("http://%s:%s/rest", ip, PORT));
+			URI uri = new URI(String.format("http://%s:%s/rest", ip, args[2]));
 
 			ResourceConfig config = new ResourceConfig();
 			config.register(AccountsResourceWithBFTSMaRt.class);
