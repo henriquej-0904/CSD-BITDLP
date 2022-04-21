@@ -21,6 +21,7 @@ import itdlp.tp1.impl.srv.resources.requests.GetAccount;
 import itdlp.tp1.impl.srv.resources.requests.GetTotalValue;
 import itdlp.tp1.impl.srv.resources.requests.SendTransaction;
 import itdlp.tp1.impl.srv.resources.requests.LoadMoney;
+import itdlp.tp1.impl.srv.resources.requests.Request;
 import itdlp.tp1.util.Result;
 import jakarta.ws.rs.InternalServerErrorException;
 
@@ -136,8 +137,28 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
     protected class BFTSMaRtServerReplica extends DefaultSingleRecoverable{
 
         @Override
-        public byte[] appExecuteUnordered(byte[] arg0, MessageContext arg1) {
-            Object request = readObject(arg0);
+        public byte[] appExecuteUnordered(byte[] arg0, MessageContext arg1)
+        {
+            Request request = (Request) readObject(arg0);
+            Result<?> result = null;
+
+            switch (request.getOperation()) {
+                case GET_ACCOUNT:
+                    result = getAccount((GetAccount)request);
+                    break;
+                case GET_BALANCE:
+                    break;
+                case GET_GLOBAL_LEDGER_VALUE:
+                    break;
+                case GET_LEDGER:
+                    break;
+                case GET_TOTAL_VALUE:
+                    break;
+                default:
+                    break;
+            }
+
+            return writeObject(result);
         }
 
         
@@ -157,6 +178,11 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
         public void installSnapshot(byte[] arg0) {
             // TODO Auto-generated method stub
             
+        }
+
+        protected Result<Account> getAccount(GetAccount request)
+        {
+            return AccountsResourceWithBFTSMaRt.this.db.getAccount(request.getId());
         }
         
     }
