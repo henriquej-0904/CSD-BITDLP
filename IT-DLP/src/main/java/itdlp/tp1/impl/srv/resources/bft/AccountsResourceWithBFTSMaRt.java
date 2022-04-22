@@ -186,7 +186,7 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource {
                     result = getBalance((GetBalance) request);
                     break;
                 case GET_GLOBAL_LEDGER_VALUE:
-                    result = this.getGlobalLedgerValue();
+                    result = getGlobalLedgerValue();
                     break;
                 case GET_LEDGER:
                     result = getLedger((GetFullLedger) request);
