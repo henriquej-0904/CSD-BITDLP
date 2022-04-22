@@ -17,6 +17,7 @@ import itdlp.tp1.api.ObjectId;
 import itdlp.tp1.api.UserId;
 import itdlp.tp1.api.operations.InvalidOperationException;
 import itdlp.tp1.api.operations.LedgerDeposit;
+import itdlp.tp1.api.operations.LedgerOperation;
 import itdlp.tp1.api.operations.LedgerTransaction;
 import itdlp.tp1.api.service.Accounts;
 import itdlp.tp1.data.LedgerDBlayer;
@@ -256,11 +257,11 @@ public abstract class AccountsResource implements Accounts
                 throw new ForbiddenException("Invalid Account Signature.");   
             
             // execute operation
-            LedgerDeposit deposit = new LedgerDeposit(value);
+            LedgerDeposit deposit = new LedgerDeposit(value, id);
 
             LOG.info(String.format("ID: %s, TYPE: %s, VALUE: %s", id, deposit.getType(), value));
 
-            loadMoney(id, deposit);
+            loadMoney(deposit);
         } catch (WebApplicationException e) {
             LOG.info(e.getMessage());
             throw e;
@@ -273,10 +274,9 @@ public abstract class AccountsResource implements Accounts
     /**
 	 * Loads money into an account.
 	 *
-	 * @param accountId account id
      * @param value value to be loaded
 	 */
-    public abstract void loadMoney(AccountId accountId, LedgerDeposit deposit);
+    public abstract void loadMoney(LedgerDeposit deposit);
 
 
 
@@ -335,11 +335,11 @@ public abstract class AccountsResource implements Accounts
     public abstract void sendTransaction(LedgerTransaction transaction);
 
     @Override
-    public final Account[] getLedger() {
+    public final LedgerOperation[] getLedger() {
         try {
             init();
 
-            Account[] result = getFullLedger();
+            LedgerOperation[] result = getFullLedger();
 
             LOG.info(String.format("Get Ledger with %d accounts.", result.length));
 
@@ -354,6 +354,6 @@ public abstract class AccountsResource implements Accounts
      * Obtains the current Ledger.
      * @return The current Ledger.
      */
-    public abstract Account[] getFullLedger();
+    public abstract LedgerOperation[] getFullLedger();
     
 }

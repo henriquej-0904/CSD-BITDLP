@@ -12,6 +12,7 @@ import itdlp.tp1.api.Account;
 import itdlp.tp1.api.AccountId;
 import itdlp.tp1.api.operations.InvalidOperationException;
 import itdlp.tp1.api.operations.LedgerDeposit;
+import itdlp.tp1.api.operations.LedgerOperation;
 import itdlp.tp1.api.operations.LedgerTransaction;
 import itdlp.tp1.util.Result;
 import jakarta.ws.rs.InternalServerErrorException;
@@ -27,6 +28,7 @@ public class LedgerDBinMemory extends LedgerDBlayer
 
 
     private Map<AccountId, Account> accounts;
+    private List<LedgerOperation> ledger;
     private ReadWriteLock lock;
 
     private Map<byte[], List<Integer>> nonceMap;
@@ -49,6 +51,7 @@ public class LedgerDBinMemory extends LedgerDBlayer
     {
         this.accounts = new HashMap<>();
         this.nonceMap = new HashMap<>();
+        this.ledger = new LinkedList<>();
         this.lock = new ReentrantReadWriteLock();
     }
 
@@ -155,16 +158,19 @@ public class LedgerDBinMemory extends LedgerDBlayer
     }
 
     @Override
-    public Result<Void> loadMoney(AccountId id, LedgerDeposit deposit)
+    public Result<Void> loadMoney(LedgerDeposit deposit)
     {
-        Result<Account> accountRes = getAccount(id);
+        Result<Account> accountRes = getAccount(deposit.getId());
         if (!accountRes.isOK())
             return Result.error(accountRes.errorException());
 
         try
         {
             getWriteLock().lock();
+
             accountRes.value().processOperation(deposit);
+
+            ledger.add(deposit);
 
             return Result.ok();
         } catch (InvalidOperationException e){
@@ -193,6 +199,8 @@ public class LedgerDBinMemory extends LedgerDBlayer
             accountOr.value().processOperation(transaction);
             accountDest.value().processOperation(transaction);
 
+            ledger.add(transaction);
+
             return Result.ok();
         } catch (InvalidOperationException e){
             return Result.error(new WebApplicationException(e.getMessage(), e, Status.CONFLICT));
@@ -203,11 +211,12 @@ public class LedgerDBinMemory extends LedgerDBlayer
     }
 
     @Override
-    public Result<Account[]> getLedger() {
+    public Result<LedgerOperation[]> getLedger() {
         try
         {
             getReadLock().lock();
-            return Result.ok(accounts.values().toArray(new Account[0]));
+            
+            return Result.ok(ledger.toArray(new LedgerOperation[0]));
         } finally
         {
             getReadLock().unlock();

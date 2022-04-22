@@ -12,6 +12,7 @@ import bftsmart.tom.server.defaultservices.DefaultSingleRecoverable;
 import itdlp.tp1.api.Account;
 import itdlp.tp1.api.AccountId;
 import itdlp.tp1.api.operations.LedgerDeposit;
+import itdlp.tp1.api.operations.LedgerOperation;
 import itdlp.tp1.api.operations.LedgerTransaction;
 import itdlp.tp1.data.LedgerDBlayer;
 import itdlp.tp1.data.LedgerDBlayerException;
@@ -148,8 +149,8 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource {
     }
 
     @Override
-    public void loadMoney(AccountId accountId, LedgerDeposit value) {
-        byte[] request = writeObject(new LoadMoney(accountId, value));
+    public void loadMoney(LedgerDeposit value) {
+        byte[] request = writeObject(new LoadMoney(value));
         byte[] result = invokeOrdered(request);
 
         this.<Void>readResult(result).resultOrThrow();
@@ -164,11 +165,11 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource {
     }
 
     @Override
-    public Account[] getFullLedger() {
+    public LedgerOperation[] getFullLedger() {
         byte[] request = writeObject(new GetFullLedger());
         byte[] result = invokeUnordered(request);
 
-        return this.<Account[]>readResult(result).resultOrThrow();
+        return this.<LedgerOperation[]>readResult(result).resultOrThrow();
     }
 
     public static class BFTSMaRtServerReplica extends DefaultSingleRecoverable {
@@ -278,7 +279,7 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource {
             return this.db.getGlobalLedgerValue();
         }
 
-        protected Result<Account[]> getLedger(GetFullLedger request) {
+        protected Result<LedgerOperation[]> getLedger(GetFullLedger request) {
             return this.db.getLedger();
         }
 
@@ -295,7 +296,7 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource {
         }
 
         protected Result<Void> loadMoney(LoadMoney request) {
-            return this.db.loadMoney(request.getId(), request.getValue());
+            return this.db.loadMoney(request.getValue());
         }
     }
 }

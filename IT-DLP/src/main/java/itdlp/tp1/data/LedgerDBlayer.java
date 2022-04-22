@@ -3,6 +3,7 @@ package itdlp.tp1.data;
 import itdlp.tp1.api.Account;
 import itdlp.tp1.api.AccountId;
 import itdlp.tp1.api.operations.LedgerDeposit;
+import itdlp.tp1.api.operations.LedgerOperation;
 import itdlp.tp1.api.operations.LedgerTransaction;
 import itdlp.tp1.util.Result;
 import jakarta.ws.rs.NotFoundException;
@@ -92,10 +93,9 @@ public abstract class LedgerDBlayer
     /**
 	 * Loads money into an account.
 	 *
-	 * @param id account id
      * @param deposit The value to load into the account.
 	 */
-    public abstract Result<Void> loadMoney(AccountId id, LedgerDeposit deposit);
+    public abstract Result<Void> loadMoney(LedgerDeposit deposit);
 
     /**
 	 * Transfers money from an origin to a destination.
@@ -108,7 +108,7 @@ public abstract class LedgerDBlayer
      * Obtains the current Ledger.
      * @return The current Ledger.
      */
-    public abstract Result<Account[]> getLedger();
+    public abstract Result<LedgerOperation[]> getLedger();
 
     /**
      * Verify if the nonce is valid for the given operation.

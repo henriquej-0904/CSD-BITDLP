@@ -3,6 +3,7 @@ package itdlp.tp1.impl.srv.resources;
 import itdlp.tp1.api.Account;
 import itdlp.tp1.api.AccountId;
 import itdlp.tp1.api.operations.LedgerDeposit;
+import itdlp.tp1.api.operations.LedgerOperation;
 import itdlp.tp1.api.operations.LedgerTransaction;
 
 /**
@@ -37,8 +38,8 @@ public class AccountsResourceCentralized extends AccountsResource
     }
 
     @Override
-    public void loadMoney(AccountId accountId, LedgerDeposit value) {
-        this.db.loadMoney(accountId, value).resultOrThrow();
+    public void loadMoney(LedgerDeposit value) {
+        this.db.loadMoney(value).resultOrThrow();
     }
 
     @Override
@@ -47,7 +48,7 @@ public class AccountsResourceCentralized extends AccountsResource
     }
 
     @Override
-    public Account[] getFullLedger() {
+    public LedgerOperation[] getFullLedger() {
         return this.db.getLedger().resultOrThrow();
     }
 }
