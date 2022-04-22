@@ -20,7 +20,6 @@ public abstract class LedgerOperation implements Serializable {
     private Type type;
     private String date;
 
-
     /**
      * @param value
      * @param type
@@ -100,5 +99,4 @@ public abstract class LedgerOperation implements Serializable {
     public String toString() {
         return date + " " + type.toString() + ": ";
     }
-
 }

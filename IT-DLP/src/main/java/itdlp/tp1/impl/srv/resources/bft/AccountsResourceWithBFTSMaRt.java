@@ -259,7 +259,9 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource {
         @Override
         public byte[] getSnapshot() {
             init();
-            return new byte[0];
+            
+
+            return null;
         }
 
         @Override

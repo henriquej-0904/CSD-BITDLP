@@ -297,23 +297,13 @@ public abstract class AccountsResource implements Accounts
             if (!verifySignature(originId, Utils.fromHex(accountSignature), originDestPair.getLeft(),
                 originDestPair.getRight(), buffer.array()))
                 throw new ForbiddenException("Invalid Account Signature.");    
-
-            // verify nonce
-            MessageDigest digest = Crypto.getSha256Digest();
-
-            buffer = ByteBuffer.allocate(Integer.BYTES);
-            buffer.putInt(value);
-
-            digest.update(originDestPair.getLeft());
-            digest.update(originDestPair.getRight());
-            digest.update(buffer.array());
+        
+            LedgerTransaction transaction = new LedgerTransaction(originId, destId, value, nonce);
             
-            if(!db.nonceVerification(digest.digest(), nonce).resultOrThrow())
+            if(!db.nonceVerification(transaction.digest(), nonce).resultOrThrow())
                 throw new ForbiddenException(" Invalid Nonce.");
 
-            // execute operation            
-            LedgerTransaction transaction = new LedgerTransaction(originId, destId, value);
-
+            // log & execute operation          
             LOG.info(String.format("ORIGIN: %s, DEST: %s, TYPE: %s, VALUE: %d", 
                 originId, destId, transaction.getType(), value));
 

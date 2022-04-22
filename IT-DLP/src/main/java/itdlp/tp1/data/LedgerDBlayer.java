@@ -2,9 +2,11 @@ package itdlp.tp1.data;
 
 import itdlp.tp1.api.Account;
 import itdlp.tp1.api.AccountId;
+import itdlp.tp1.api.UserId;
 import itdlp.tp1.api.operations.LedgerDeposit;
 import itdlp.tp1.api.operations.LedgerOperation;
 import itdlp.tp1.api.operations.LedgerTransaction;
+import itdlp.tp1.util.Pair;
 import itdlp.tp1.util.Result;
 import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.WebApplicationException;
@@ -109,6 +111,18 @@ public abstract class LedgerDBlayer
      * @return The current Ledger.
      */
     public abstract Result<LedgerOperation[]> getLedger();
+
+    /**
+     * Load a ledger state
+     * @param ledger array of total operations
+     */
+    public abstract Result<Void> loadState(Pair<AccountId, UserId>[] accounts, LedgerOperation[] operations);
+
+    /**
+     * get current ledger state
+     * @return ledger state
+     */
+    public abstract Result<Pair<Pair<AccountId,UserId>[],LedgerOperation[]>> getState();
 
     /**
      * Verify if the nonce is valid for the given operation.
