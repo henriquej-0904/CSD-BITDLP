@@ -289,7 +289,7 @@ public class LedgerDBinMemory extends LedgerDBlayer
                 }  
             }
         } catch (InvalidOperationException e) {
-            
+            return Result.error(500);
         }finally{
             this.getWriteLock().unlock();
         }
@@ -303,16 +303,19 @@ public class LedgerDBinMemory extends LedgerDBlayer
         try{
             this.lock.readLock().lock();
 
-            Pair<AccountId,UserId>[] accs = accounts.values().stream().map((acc) -> new Pair<K,V>(acc.getId(), acc.getOwner()))
+            Pair<AccountId,UserId>[] accs = accounts.values().stream().map(a -> new Pair<>(a.getId(), a.getOwner()))
             .collect(Collectors.toList())
             .toArray(new Pair<AccountId, UserId>[0]));
 
+            LedgerOperation[] ops = ledger.toArray(new LedgerOperation[0]);
+
+            Pair<Pair<AccountId, UserId>[], LedgerOperation[]> result = new Pair<>(accs, ops);
+
+            return Result.ok(result);
         } catch (InvalidOperationException e) {
-            
+            return Result.error(500);
         }finally{
             this.lock.readLock().unlock();
         }
-
-        return null;
     }
 }

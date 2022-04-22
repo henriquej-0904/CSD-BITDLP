@@ -11,6 +11,7 @@ import bftsmart.tom.ServiceReplica;
 import bftsmart.tom.server.defaultservices.DefaultSingleRecoverable;
 import itdlp.tp1.api.Account;
 import itdlp.tp1.api.AccountId;
+import itdlp.tp1.api.UserId;
 import itdlp.tp1.api.operations.LedgerDeposit;
 import itdlp.tp1.api.operations.LedgerOperation;
 import itdlp.tp1.api.operations.LedgerTransaction;
@@ -26,6 +27,7 @@ import itdlp.tp1.impl.srv.resources.requests.GetTotalValue;
 import itdlp.tp1.impl.srv.resources.requests.SendTransaction;
 import itdlp.tp1.impl.srv.resources.requests.LoadMoney;
 import itdlp.tp1.impl.srv.resources.requests.Request;
+import itdlp.tp1.util.Pair;
 import itdlp.tp1.util.Result;
 import jakarta.ws.rs.InternalServerErrorException;
 
@@ -258,15 +260,29 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource {
 
         @Override
         public byte[] getSnapshot() {
-            init();
-            
-
-            return null;
+            try{
+                init();
+                return writeObject(this.db.getState().resultOrThrow());
+            }catch(Exception e){
+                LOG.severe(e.getMessage());
+                return new byte[0];
+            }
         }
 
+        @SuppressWarnings("unchecked")
         @Override
         public void installSnapshot(byte[] arg0) {
-            init();
+            try{
+                init();
+
+                Pair<Pair<AccountId, UserId>[], LedgerOperation[]> state = 
+                (Pair<Pair<AccountId, UserId>[], LedgerOperation[]>) readObject(arg0);
+
+                this.db.loadState(state.getLeft(), state.getRight()).resultOrThrow();
+
+            }catch(Exception e){
+                LOG.severe(e.getMessage());
+            }
         }
 
         protected Result<Account> getAccount(GetAccount request) {
