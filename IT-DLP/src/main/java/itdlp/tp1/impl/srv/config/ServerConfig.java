@@ -8,6 +8,8 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.UnrecoverableKeyException;
 
+import javax.net.ssl.SSLContext;
+
 import itdlp.tp1.util.Crypto;
 
 public class ServerConfig {
@@ -56,4 +58,9 @@ public class ServerConfig {
         ServerConfig.replicaId = "replica-" + replicaId;
         replicaConfigFolder = new File(CONFIG_FOLDER, ServerConfig.replicaId);
     }
+
+    public static SSLContext getSSLContext()
+	{
+		return Crypto.getSSLContext(getKeyStore(), getTrustStore(), Crypto.KEYSTORE_PWD);
+	}
 }
