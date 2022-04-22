@@ -1,23 +1,28 @@
 package itdlp.tp1.util;
 
 import jakarta.ws.rs.WebApplicationException;
-import jakarta.ws.rs.core.Response.Status;
 
 class ErrorResult<T> implements Result<T> {
 
     private static final long serialVersionUID = 12432404654L;
 
     final int error;
-    final WebApplicationException ex;
+    final String msg;
+    final StackTraceElement[] stackTrace;
+    final Throwable cause;
 
     ErrorResult(int error) {
         this.error = error;
-        this.ex = new WebApplicationException(Status.fromStatusCode(error));
+        this.msg = null;
+        this.stackTrace = null;
+        this.cause = null;
     }
 
     ErrorResult(WebApplicationException ex) {
         this.error = ex.getResponse().getStatus();
-        this.ex = ex;
+        this.msg = ex.getMessage();
+        this.stackTrace = ex.getStackTrace();
+        this.cause = ex.getCause();
     }
 
     public boolean isOK() {
@@ -37,13 +42,18 @@ class ErrorResult<T> implements Result<T> {
     }
 
     public T resultOrThrow() {
-        throw this.ex;
+        throw errorException();
     }
 
     @Override
     public WebApplicationException errorException() {
-        return ex;
-    }
+        WebApplicationException ex;
+        if (msg != null)
+            ex = new WebApplicationException(msg, cause, error);
+        else
+            ex = new WebApplicationException(cause, error);
 
-    
+        ex.setStackTrace(stackTrace);
+        throw ex;
+    }
 }

@@ -80,27 +80,45 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource {
 
     @SuppressWarnings("unchecked")
     protected <T> Result<T> readResult(byte[] arr) {
-        return (Result<T>) readObject(arr);
+        Object result = readObject(arr);
+
+        try {
+            return (Result<T>) result;
+        } catch (Exception e) {
+            throw new InternalServerErrorException(e.getMessage(), e);
+        }
+    }
+
+    protected byte[] invokeOrdered(byte[] request)
+    {
+        byte[] result = proxy.invokeOrdered(request);
+        if (result == null)
+            throw new InternalServerErrorException("Invoke ordered returned null");
+
+        return result;
+    }
+
+    protected byte[] invokeUnordered(byte[] request)
+    {
+        byte[] result = proxy.invokeUnordered(request);
+        if (result == null)
+            throw new InternalServerErrorException("Invoke unordered returned null");
+
+        return result;
     }
 
     @Override
     public Account createAccount(Account account) {
-        try {
-            byte[] request = writeObject(new CreateAccount(account));
-            byte[] result = proxy.invokeOrdered(request);
+        byte[] request = writeObject(new CreateAccount(account));
+        byte[] result = invokeOrdered(request);
 
-            return this.<Account>readResult(result).resultOrThrow();
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw new InternalServerErrorException(e.getMessage(), e);
-        }
-
+        return this.<Account>readResult(result).resultOrThrow();
     }
 
     @Override
     public Account getAccount(AccountId accountId) {
         byte[] request = writeObject(new GetAccount(accountId));
-        byte[] result = proxy.invokeUnordered(request);
+        byte[] result = invokeUnordered(request);
 
         return this.<Account>readResult(result).resultOrThrow();
     }
@@ -108,7 +126,7 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource {
     @Override
     public int getBalance(AccountId accountId) {
         byte[] request = writeObject(new GetBalance(accountId));
-        byte[] result = proxy.invokeUnordered(request);
+        byte[] result = invokeUnordered(request);
 
         return this.<Integer>readResult(result).resultOrThrow();
     }
@@ -116,7 +134,7 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource {
     @Override
     public int getTotalValue(AccountId[] accounts) {
         byte[] request = writeObject(new GetTotalValue(accounts));
-        byte[] result = proxy.invokeUnordered(request);
+        byte[] result = invokeUnordered(request);
 
         return this.<Integer>readResult(result).resultOrThrow();
     }
@@ -124,7 +142,7 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource {
     @Override
     public int getGlobalValue() {
         byte[] request = writeObject(new GetGlobalValue());
-        byte[] result = proxy.invokeUnordered(request);
+        byte[] result = invokeUnordered(request);
 
         return this.<Integer>readResult(result).resultOrThrow();
     }
@@ -132,7 +150,7 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource {
     @Override
     public void loadMoney(AccountId accountId, LedgerDeposit value) {
         byte[] request = writeObject(new LoadMoney(accountId, value));
-        byte[] result = proxy.invokeOrdered(request);
+        byte[] result = invokeOrdered(request);
 
         this.<Void>readResult(result).resultOrThrow();
     }
@@ -140,7 +158,7 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource {
     @Override
     public void sendTransaction(LedgerTransaction transaction) {
         byte[] request = writeObject(new SendTransaction(transaction));
-        byte[] result = proxy.invokeOrdered(request);
+        byte[] result = invokeOrdered(request);
 
         this.<Void>readResult(result).resultOrThrow();
     }
@@ -148,7 +166,7 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource {
     @Override
     public Account[] getFullLedger() {
         byte[] request = writeObject(new GetFullLedger());
-        byte[] result = proxy.invokeUnordered(request);
+        byte[] result = invokeUnordered(request);
 
         return this.<Account[]>readResult(result).resultOrThrow();
     }
@@ -173,57 +191,68 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource {
 
         @Override
         public byte[] appExecuteUnordered(byte[] arg0, MessageContext arg1) {
-            init();
+            try {
+                init();
 
-            Request request = (Request) readObject(arg0);
-            Result<?> result = null;
+                Request request = (Request) readObject(arg0);
+                Result<?> result = null;
 
-            switch (request.getOperation()) {
-                case GET_ACCOUNT:
-                    result = getAccount((GetAccount) request);
-                    break;
-                case GET_BALANCE:
-                    result = getBalance((GetBalance) request);
-                    break;
-                case GET_GLOBAL_LEDGER_VALUE:
-                    result = getGlobalLedgerValue();
-                    break;
-                case GET_LEDGER:
-                    result = getLedger((GetFullLedger) request);
-                    break;
-                case GET_TOTAL_VALUE:
-                    result = getTotalValue((GetTotalValue) request);
-                    break;
-                default:
-                    break;
+                switch (request.getOperation()) {
+                    case GET_ACCOUNT:
+                        result = getAccount((GetAccount) request);
+                        break;
+                    case GET_BALANCE:
+                        result = getBalance((GetBalance) request);
+                        break;
+                    case GET_GLOBAL_LEDGER_VALUE:
+                        result = getGlobalLedgerValue();
+                        break;
+                    case GET_LEDGER:
+                        result = getLedger((GetFullLedger) request);
+                        break;
+                    case GET_TOTAL_VALUE:
+                        result = getTotalValue((GetTotalValue) request);
+                        break;
+                    default:
+                        break;
+                }
+
+                return writeObject(result);
+            } catch (Exception e) {
+                LOG.severe(e.getMessage());
+                return null;
             }
-
-            return writeObject(result);
         }
 
         @Override
         public byte[] appExecuteOrdered(byte[] arg0, MessageContext arg1) {
-            init();
-            
-            Request request = (Request) readObject(arg0);
-            Result<?> result = null;
+            try {
+                init();
 
-            switch (request.getOperation()) {
-                case CREATE_ACCOUNT:
-                    result = createAccount((CreateAccount) request);
-                    break;
-                case LOAD_MONEY:
-                    result = loadMoney((LoadMoney) request);
-                    break;
-                case SEND_TRANSACTION:
-                    result = sendTransaction((SendTransaction) request);
-                    break;
-                default:
-                    break;
+                Request request = (Request) readObject(arg0);
+                Result<?> result = null;
 
+                switch (request.getOperation()) {
+                    case CREATE_ACCOUNT:
+                        result = createAccount((CreateAccount) request);
+                        break;
+                    case LOAD_MONEY:
+                        result = loadMoney((LoadMoney) request);
+                        break;
+                    case SEND_TRANSACTION:
+                        result = sendTransaction((SendTransaction) request);
+                        break;
+                    default:
+                        result = null;
+                        break;
+
+                }
+
+                return writeObject(result);
+            } catch (Exception e) {
+                LOG.severe(e.getMessage());
+                return null;
             }
-
-            return writeObject(result);
         }
 
         @Override
