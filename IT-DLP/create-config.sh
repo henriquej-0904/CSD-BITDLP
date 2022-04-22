@@ -3,7 +3,7 @@
 # Script to create all keystores and truststores needed.
 
 nReplicas=4
-configFolder="./config"
+configFolder="./tls-config"
 keystorepass="keystorepwd"
 
 rm -r $configFolder
@@ -32,7 +32,7 @@ do
     keytool -export -alias $replicaAlias -keystore $replicaFolder/keystore.pkcs12 -storepass $keystorepass -file $replicaFolder/certificate.pem
 
     # Copy certificate to truststore to be used by the client
-    keytool -import -noprompt -alias $replicaAlias -file $replicaFolder/certificate.pem -keystore $configFolder/replicas-truststore.pkcs12 -storepass $keystorepass -storetype pkcs12
+    keytool -import -noprompt -alias $replicaAlias -file $replicaFolder/certificate.pem -keystore $configFolder/truststore.pkcs12 -storepass $keystorepass -storetype pkcs12
 
 done
 
