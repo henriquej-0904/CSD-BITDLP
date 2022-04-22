@@ -1,8 +1,11 @@
 package itdlp.tp1.util;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
+import java.security.KeyStore;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
@@ -14,6 +17,10 @@ import java.security.spec.ECGenParameterSpec;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
 
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManagerFactory;
+
 public class Crypto {
 
     public static final String DEFAULT_SIGNATURE_TRANSFORMATION = "SHA256withECDSA";
@@ -22,6 +29,44 @@ public class Crypto {
     public static final String DEFAULT_ASYMMETRIC_ALGORITHM = "EC";
     public static final AlgorithmParameterSpec DEFAULT_ASYMMETRIC_GEN_KEY_SPEC = new ECGenParameterSpec("secp256r1");
 
+
+    public static final String KEYSTORE_PWD = "keystorepwd";
+
+    public static KeyStore getKeyStorePkcs12(File keystoreFile, String password)
+    {
+        return getKeyStore(keystoreFile, password, "PKCS12");
+    }
+
+    public static KeyStore getKeyStore(File keystoreFile, String password, String keystoreType)
+    {
+        try (FileInputStream input = new FileInputStream(keystoreFile))
+        {
+            KeyStore keystore = KeyStore.getInstance(keystoreType);
+            keystore.load(input, password.toCharArray());
+            return keystore;
+        } catch (Exception e)
+        {
+            throw new Error(e.getMessage(), e);
+        }
+    }
+
+    public static SSLContext getSSLContext(KeyStore keystore, KeyStore truststore, String password)
+	{
+        try {
+            SSLContext sslContext = SSLContext.getInstance("TLSv1.3");
+
+            KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");
+            TrustManagerFactory tmf = TrustManagerFactory.getInstance("SunX509");
+
+            kmf.init(keystore, password.toCharArray());
+            tmf.init(truststore);
+            sslContext.init(kmf.getKeyManagers(), tmf.getTrustManagers(), null);
+
+            return sslContext;
+        } catch (Exception e) {
+            throw new Error(e.getMessage(), e);
+        }
+	}
 
     public static KeyPair createKeyPairForEcc256bits(SecureRandom random)
     {

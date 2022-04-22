@@ -10,6 +10,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import javax.net.ssl.SSLContext;
+
 import org.apache.commons.lang3.RandomUtils;
 
 import itdlp.tp1.api.Account;
@@ -39,16 +41,27 @@ public class LedgerClient implements Closeable
     private Client client;
 
     private URI endpoint;
-    /**
-     * 
-     */
+
+    
     public LedgerClient(URI endpoint)
     {
-        this.client = ClientBuilder.newBuilder().connectTimeout(CONNECT_TIMEOUT, TimeUnit.SECONDS)
-            .readTimeout(READ_TIMEOUT, TimeUnit.SECONDS)
-            .build();
-
+        this.client = getClientBuilder().build();
         this.endpoint = endpoint;
+    }
+
+    public LedgerClient(URI endpoint, SSLContext sslContext)
+    {
+        ClientBuilder builder = getClientBuilder().sslContext(sslContext)
+            .hostnameVerifier((arg0, arg1) -> true);
+
+        this.client = builder.build();
+        this.endpoint = endpoint;
+    }
+
+    private static ClientBuilder getClientBuilder()
+    {
+        return ClientBuilder.newBuilder().connectTimeout(CONNECT_TIMEOUT, TimeUnit.SECONDS)
+        .readTimeout(READ_TIMEOUT, TimeUnit.SECONDS);
     }
 
     protected String sign(KeyPair keys, byte[]... data)

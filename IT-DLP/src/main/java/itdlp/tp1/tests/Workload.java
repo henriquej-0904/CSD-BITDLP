@@ -1,7 +1,10 @@
 package itdlp.tp1.tests;
 
+import java.io.File;
+import java.net.MalformedURLException;
 import java.net.URI;
 import java.security.KeyPair;
+import java.security.KeyStore;
 import java.security.SecureRandom;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -11,6 +14,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import javax.net.ssl.SSLContext;
 
 import itdlp.tp1.api.AccountId;
 import itdlp.tp1.api.UserId;
@@ -38,8 +43,9 @@ public class Workload implements Runnable
     private SecureRandom random;
 
     private URI endpoint;
+    private boolean isHttps;
 
-    public Workload(URI endpoint, int nUsers, int nAccounts)
+    public Workload(URI endpoint, int nUsers, int nAccounts) throws MalformedURLException
     {
         this.latencies = Stream.of(itdlp.tp1.impl.srv.resources.requests.Request.Operation.values())
             .collect(Collectors.toUnmodifiableMap((op) -> op, (op) -> new LinkedList<>()));
@@ -53,9 +59,10 @@ public class Workload implements Runnable
         this.random = new SecureRandom();
 
         this.endpoint = endpoint;
+        this.isHttps = this.endpoint.toURL().getProtocol().equals("https");
     }
 
-    public static void main(String[] args)
+    public static void main(String[] args) throws MalformedURLException
     {
         URI endpoint = URI.create(args[0]);
         int nUsers = Integer.parseInt(args[1]);
@@ -80,7 +87,9 @@ public class Workload implements Runnable
 
         try
         (
-            LedgerClient client = new LedgerClient(this.endpoint);
+            LedgerClient client = isHttps
+                ? new LedgerClient(this.endpoint, getSSLContext())
+                : new LedgerClient(this.endpoint);
         )
         {
             createAccounts(client);
@@ -93,6 +102,14 @@ public class Workload implements Runnable
             getLedger(client);
         }
     }
+
+    private static SSLContext getSSLContext()
+	{
+		File configFolder = new File("tls-config");
+
+		KeyStore truststore = Crypto.getKeyStorePkcs12(new File(configFolder, "truststore.pkcs12"), Crypto.KEYSTORE_PWD);
+		return Crypto.getSSLContext(null, truststore, Crypto.KEYSTORE_PWD);
+	}
 
     private void createAccounts(LedgerClient client)
     {
