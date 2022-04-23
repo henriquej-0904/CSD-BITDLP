@@ -9,7 +9,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import itdlp.tp1.util.Utils;
 
-public abstract class ObjectId implements Serializable {
+public abstract class ObjectId implements Comparable<ObjectId>, Serializable {
 
     protected byte[] id;
 
@@ -73,6 +73,14 @@ public abstract class ObjectId implements Serializable {
     @Override
     public int hashCode() {
         return Arrays.hashCode(getId());
+    }
+
+    @Override
+    public int compareTo(ObjectId o) {
+        if (this == o)
+            return 0;
+
+        return Arrays.compare(getId(), o.getId());
     }
 
 }

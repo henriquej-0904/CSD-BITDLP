@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -51,7 +52,7 @@ public class LedgerDBinMemory extends LedgerDBlayer
 
     private LedgerDBinMemory()
     {
-        this.accounts = new HashMap<>();
+        this.accounts = new TreeMap<>();
         this.nonceMap = new HashMap<>();
         this.ledger = new LinkedList<>();
         this.lock = new ReentrantReadWriteLock();
@@ -238,7 +239,7 @@ public class LedgerDBinMemory extends LedgerDBlayer
 
             this.accounts = state.getAccounts().stream()
                 .map((pairAccountUser) -> new Account(pairAccountUser.getLeft(), pairAccountUser.getRight()))
-                .collect(Collectors.toMap(Account::getId, (acc) -> acc));
+                .collect(Collectors.toMap(Account::getId, (acc) -> acc, (acc1, acc2) -> acc1, () -> new TreeMap<>()));
 
             for (LedgerOperation lOp : this.ledger) {
                 if(lOp instanceof LedgerDeposit){
