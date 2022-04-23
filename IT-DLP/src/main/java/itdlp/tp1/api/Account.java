@@ -19,8 +19,7 @@ public class Account implements Serializable {
     private AccountId id;
     private UserId owner;
 
-    private List<LedgerDeposit> deposits;
-    private List<LedgerTransaction> transactions;
+    private List<LedgerOperation> operations;
 
     private int balance;
 
@@ -32,8 +31,7 @@ public class Account implements Serializable {
     public Account(AccountId id, UserId owner){
         this.owner = owner;
         this.id = id;
-        this.deposits = new LinkedList<>();
-        this.transactions = new LinkedList<>();
+        this.operations = new LinkedList<>();
         this.balance = 0;
     }
 
@@ -86,22 +84,19 @@ public class Account implements Serializable {
     public void setBalance(int balance) {
         this.balance = balance;
     }
-   
 
-    public List<LedgerDeposit> getDeposits() {
-        return deposits;
+    /**
+     * @return the operations
+     */
+    public List<LedgerOperation> getOperations() {
+        return operations;
     }
 
-    public void setDeposits(List<LedgerDeposit> deposits) {
-        this.deposits = deposits;
-    }
-
-    public List<LedgerTransaction> getTransactions() {
-        return transactions;
-    }
-
-    public void setTransactions(List<LedgerTransaction> transactions) {
-        this.transactions = transactions;
+    /**
+     * @param operations the operations to set
+     */
+    public void setOperations(List<LedgerOperation> operations) {
+        this.operations = operations;
     }
 
     /**
@@ -116,11 +111,11 @@ public class Account implements Serializable {
         switch (operation.getType()) {
             case DEPOSIT:
                 value = operation.getValue();
-                this.deposits.add((LedgerDeposit)operation);
+                this.operations.add((LedgerDeposit)operation);
                 break;
             case TRANSACTION:
                 value = processTransaction((LedgerTransaction)operation);
-                this.transactions.add((LedgerTransaction)operation);
+                this.operations.add((LedgerTransaction)operation);
                 break;
         }
         this.balance += value;
