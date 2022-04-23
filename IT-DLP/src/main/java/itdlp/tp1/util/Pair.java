@@ -1,7 +1,11 @@
 package itdlp.tp1.util;
 
-public class Pair<K, V>
+import java.io.Serializable;
+
+public class Pair<K, V> implements Serializable
 {
+    private static final long serialVersionUID = 222334L;
+
     private K left;
     private V right;
 

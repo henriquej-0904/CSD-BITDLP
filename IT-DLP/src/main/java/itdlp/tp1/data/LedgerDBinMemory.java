@@ -8,7 +8,6 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import itdlp.tp1.api.Account;
 import itdlp.tp1.api.AccountId;
@@ -19,6 +18,7 @@ import itdlp.tp1.api.operations.LedgerOperation;
 import itdlp.tp1.api.operations.LedgerTransaction;
 import itdlp.tp1.util.Pair;
 import itdlp.tp1.util.Result;
+import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.InternalServerErrorException;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response.Status;
@@ -198,6 +198,8 @@ public class LedgerDBinMemory extends LedgerDBlayer
         {
             getWriteLock().lock();
 
+            addNonce(transaction.digest(), transaction.getNonce());   
+
             accountOr.value().processOperation(transaction);
             accountDest.value().processOperation(transaction);
 
@@ -226,50 +228,19 @@ public class LedgerDBinMemory extends LedgerDBlayer
     }
 
     @Override
-    public synchronized Result<Boolean> nonceVerification(byte[] requestKey, int nonce){
+    public Result<Void> loadState(LedgerState state) {
 
-        return Result.ok(addNonce(requestKey, nonce));
-    }
+        try
+        {
+            getWriteLock().lock();
 
-    public boolean addNonce(byte[] requestKey, int nonce){
-        boolean result = true;
-        List<Integer> res = nonceMap.get(requestKey);
+            this.ledger = state.getOperations();
 
-        if(res == null){
-            res = new LinkedList<>();
-            nonceMap.put(requestKey, res);
-        }
-        
-        if(!res.contains(nonce))
-            res.add(nonce);
-        else
-            result = false;
-        
-        return result;
-    }
+            this.accounts = state.getAccounts().stream()
+                .map((pairAccountUser) -> new Account(pairAccountUser.getLeft(), pairAccountUser.getRight()))
+                .collect(Collectors.toMap(Account::getId, (acc) -> acc));
 
-    private Lock getReadLock()
-    {
-        return this.lock.readLock();
-    }
-
-    private Lock getWriteLock()
-    {
-        return this.lock.writeLock();
-    }
-
-    @Override
-    public Result<Void> loadState(Pair<AccountId, UserId>[] accounts, LedgerOperation[] operations) {
-
-        try{
-            this.lock.writeLock().lock();
-
-            this.ledger = Stream.of(operations).toList();
-
-            this.accounts = Stream.of(accounts).map((acc) -> new Account(acc.getLeft(), acc.getRight()))
-            .collect(Collectors.toMap((acc) -> acc.getId(), (acc) -> acc));
-
-            for (LedgerOperation lOp : operations) {
+            for (LedgerOperation lOp : this.ledger) {
                 if(lOp instanceof LedgerDeposit){
 
                     LedgerDeposit deposit = (LedgerDeposit) lOp;
@@ -283,39 +254,61 @@ public class LedgerDBinMemory extends LedgerDBlayer
                     Account origin = this.accounts.get(transaction.getOrigin());
                     Account dest = this.accounts.get(transaction.getDest());
 
+                    addNonce(transaction.digest(), transaction.getNonce());
                     origin.processOperation(transaction);
                     dest.processOperation(transaction);
-                    addNonce(transaction.digest(), transaction.getNonce());
                 }  
             }
+
+            return Result.ok();
         } catch (InvalidOperationException e) {
-            return Result.error(500);
+            return Result.error(new InternalServerErrorException(e.getMessage(), e));
         }finally{
-            this.getWriteLock().unlock();
+            getWriteLock().unlock();
         }
-                
-        return Result.ok();
     }
 
     @Override
-    public Result<Pair<Pair<AccountId, UserId>[], LedgerOperation[]>> getState() {
-        // TODO Auto-generated method stub
+    public Result<LedgerState> getState() {
         try{
-            this.lock.readLock().lock();
+            getReadLock().lock();
 
-            Pair<AccountId,UserId>[] accs = accounts.values().stream().map(a -> new Pair<>(a.getId(), a.getOwner()))
-            .collect(Collectors.toList())
-            .toArray(new Pair<AccountId, UserId>[0]));
+            List<Pair<AccountId, UserId>> accounts =
+                this.accounts.values().stream()
+                .map(account -> new Pair<>(account.getId(), account.getOwner()))
+                .collect(Collectors.toList());
 
-            LedgerOperation[] ops = ledger.toArray(new LedgerOperation[0]);
-
-            Pair<Pair<AccountId, UserId>[], LedgerOperation[]> result = new Pair<>(accs, ops);
-
-            return Result.ok(result);
-        } catch (InvalidOperationException e) {
-            return Result.error(500);
-        }finally{
-            this.lock.readLock().unlock();
+            return Result.ok(new LedgerState(accounts, this.ledger));
+        } finally{
+            getReadLock().unlock();
         }
+    }
+
+    protected void addNonce(byte[] requestKey, int nonce){
+        boolean result = true;
+        List<Integer> res = nonceMap.get(requestKey);
+
+        if(res == null){
+            res = new LinkedList<>();
+            nonceMap.put(requestKey, res);
+        }
+        
+        if(!res.contains(nonce))
+            res.add(nonce);
+        else
+            result = false;
+        
+        if (!result)
+            throw new ForbiddenException("Invalid Nonce.");
+    }
+
+    protected Lock getReadLock()
+    {
+        return this.lock.readLock();
+    }
+
+    protected Lock getWriteLock()
+    {
+        return this.lock.writeLock();
     }
 }

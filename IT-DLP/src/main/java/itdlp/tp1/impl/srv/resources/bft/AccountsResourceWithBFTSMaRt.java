@@ -1,22 +1,17 @@
 package itdlp.tp1.impl.srv.resources.bft;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-
 import bftsmart.tom.MessageContext;
 import bftsmart.tom.ServiceProxy;
 import bftsmart.tom.ServiceReplica;
 import bftsmart.tom.server.defaultservices.DefaultSingleRecoverable;
 import itdlp.tp1.api.Account;
 import itdlp.tp1.api.AccountId;
-import itdlp.tp1.api.UserId;
 import itdlp.tp1.api.operations.LedgerDeposit;
 import itdlp.tp1.api.operations.LedgerOperation;
 import itdlp.tp1.api.operations.LedgerTransaction;
 import itdlp.tp1.data.LedgerDBlayer;
 import itdlp.tp1.data.LedgerDBlayerException;
+import itdlp.tp1.data.LedgerState;
 import itdlp.tp1.impl.srv.resources.AccountsResource;
 import itdlp.tp1.impl.srv.resources.requests.CreateAccount;
 import itdlp.tp1.impl.srv.resources.requests.GetBalance;
@@ -27,8 +22,8 @@ import itdlp.tp1.impl.srv.resources.requests.GetTotalValue;
 import itdlp.tp1.impl.srv.resources.requests.SendTransaction;
 import itdlp.tp1.impl.srv.resources.requests.LoadMoney;
 import itdlp.tp1.impl.srv.resources.requests.Request;
-import itdlp.tp1.util.Pair;
 import itdlp.tp1.util.Result;
+import itdlp.tp1.util.Utils;
 import jakarta.ws.rs.InternalServerErrorException;
 
 /**
@@ -60,33 +55,28 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource {
         AccountsResourceWithBFTSMaRt.replica = replica;
     }
 
-    protected static Object readObject(byte[] arr) {
-        try (ByteArrayInputStream inputArr = new ByteArrayInputStream(arr);
-                ObjectInputStream as = new ObjectInputStream(inputArr);) {
-            return as.readObject();
-        } catch (Exception e) {
-            throw new InternalServerErrorException(e.getMessage(), e);
-        }
-    }
-
-    protected static byte[] writeObject(Object req) {
-        try (ByteArrayOutputStream outputArr = new ByteArrayOutputStream();
-                ObjectOutputStream os = new ObjectOutputStream(outputArr);) {
-            os.writeObject(req);
-            os.flush();
-
-            return outputArr.toByteArray();
-        } catch (Exception e) {
-            throw new InternalServerErrorException(e.getMessage(), e);
-        }
-    }
-
     @SuppressWarnings("unchecked")
     protected <T> Result<T> readResult(byte[] arr) {
         Object result = readObject(arr);
 
         try {
             return (Result<T>) result;
+        } catch (Exception e) {
+            throw new InternalServerErrorException(e.getMessage(), e);
+        }
+    }
+
+    public static Object readObject(byte[] arr) {
+        try {
+            return Utils.readObject(arr);
+        } catch (Exception e) {
+            throw new InternalServerErrorException(e.getMessage(), e);
+        }
+    }
+
+    public static byte[] writeObject(Object req) {
+        try {
+            return Utils.writeObject(req);
         } catch (Exception e) {
             throw new InternalServerErrorException(e.getMessage(), e);
         }
@@ -262,23 +252,19 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource {
         public byte[] getSnapshot() {
             try{
                 init();
-                return writeObject(this.db.getState().resultOrThrow());
+                return this.db.getState().resultOrThrow().getSerializedState();
             }catch(Exception e){
                 LOG.severe(e.getMessage());
                 return new byte[0];
             }
         }
 
-        @SuppressWarnings("unchecked")
         @Override
         public void installSnapshot(byte[] arg0) {
             try{
                 init();
 
-                Pair<Pair<AccountId, UserId>[], LedgerOperation[]> state = 
-                (Pair<Pair<AccountId, UserId>[], LedgerOperation[]>) readObject(arg0);
-
-                this.db.loadState(state.getLeft(), state.getRight()).resultOrThrow();
+                this.db.loadState(new LedgerState(arg0)).resultOrThrow();
 
             }catch(Exception e){
                 LOG.severe(e.getMessage());

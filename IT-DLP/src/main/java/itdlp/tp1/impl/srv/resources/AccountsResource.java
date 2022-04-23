@@ -2,7 +2,6 @@ package itdlp.tp1.impl.srv.resources;
 
 import java.nio.ByteBuffer;
 import java.security.InvalidKeyException;
-import java.security.MessageDigest;
 import java.security.PublicKey;
 import java.security.Signature;
 import java.security.SignatureException;
@@ -299,9 +298,6 @@ public abstract class AccountsResource implements Accounts
                 throw new ForbiddenException("Invalid Account Signature.");    
         
             LedgerTransaction transaction = new LedgerTransaction(originId, destId, value, nonce);
-            
-            if(!db.nonceVerification(transaction.digest(), nonce).resultOrThrow())
-                throw new ForbiddenException(" Invalid Nonce.");
 
             // log & execute operation          
             LOG.info(String.format("ORIGIN: %s, DEST: %s, TYPE: %s, VALUE: %d", 

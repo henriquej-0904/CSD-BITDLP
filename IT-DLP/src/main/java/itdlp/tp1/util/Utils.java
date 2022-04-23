@@ -1,5 +1,10 @@
 package itdlp.tp1.util;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Base64;
@@ -7,6 +12,29 @@ import java.util.Calendar;
 
 public class Utils
 {
+    public static Object readObject(byte[] arr) throws ClassNotFoundException {
+        try (ByteArrayInputStream inputArr = new ByteArrayInputStream(arr);
+                ObjectInputStream as = new ObjectInputStream(inputArr);) {
+            return as.readObject();
+        } catch (IOException ex) {
+            // never thrown
+            throw new Error(ex);
+        }
+    }
+
+    public static byte[] writeObject(Object obj) {
+        try (ByteArrayOutputStream outputArr = new ByteArrayOutputStream();
+                ObjectOutputStream os = new ObjectOutputStream(outputArr);) {
+            os.writeObject(obj);
+            os.flush();
+
+            return outputArr.toByteArray();
+        } catch (IOException ex) {
+            // never thrown
+            throw new Error(ex);
+        }
+    }
+
     public static String printDate(SimpleDateFormat format, Calendar calendar)
     {
         return format.format(calendar.getTime());
