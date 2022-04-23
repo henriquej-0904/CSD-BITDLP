@@ -4,8 +4,18 @@ import java.io.Serializable;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+
 import itdlp.tp1.util.Utils;
 
+//@JsonDeserialize(using = LedgerOperationJsonDeserializer.class)
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY)
+@JsonSubTypes({
+    @JsonSubTypes.Type(value = LedgerDeposit.class, name = "LedgerDeposit"),
+
+    @JsonSubTypes.Type(value = LedgerTransaction.class, name = "LedgerTransaction") }
+)
 public abstract class LedgerOperation implements Serializable {
     
     public static enum Type

@@ -17,6 +17,7 @@ import org.apache.commons.lang3.RandomUtils;
 import itdlp.tp1.api.Account;
 import itdlp.tp1.api.AccountId;
 import itdlp.tp1.api.UserId;
+import itdlp.tp1.api.operations.LedgerOperation;
 import itdlp.tp1.api.service.Accounts;
 import itdlp.tp1.util.Crypto;
 import itdlp.tp1.util.Pair;
@@ -157,11 +158,11 @@ public class LedgerClient implements Closeable
                 Void.class);
     }
 
-    public Result<Account[]> getLedger() {
+    public Result<LedgerOperation[]> getLedger() {
         return request(this.client.target(this.endpoint)
         .path(Accounts.PATH).path("ledger")
         .request()
-        .buildGet(), Account[].class);
+        .buildGet(), LedgerOperation[].class);
     }
 
     @Override
