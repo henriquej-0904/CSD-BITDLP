@@ -51,7 +51,7 @@ public abstract class ObjectId implements Comparable<ObjectId>, Serializable {
      * @return The public key.
      */
     @JsonIgnore
-    public abstract PublicKey getPublicKey() throws InvalidKeySpecException;
+    public abstract PublicKey publicKey() throws InvalidKeySpecException;
 
     @Override
     public String toString() {
