@@ -80,7 +80,7 @@ public abstract class AccountsResource implements Accounts
     protected PublicKey getPublicKey(ObjectId id)
     {
         try {
-            return id.getPublicKey();
+            return id.publicKey();
         } catch (InvalidKeySpecException e) {
             throw new BadRequestException(e.getMessage(), e);
         }
@@ -142,9 +142,11 @@ public abstract class AccountsResource implements Accounts
             init();
             
             AccountId id = getAccountId(Utils.fromHex(accountId));
+
+            Account account = getAccount(id);
             LOG.info(id.toString());
 
-            return getAccount(id);
+            return account;
         } catch (WebApplicationException e) {
             LOG.info(e.getMessage());
             throw e;
@@ -258,9 +260,10 @@ public abstract class AccountsResource implements Accounts
             // execute operation
             LedgerDeposit deposit = new LedgerDeposit(value, id);
 
+            loadMoney(deposit);
+
             LOG.info(String.format("ID: %s, TYPE: %s, VALUE: %s", id, deposit.getType(), value));
 
-            loadMoney(deposit);
         } catch (WebApplicationException e) {
             LOG.info(e.getMessage());
             throw e;
@@ -298,12 +301,14 @@ public abstract class AccountsResource implements Accounts
                 throw new ForbiddenException("Invalid Account Signature.");    
         
             LedgerTransaction transaction = new LedgerTransaction(originId, destId, value, nonce);
+            
+            sendTransaction(transaction);
 
-            // log & execute operation          
+            // log operation if successful        
             LOG.info(String.format("ORIGIN: %s, DEST: %s, TYPE: %s, VALUE: %d", 
                 originId, destId, transaction.getType(), value));
 
-            sendTransaction(transaction);
+            
         } catch (WebApplicationException e) {
             LOG.info(e.getMessage());
             throw e;
