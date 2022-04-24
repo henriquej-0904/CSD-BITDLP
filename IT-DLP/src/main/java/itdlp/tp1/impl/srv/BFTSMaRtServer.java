@@ -18,16 +18,21 @@ public class BFTSMaRtServer
 {
 	/**
 	 * args[0] -> replicaId
-	 * args[1] -> proxyId
-	 * args[2] -> Server Port
+	 * args[1] -> Server Port
 	 * @param args
 	 */
 	public static void main(String[] args) {
 		try
 		{
+			if (args.length != 2)
+			{
+				System.err.println("Invalid parameters:\nUsage: <replicaId> <bind port>");
+				System.exit(1);
+			}
+
 			int replicaId = Integer.parseInt(args[0]);
-			int proxyId = Integer.parseInt(args[1]);
-			int port = Integer.parseInt(args[2]);
+			int proxyId = replicaId + 10;
+			int port = Integer.parseInt(args[1]);
 
 			ServerConfig.setReplicaId(replicaId);
 
