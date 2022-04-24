@@ -34,7 +34,7 @@ public abstract class LedgerDBlayer
      * Get the current instance of the Ledger DB.
      * @return The Ledger DB.
      */
-    public static LedgerDBlayer getInstance() throws LedgerDBlayerException
+    public static synchronized LedgerDBlayer getInstance() throws LedgerDBlayerException
     {
         if (instance == null)
         {
