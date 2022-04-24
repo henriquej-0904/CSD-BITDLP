@@ -83,8 +83,8 @@ public class LedgerTransaction extends LedgerOperation {
         ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES);
         buffer.putInt(getValue());
 
-        digest.update(origin.getId());
-        digest.update(dest.getId());
+        digest.update(origin.getObjectId());
+        digest.update(dest.getObjectId());
         digest.update(buffer.array());
 
         return digest.digest();

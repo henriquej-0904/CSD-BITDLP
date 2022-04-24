@@ -76,7 +76,7 @@ public class AccountId extends ObjectId
 
     @Override
     public PublicKey getPublicKey() throws InvalidKeySpecException {
-        byte[] publicKeyBytes = Arrays.copyOfRange(this.id, HASH_BYTES_LENGTH, this.id.length);
+        byte[] publicKeyBytes = Arrays.copyOfRange(this.objectId, HASH_BYTES_LENGTH, this.objectId.length);
         return Crypto.getPublicKey(publicKeyBytes);
     }
 
