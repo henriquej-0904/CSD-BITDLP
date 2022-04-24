@@ -5,6 +5,7 @@ import itdlp.tp1.api.AccountId;
 import itdlp.tp1.api.operations.LedgerDeposit;
 import itdlp.tp1.api.operations.LedgerOperation;
 import itdlp.tp1.api.operations.LedgerTransaction;
+import itdlp.tp1.data.mongo.LedgerDBWithMongo;
 import itdlp.tp1.util.Result;
 import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.WebApplicationException;
@@ -23,10 +24,15 @@ public abstract class LedgerDBlayer
         /**
          * Represents a DB stored in memory.
          */
-        IN_MEMORY;
+        IN_MEMORY,
+
+        /**
+         * Represents a mongo DB.
+         */
+        MONGO;
     }
 
-    public static final DBtype dbType = DBtype.IN_MEMORY;
+    public static final DBtype dbType = DBtype.MONGO;
 
     private static LedgerDBlayer instance;
     
@@ -41,6 +47,9 @@ public abstract class LedgerDBlayer
             switch (dbType) {
                 case IN_MEMORY:
                     instance = LedgerDBinMemory.getInstance();
+                    break;
+                case MONGO:
+                    instance = LedgerDBWithMongo.getInstance();
                     break;
             }
         }

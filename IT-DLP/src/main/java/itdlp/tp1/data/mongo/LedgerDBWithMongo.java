@@ -39,6 +39,7 @@ import itdlp.tp1.api.operations.LedgerOperation;
 import itdlp.tp1.api.operations.LedgerTransaction;
 import itdlp.tp1.util.Pair;
 import itdlp.tp1.util.Result;
+import jakarta.ws.rs.InternalServerErrorException;
 
 /**
  * Impl of LegerDB with Mongo-DB.
@@ -87,20 +88,25 @@ public class LedgerDBWithMongo extends LedgerDBlayer
 		if( this.db != null)
 			return;
 
-        CodecProvider pojoCodecProvider = PojoCodecProvider.builder().automatic(true).build();
-        CodecRegistry pojoCodecRegistry = fromRegistries(getDefaultCodecRegistry(), fromProviders(pojoCodecProvider));
+        try {
+            CodecProvider pojoCodecProvider = PojoCodecProvider.builder().automatic(true).build();
+            CodecRegistry pojoCodecRegistry = fromRegistries(getDefaultCodecRegistry(),
+                    fromProviders(pojoCodecProvider));
 
-        this.db = this.client.getDatabase(MONGO_DB_DATABASE).withCodecRegistry(pojoCodecRegistry);
+            this.db = this.client.getDatabase(MONGO_DB_DATABASE).withCodecRegistry(pojoCodecRegistry);
 
-        this.accounts = this.db.getCollection("Accounts", AccountDAO.class);
-        this.ledger = this.db.getCollection("Ledger", LedgerOperationDAO.class);
-        this.nonces = this.db.getCollection("Nonces", Nonces.class);
+            this.accounts = this.db.getCollection("Accounts", AccountDAO.class);
+            this.ledger = this.db.getCollection("Ledger", LedgerOperationDAO.class);
+            this.nonces = this.db.getCollection("Nonces", Nonces.class);
 
-		// Create indexes for id field
-		IndexOptions indexOptions = new IndexOptions().unique(true);
+            // Create indexes for id field
+            IndexOptions indexOptions = new IndexOptions().unique(true);
 
-		this.accounts.createIndex(Indexes.ascending("accountId"), indexOptions);
-		this.nonces.createIndex(Indexes.ascending("left"), indexOptions);
+            this.accounts.createIndex(Indexes.ascending("accountId"), indexOptions);
+            this.nonces.createIndex(Indexes.ascending("left"), indexOptions);
+        } catch (Exception e) {
+            throw new InternalServerErrorException(e.getMessage(), e);
+        }
 	}
 
     @Override
@@ -149,49 +155,49 @@ public class LedgerDBWithMongo extends LedgerDBlayer
     @Override
     public Result<Integer> getBalance(AccountId accountId) {
         init();
-        return null;
+        return Result.error(500);
     }
 
     @Override
     public Result<Integer> getTotalValue(AccountId[] accounts) {
         init();
-        return null;
+        return Result.error(500);
     }
 
     @Override
     public Result<Integer> getGlobalLedgerValue() {
         init();
-        return null;
+        return Result.error(500);
     }
 
     @Override
     public Result<Void> loadMoney(LedgerDeposit deposit) {
         init();
-        return null;
+        return Result.error(500);
     }
 
     @Override
     public Result<Void> sendTransaction(LedgerTransaction transaction) {
         init();
-        return null;
+        return Result.error(500);
     }
 
     @Override
     public Result<LedgerOperation[]> getLedger() {
         init();
-        return null;
+        return Result.error(500);
     }
 
     @Override
     public Result<Void> loadState(LedgerState state) {
         init();
-        return null;
+        return Result.error(500);
     }
 
     @Override
     public Result<LedgerState> getState() {
         init();
-        return null;
+        return Result.error(500);
     }
     
     protected static class Nonces extends Pair<byte[], List<Integer>> {}
