@@ -1,10 +1,12 @@
 package itdlp.tp1.data.mongo;
 
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
 import org.bson.types.ObjectId;
 
+import itdlp.tp1.api.Account;
 import itdlp.tp1.api.AccountId;
 import itdlp.tp1.api.UserId;
 
@@ -13,7 +15,7 @@ import itdlp.tp1.api.UserId;
  */
 public class AccountDAO {
 
-    private AccountId id;
+    private AccountId accountId;
     private UserId owner;
 
     private List<ObjectId> operations;
@@ -27,9 +29,15 @@ public class AccountDAO {
      */
     public AccountDAO(AccountId id, UserId owner){
         this.owner = owner;
-        this.id = id;
+        this.accountId = id;
         this.operations = new LinkedList<>();
         this.balance = 0;
+    }
+
+    public AccountDAO(Account account)
+    {
+        this(account.getId(), account.getOwner());
+        this.balance = account.getBalance();
     }
 
     /**
@@ -42,8 +50,8 @@ public class AccountDAO {
      * Get the account id.
      * @return The account id.
      */
-    public AccountId getId() {
-        return id;
+    public AccountId getAccountId() {
+        return accountId;
     }
 
     /**
@@ -57,8 +65,8 @@ public class AccountDAO {
     /**
      * @param id the id to set
      */
-    public void setId(AccountId id) {
-        this.id = id;
+    public void setAccountId(AccountId id) {
+        this.accountId = id;
     }
 
     /**
@@ -94,5 +102,14 @@ public class AccountDAO {
      */
     public void setOperations(List<ObjectId> operations) {
         this.operations = operations;
+    }
+
+    public Account toAccount()
+    {
+        Account account = new Account(this.accountId, this.owner);
+        account.setBalance(this.balance);
+        account.setOperations(new ArrayList<>(operations.size()));
+
+        return account;
     }
 }

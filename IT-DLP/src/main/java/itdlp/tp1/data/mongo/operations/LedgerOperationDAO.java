@@ -9,6 +9,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import org.bson.types.ObjectId;
 
 import itdlp.tp1.api.operations.InvalidOperationException;
+import itdlp.tp1.api.operations.LedgerOperation;
 import itdlp.tp1.util.Utils;
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY)
@@ -125,5 +126,16 @@ public abstract class LedgerOperationDAO {
     @Override
     public String toString() {
         return date + " " + type.toString() + ": ";
+    }
+
+    public LedgerOperation toLedgerOperation() {
+        
+        switch (type) {
+            case DEPOSIT:
+                return ((LedgerDepositDAO) this).toLedgerDeposit();
+            case TRANSACTION:
+                return ((LedgerTransactionDAO) this).toLedgerTransaction();
+        }
+        return null;
     }
 }

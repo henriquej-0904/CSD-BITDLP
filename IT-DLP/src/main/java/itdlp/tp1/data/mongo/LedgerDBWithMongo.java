@@ -4,16 +4,26 @@ import static com.mongodb.MongoClientSettings.getDefaultCodecRegistry;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 
+import static com.mongodb.client.model.Filters.eq;
+import static com.mongodb.client.model.Filters.and;
+import static com.mongodb.client.model.Filters.in;
+
+import java.util.ArrayList;
 import java.util.List;
 
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
+import com.mongodb.MongoException;
+import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.IndexOptions;
 import com.mongodb.client.model.Indexes;
+import com.mongodb.client.model.InsertOneOptions;
+import com.mongodb.client.model.Sorts;
+import com.mongodb.client.result.InsertOneResult;
 
 import org.bson.codecs.configuration.CodecProvider;
 import org.bson.codecs.configuration.CodecRegistry;
@@ -96,13 +106,44 @@ public class LedgerDBWithMongo extends LedgerDBlayer
     @Override
     public Result<Account> createAccount(Account account) {
         init();
-        return null;
+
+        try {
+            this.accounts.insertOne(new AccountDAO(account));
+            return Result.ok(account);
+        } catch (MongoException e) {
+            return accountAlreadyExistsConflict(account.getId());
+        }
     }
 
     @Override
     public Result<Account> getAccount(AccountId accountId) {
         init();
-        return null;
+
+        try {
+
+            FindIterable<AccountDAO> result = this.accounts.find(eq("accountId", accountId));
+            if (result == null)
+                return accountNotFound(accountId);
+
+            AccountDAO accountDAO = result.first();
+            
+            FindIterable<LedgerOperationDAO> operations =
+                this.ledger.find(in("id", accountDAO.getOperations()));
+
+            Account account = accountDAO.toAccount();
+            List<LedgerOperation> accountOps = account.getOperations();
+
+            if (operations != null)
+            {
+                for (LedgerOperationDAO ledgerOperationDAO : operations) {
+                    accountOps.add(ledgerOperationDAO.toLedgerOperation());
+                }
+            }
+
+            return Result.ok(account);
+        } catch (MongoException e) {
+            return accountNotFound(accountId);
+        }
     }
 
     @Override

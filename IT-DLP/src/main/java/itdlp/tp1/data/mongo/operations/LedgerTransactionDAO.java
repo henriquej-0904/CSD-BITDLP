@@ -5,6 +5,8 @@ import java.security.MessageDigest;
 
 import itdlp.tp1.api.AccountId;
 import itdlp.tp1.api.operations.InvalidOperationException;
+import itdlp.tp1.api.operations.LedgerOperation;
+import itdlp.tp1.api.operations.LedgerTransaction;
 import itdlp.tp1.util.Crypto;
 
 public class LedgerTransactionDAO extends LedgerOperationDAO {
@@ -87,5 +89,14 @@ public class LedgerTransactionDAO extends LedgerOperationDAO {
         digest.update(buffer.array());
 
         return digest.digest();
+    }
+
+    public LedgerOperation toLedgerTransaction() {
+        try {
+            LedgerTransaction transaction = new LedgerTransaction(origin, dest, getValue(), getDate(), nonce);
+            return transaction;
+        } catch (Exception e) {
+            throw new Error(e.getMessage(), e);
+        }
     }
 }
