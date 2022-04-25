@@ -21,12 +21,10 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.Accumulators;
 import com.mongodb.client.model.Aggregates;
-import com.mongodb.client.model.FindOneAndReplaceOptions;
 import com.mongodb.client.model.IndexOptions;
 import com.mongodb.client.model.Indexes;
 import com.mongodb.client.model.Projections;
 import com.mongodb.client.model.Sorts;
-import com.mongodb.client.model.UpdateOneModel;
 import com.mongodb.client.model.UpdateOptions;
 import com.mongodb.client.model.Updates;
 
@@ -222,94 +220,82 @@ public class LedgerDBWithMongo extends LedgerDBlayer
     public Result<Void> loadMoney(LedgerDeposit deposit) {
         init();
 
+        UpdateOptions op = new UpdateOptions();
+        op.upsert(false);
+
         try {
-            UpdateOptions op = new UpdateOptions();
-            op.upsert(false);
-
-            this.accounts.updateOne(eq("accountId", deposit.getAccountId()),
-                Updates.inc("balance", deposit.getValue()), op);
-
-        } catch (MongoException e) {
+            LedgerDBWithMongo.this.accounts.updateOne(eq("accountId", deposit.getAccountId()),
+                    Updates.inc("balance", deposit.getValue()), op);
+        } catch (Exception e) {
             return accountNotFound(deposit.getAccountId());
         }
 
         try {
-            ObjectId operationId = this.ledger.insertOne(toDAO(deposit)).getInsertedId().asObjectId().getValue();
+            ObjectId operationId = LedgerDBWithMongo.this.ledger.insertOne(toDAO(deposit))
+                    .getInsertedId().asObjectId().getValue();
 
-            UpdateOptions op = new UpdateOptions();
-            op.upsert(false);
-
-            this.accounts.updateOne(eq("accountId", deposit.getAccountId()),
-                Updates.push("operations", operationId), op);
-
-            return Result.ok();
-
-        }catch (MongoException e) {
+            LedgerDBWithMongo.this.accounts.updateOne(eq("accountId", deposit.getAccountId()),
+                    Updates.push("operations", operationId), op);
+        } catch (Exception e) {
             return Result.error(new InternalServerErrorException(e.getMessage(), e));
         }
+
+        return Result.ok();
     }
 
     @Override
     public Result<Void> sendTransaction(LedgerTransaction transaction) {
         init();
 
-        UpdateOptions updateOptions = new UpdateOptions();
-        updateOptions.upsert(false);
-
         try {
             UpdateOptions options = new UpdateOptions();
             options.upsert(true);
 
             Bson filter = and(
-                eq("left", transaction.digest()),
-                not(in("right", transaction.getNonce()))
-            );
+                    eq("left", transaction.digest()),
+                    not(in("right", transaction.getNonce())));
 
             this.nonces.updateOne(filter,
-                Updates.addToSet("right", transaction.getNonce()), options);
+                    Updates.addToSet("right", transaction.getNonce()), options);
 
         } catch (MongoException e) {
             return Result.error(new ForbiddenException("Invalid nonce."));
         }
 
+        UpdateOptions updateOptions = new UpdateOptions();
+        updateOptions.upsert(false);
+
         try {
             Bson originFilter = and(
-                eq("accountId", transaction.getOrigin()),
-                gte("balance", transaction.getValue())
-            );
+                    eq("accountId", transaction.getOrigin()),
+                    gte("balance", transaction.getValue()));
 
             Bson destFilter = eq("accountId", transaction.getDest());
 
-            this.accounts.bulkWrite(Arrays.asList(
-                new UpdateOneModel<>(originFilter,
-                    Updates.inc("balance", -transaction.getValue()),
-                    updateOptions),
-                
-                new UpdateOneModel<>(destFilter,
-                    Updates.inc("balance", transaction.getValue()),
-                    updateOptions)
-            ));
+            this.accounts.updateOne(originFilter,
+                    Updates.inc("balance", -transaction.getValue()), updateOptions);
+
+            this.accounts.updateOne(destFilter,
+                    Updates.inc("balance", transaction.getValue()), updateOptions);
 
         } catch (MongoException e) {
             return Result.error(new WebApplicationException(e.getMessage(), e, Status.CONFLICT.getStatusCode()));
         }
 
         try {
-            ObjectId operationId = this.ledger.insertOne(toDAO(transaction)).getInsertedId().asObjectId().getValue();
+            ObjectId operationId = this.ledger.insertOne(toDAO(transaction)).getInsertedId().asObjectId()
+                    .getValue();
 
-            this.accounts.bulkWrite(Arrays.asList(
-                new UpdateOneModel<>(eq("accountId", transaction.getOrigin()),
-                    Updates.push("operations", operationId),
-                    updateOptions),
-                
-                new UpdateOneModel<>(eq("accountId", transaction.getDest()),
-                    Updates.push("operations", operationId),
-                    updateOptions)
-            ));
+            Bson filter = or(
+                    eq("accountId", transaction.getOrigin()),
+                    eq("accountId", transaction.getDest()));
+
+            this.accounts.updateMany(filter,
+                    Updates.push("operations", operationId), updateOptions);
 
             return Result.ok();
 
-        }catch (MongoException e) {
+        } catch (MongoException e) {
             return Result.error(new InternalServerErrorException(e.getMessage(), e));
         }
     }
@@ -352,7 +338,7 @@ public class LedgerDBWithMongo extends LedgerDBlayer
         try {
             return new LedgerDepositDAO(deposit);
         } catch (InvalidOperationException e) {
-            throw new Error(e.getMessage(), e);
+            throw new InternalServerErrorException(e.getMessage(), e);
         }
     }
 
@@ -361,7 +347,7 @@ public class LedgerDBWithMongo extends LedgerDBlayer
         try {
             return new LedgerTransactionDAO(transaction);
         } catch (InvalidOperationException e) {
-            throw new Error(e.getMessage(), e);
+            throw new InternalServerErrorException(e.getMessage(), e);
         }
     }
 
