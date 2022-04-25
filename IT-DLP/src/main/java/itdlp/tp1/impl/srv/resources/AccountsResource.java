@@ -332,7 +332,7 @@ public abstract class AccountsResource implements Accounts
 
             LedgerOperation[] result = getFullLedger();
 
-            LOG.info(String.format("Get Ledger with %d accounts.", result.length));
+            LOG.info(String.format("Get Ledger with %d operations.", result.length));
 
             return result;
         } catch (WebApplicationException e) {
