@@ -1,10 +1,13 @@
 package itdlp.tp1.data.mongo;
 
 import static com.mongodb.MongoClientSettings.getDefaultCodecRegistry;
+import static com.mongodb.client.model.Filters.and;
+import static com.mongodb.client.model.Filters.eq;
+import static com.mongodb.client.model.Filters.gte;
+import static com.mongodb.client.model.Filters.in;
+import static com.mongodb.client.model.Filters.or;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
-
-import static com.mongodb.client.model.Filters.*;
 
 import java.util.Arrays;
 import java.util.Iterator;
@@ -32,7 +35,6 @@ import com.mongodb.client.model.InsertManyOptions;
 import com.mongodb.client.model.InsertOneModel;
 import com.mongodb.client.model.Projections;
 import com.mongodb.client.model.Sorts;
-import com.mongodb.client.model.UpdateOneModel;
 import com.mongodb.client.model.UpdateOptions;
 import com.mongodb.client.model.Updates;
 import com.mongodb.client.model.WriteModel;
@@ -47,11 +49,6 @@ import org.bson.codecs.pojo.PojoCodecProvider;
 import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
 
-import itdlp.tp1.data.LedgerDBlayer;
-import itdlp.tp1.data.LedgerState;
-import itdlp.tp1.data.mongo.operations.LedgerDepositDAO;
-import itdlp.tp1.data.mongo.operations.LedgerOperationDAO;
-import itdlp.tp1.data.mongo.operations.LedgerTransactionDAO;
 import itdlp.tp1.api.Account;
 import itdlp.tp1.api.AccountId;
 import itdlp.tp1.api.UserId;
@@ -59,6 +56,11 @@ import itdlp.tp1.api.operations.InvalidOperationException;
 import itdlp.tp1.api.operations.LedgerDeposit;
 import itdlp.tp1.api.operations.LedgerOperation;
 import itdlp.tp1.api.operations.LedgerTransaction;
+import itdlp.tp1.data.LedgerDBlayer;
+import itdlp.tp1.data.LedgerState;
+import itdlp.tp1.data.mongo.operations.LedgerDepositDAO;
+import itdlp.tp1.data.mongo.operations.LedgerOperationDAO;
+import itdlp.tp1.data.mongo.operations.LedgerTransactionDAO;
 import itdlp.tp1.util.Pair;
 import itdlp.tp1.util.Result;
 import jakarta.ws.rs.ForbiddenException;
@@ -99,7 +101,7 @@ public class LedgerDBWithMongo extends LedgerDBlayer
 
     private MongoCollection<AccountDAO> accounts;
     private MongoCollection<LedgerOperationDAO> ledger;
-    private MongoCollection<Nonces> nonces;
+    private MongoCollection<Nonce> nonces;
 
 
     /**
@@ -132,13 +134,13 @@ public class LedgerDBWithMongo extends LedgerDBlayer
     protected void createCollections() {
         this.accounts = this.db.getCollection("Accounts", AccountDAO.class);
         this.ledger = this.db.getCollection("Ledger", LedgerOperationDAO.class);
-        this.nonces = this.db.getCollection("Nonces", Nonces.class);
+        this.nonces = this.db.getCollection("Nonce", Nonce.class);
 
         // Create indexes for id field
         IndexOptions indexOptions = new IndexOptions().unique(true);
 
         this.accounts.createIndex(Indexes.ascending("accountId"), indexOptions);
-        this.nonces.createIndex(Indexes.ascending("left"), indexOptions);
+        this.nonces.createIndex(Indexes.ascending("left", "right"), indexOptions);
     }
 
     protected void dropCollections() {
@@ -266,27 +268,21 @@ public class LedgerDBWithMongo extends LedgerDBlayer
 
         try {
             // add nonce
+            this.nonces.insertOne(new Nonce(transaction.digest(), transaction.getNonce()));
+        } catch (Exception e) {
+            return Result.error(new ForbiddenException("Invalid nonce."));
+        }
 
-            UpdateOptions options = new UpdateOptions();
-            options.upsert(true);
-
-            Bson filter = and(
-                    eq("left", transaction.digest()),
-                    not(in("right", transaction.getNonce())));
-
-            UpdateResult result = this.nonces.updateOne(filter,
-                    Updates.addToSet("right", transaction.getNonce()), options);
-
-            if (!(result.getMatchedCount() > 0 || result.getUpsertedId() != null))
-                return Result.error(new ForbiddenException("Invalid nonce."));
-
+        try {
             // apply operation
-
             if (!checkAccountExists(transaction.getOrigin()))
                 return accountNotFound(transaction.getOrigin());
 
             if (!checkAccountExists(transaction.getDest()))
                 return accountNotFound(transaction.getDest());
+
+            UpdateOptions options = new UpdateOptions();
+            options.upsert(false);
 
             Bson originFilter = and(
                     eq("accountId", transaction.getOrigin()),
@@ -294,9 +290,7 @@ public class LedgerDBWithMongo extends LedgerDBlayer
 
             Bson destFilter = eq("accountId", transaction.getDest());
 
-            options.upsert(false);
-
-            result = this.accounts.updateOne(originFilter,
+            UpdateResult result = this.accounts.updateOne(originFilter,
                 Updates.inc("balance", -transaction.getValue()), options);
             
             if (result.getMatchedCount() == 0)
@@ -308,7 +302,7 @@ public class LedgerDBWithMongo extends LedgerDBlayer
             ObjectId operationId = this.ledger.insertOne(toDAO(transaction)).getInsertedId().asObjectId()
                     .getValue();
 
-            filter = or(
+            Bson filter = or(
                     eq("accountId", transaction.getOrigin()),
                     eq("accountId", transaction.getDest()));
 
@@ -360,7 +354,7 @@ public class LedgerDBWithMongo extends LedgerDBlayer
             Iterator<LedgerOperation> operationsIt = operations.iterator();
             Iterator<LedgerOperationDAO> operationsDAOIt = operationsDAO.iterator();
 
-            List<WriteModel<Nonces>> noncesOps = new LinkedList<>();
+            List<WriteModel<Nonce>> nonceOps = new LinkedList<>();
 
             for (int i = 0; i < operationsDAO.size(); i++)
             {
@@ -388,7 +382,7 @@ public class LedgerDBWithMongo extends LedgerDBlayer
                         pairAccountOpsList.getLeft().processOperation(transaction);
                         pairAccountOpsList.getRight().add(operationDAO.getId());
 
-                        noncesOps.add(addNonceInBulkWrite(transaction.digest(), transaction.getNonce()));
+                        nonceOps.add(new InsertOneModel<>(new Nonce(transaction.digest(), transaction.getNonce())));
                     break;
                 }
             }
@@ -402,7 +396,7 @@ public class LedgerDBWithMongo extends LedgerDBlayer
                 .map((accountDAO) -> (WriteModel<AccountDAO>) new InsertOneModel<>(accountDAO)).toList();
 
             this.accounts.bulkWrite(accountsDAOmodel);
-            this.nonces.bulkWrite(noncesOps);
+            this.nonces.bulkWrite(nonceOps);
 
             return Result.ok();
             
@@ -426,16 +420,6 @@ public class LedgerDBWithMongo extends LedgerDBlayer
             operationsIt.next().setId(insertedIds.get(i).asObjectId().getValue());
 
         return insertOperations;
-    }
-
-    protected UpdateOneModel<Nonces> addNonceInBulkWrite(byte[] digest, int nonce)
-    {
-        UpdateOptions options = new UpdateOptions();
-        options.upsert(true);
-
-        Bson filter = eq("left", digest);
-
-        return new UpdateOneModel<>(filter, Updates.addToSet("right", nonce), options);
     }
 
 
@@ -509,6 +493,17 @@ public class LedgerDBWithMongo extends LedgerDBlayer
     }
 
     
-    protected static class Nonces extends Pair<byte[], List<Integer>> {}
+    protected static class Nonce extends Pair<byte[], Integer>
+    {
+
+        /**
+         * @param left
+         * @param right
+         */
+        public Nonce(byte[] left, Integer right) {
+            super(left, right);
+        }
+        
+    }
 
 }
