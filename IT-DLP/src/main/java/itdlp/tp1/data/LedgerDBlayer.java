@@ -1,5 +1,9 @@
 package itdlp.tp1.data;
 
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.util.Properties;
+
 import itdlp.tp1.api.Account;
 import itdlp.tp1.api.AccountId;
 import itdlp.tp1.api.operations.LedgerDeposit;
@@ -32,7 +36,7 @@ public abstract class LedgerDBlayer
         MONGO;
     }
 
-    public static final DBtype dbType = DBtype.MONGO;
+    public static DBtype dbType;
 
     private static LedgerDBlayer instance;
     
@@ -44,6 +48,8 @@ public abstract class LedgerDBlayer
     {
         if (instance == null)
         {
+            dbType = getDBType();
+            
             switch (dbType) {
                 case IN_MEMORY:
                     instance = LedgerDBinMemory.getInstance();
@@ -55,6 +61,23 @@ public abstract class LedgerDBlayer
         }
 
         return instance;
+    }
+
+    private static DBtype getDBType() throws LedgerDBlayerException
+    {
+        Properties props = new Properties();
+        try (InputStream input = new FileInputStream("db-config.properties"))
+        {
+            props.load(input);
+            String type = props.getProperty("DB_TYPE");
+
+            if (type == null)
+                throw new LedgerDBlayerException("DB_TYPE not specified.");
+
+            return DBtype.valueOf(type.toUpperCase());
+        } catch (Exception e) {
+            throw new LedgerDBlayerException(e.getMessage(), e);
+        }
     }
 
 
