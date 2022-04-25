@@ -21,6 +21,7 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.Accumulators;
 import com.mongodb.client.model.Aggregates;
+import com.mongodb.client.model.FindOneAndReplaceOptions;
 import com.mongodb.client.model.IndexOptions;
 import com.mongodb.client.model.Indexes;
 import com.mongodb.client.model.Projections;
@@ -50,6 +51,7 @@ import itdlp.tp1.api.operations.LedgerOperation;
 import itdlp.tp1.api.operations.LedgerTransaction;
 import itdlp.tp1.util.Pair;
 import itdlp.tp1.util.Result;
+import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.InternalServerErrorException;
 import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.WebApplicationException;
@@ -254,6 +256,22 @@ public class LedgerDBWithMongo extends LedgerDBlayer
 
         UpdateOptions updateOptions = new UpdateOptions();
         updateOptions.upsert(false);
+
+        try {
+            UpdateOptions options = new UpdateOptions();
+            options.upsert(true);
+
+            Bson filter = and(
+                eq("left", transaction.digest()),
+                not(in("right", transaction.getNonce()))
+            );
+
+            this.nonces.updateOne(filter,
+                Updates.addToSet("right", transaction.getNonce()), options);
+
+        } catch (MongoException e) {
+            return Result.error(new ForbiddenException("Invalid nonce."));
+        }
 
         try {
             Bson originFilter = and(
