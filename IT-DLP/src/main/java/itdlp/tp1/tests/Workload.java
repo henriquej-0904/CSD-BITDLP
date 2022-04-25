@@ -88,8 +88,8 @@ public class Workload implements Runnable
         try
         (
             LedgerClient client = isHttps
-                ? new LedgerClient(this.endpoint, getSSLContext())
-                : new LedgerClient(this.endpoint);
+                ? new LedgerClient(this.endpoint, this.random, getSSLContext())
+                : new LedgerClient(this.endpoint, this.random);
         )
         {
             createAccounts(client);
@@ -210,8 +210,15 @@ public class Workload implements Runnable
         for (Entry<AccountId, KeyPair> originAccount : accounts1.entrySet()) {
             
             for (AccountId destAccountId : accounts2.keySet()) {
+                int nonce = this.random.nextInt();
+
                 request(() -> client.sendTransaction(originAccount.getKey(), destAccountId,
-                    55, originAccount.getValue()),
+                    55, originAccount.getValue(), nonce),
+                    itdlp.tp1.impl.srv.resources.requests.Request.Operation.SEND_TRANSACTION);
+
+                // expected to fail with 403
+                request(() -> client.sendTransaction(originAccount.getKey(), destAccountId,
+                    55, originAccount.getValue(), nonce),
                     itdlp.tp1.impl.srv.resources.requests.Request.Operation.SEND_TRANSACTION);
             }
         }

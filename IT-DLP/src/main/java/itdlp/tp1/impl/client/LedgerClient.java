@@ -4,6 +4,7 @@ import java.io.Closeable;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.security.KeyPair;
+import java.security.SecureRandom;
 import java.security.Signature;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -11,8 +12,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import javax.net.ssl.SSLContext;
-
-import org.apache.commons.lang3.RandomUtils;
 
 import itdlp.tp1.api.Account;
 import itdlp.tp1.api.AccountId;
@@ -43,20 +42,24 @@ public class LedgerClient implements Closeable
 
     private URI endpoint;
 
+    private SecureRandom random;
+
     
-    public LedgerClient(URI endpoint)
+    public LedgerClient(URI endpoint, SecureRandom random)
     {
         this.client = getClientBuilder().build();
         this.endpoint = endpoint;
+        this.random = random;
     }
 
-    public LedgerClient(URI endpoint, SSLContext sslContext)
+    public LedgerClient(URI endpoint, SecureRandom random, SSLContext sslContext)
     {
         ClientBuilder builder = getClientBuilder().sslContext(sslContext)
             .hostnameVerifier((arg0, arg1) -> true);
 
         this.client = builder.build();
         this.endpoint = endpoint;
+        this.random = random;
     }
 
     private static ClientBuilder getClientBuilder()
@@ -144,7 +147,25 @@ public class LedgerClient implements Closeable
     {
         ByteBuffer buffer = ByteBuffer.allocate(2 * Integer.BYTES);
         buffer.putInt(value);
-        int nonce = RandomUtils.nextInt();
+        int nonce = this.random.nextInt();
+        buffer.putInt(nonce);
+
+        String signature = sign(originAccountKeys, originId.getObjectId(), destId.getObjectId(), buffer.array());
+
+        return request(this.client.target(this.endpoint).path(Accounts.PATH)
+            .path("transaction").path(Integer.toString(value))
+            .request()
+            .header(Accounts.ACC_SIG, signature)
+            .header(Accounts.NONCE, nonce)
+            .buildPost(Entity.json(new Pair<>(originId.getObjectId(), destId.getObjectId()))),
+                Void.class);
+    }
+
+    public Result<Void> sendTransaction(AccountId originId, AccountId destId, int value, KeyPair originAccountKeys,
+        int nonce)
+    {
+        ByteBuffer buffer = ByteBuffer.allocate(2 * Integer.BYTES);
+        buffer.putInt(value);
         buffer.putInt(nonce);
 
         String signature = sign(originAccountKeys, originId.getObjectId(), destId.getObjectId(), buffer.array());
