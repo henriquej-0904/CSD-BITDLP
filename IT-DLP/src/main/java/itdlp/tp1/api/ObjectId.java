@@ -11,7 +11,7 @@ import itdlp.tp1.util.Utils;
 
 public abstract class ObjectId implements Comparable<ObjectId>, Serializable {
 
-    protected byte[] id;
+    protected byte[] objectId;
 
     /**
      * Create an ObjectId object from the specified id.
@@ -22,7 +22,7 @@ public abstract class ObjectId implements Comparable<ObjectId>, Serializable {
         if (id == null)
             throw new IllegalArgumentException();
         
-        this.id = id;
+        this.objectId = id;
     }
 
     /**
@@ -34,15 +34,15 @@ public abstract class ObjectId implements Comparable<ObjectId>, Serializable {
     /**
      * @param id the id to set
      */
-    public void setId(byte[] id) {
-        this.id = id;
+    public void setObjectId(byte[] id) {
+        this.objectId = id;
     }
 
     /**
      * @return the id
      */
-    public byte[] getId() {
-        return id;
+    public byte[] getObjectId() {
+        return objectId;
     }
 
     /**
@@ -51,11 +51,11 @@ public abstract class ObjectId implements Comparable<ObjectId>, Serializable {
      * @return The public key.
      */
     @JsonIgnore
-    public abstract PublicKey getPublicKey() throws InvalidKeySpecException;
+    public abstract PublicKey publicKey() throws InvalidKeySpecException;
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + "=" + Utils.toHex(getId());
+        return getClass().getSimpleName() + "=" + Utils.toHex(getObjectId());
     }
 
     @Override
@@ -67,12 +67,12 @@ public abstract class ObjectId implements Comparable<ObjectId>, Serializable {
             return false;
 
         ObjectId other = (ObjectId)obj;
-        return Arrays.equals(getId(), other.getId());
+        return Arrays.equals(getObjectId(), other.getObjectId());
     }
 
     @Override
     public int hashCode() {
-        return Arrays.hashCode(getId());
+        return Arrays.hashCode(getObjectId());
     }
 
     @Override
@@ -80,7 +80,7 @@ public abstract class ObjectId implements Comparable<ObjectId>, Serializable {
         if (this == o)
             return 0;
 
-        return Arrays.compare(getId(), o.getId());
+        return Arrays.compare(getObjectId(), o.getObjectId());
     }
 
 }

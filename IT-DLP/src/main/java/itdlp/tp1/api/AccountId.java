@@ -4,6 +4,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.PublicKey;
+import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
 import java.util.Arrays;
 
@@ -17,6 +18,7 @@ public class AccountId extends ObjectId
     private static final long serialVersionUID = 995623L;
 
     private static final int HASH_BYTES_LENGTH = 256/8;
+    private static final int SRN_LENGHT = 4;
 
     /**
      * Create an AccountId object from the specified email and public key.
@@ -24,8 +26,8 @@ public class AccountId extends ObjectId
      * @param email The user email.
      * @param key The account public key.
      */
-    public AccountId(String email, PublicKey key) {
-        super(generateId(email, key));
+    public AccountId(String email, PublicKey key, SecureRandom random) {
+        super(generateId(email, key, random));
     }
 
     /**
@@ -54,13 +56,16 @@ public class AccountId extends ObjectId
      * 
      * @return The generated id.
      */
-    private static byte[] generateId(String email, PublicKey key) {
+    private static byte[] generateId(String email, PublicKey key, SecureRandom random) {
         // id creation
         MessageDigest digest = Crypto.getSha256Digest();
 
         digest.update(email.getBytes(StandardCharsets.UTF_8));
-        //TODO: VER NA SEXTA
-        //digest.update(SRN.getBytes(StandardCharsets.UTF_8));
+
+        byte[] srn = new byte[SRN_LENGHT];
+        random.nextBytes(srn);
+
+        digest.update(srn);
 
         ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
         buffer.putLong(System.currentTimeMillis());
@@ -75,8 +80,8 @@ public class AccountId extends ObjectId
     }
 
     @Override
-    public PublicKey getPublicKey() throws InvalidKeySpecException {
-        byte[] publicKeyBytes = Arrays.copyOfRange(this.id, HASH_BYTES_LENGTH, this.id.length);
+    public PublicKey publicKey() throws InvalidKeySpecException {
+        byte[] publicKeyBytes = Arrays.copyOfRange(this.objectId, HASH_BYTES_LENGTH, this.objectId.length);
         return Crypto.getPublicKey(publicKeyBytes);
     }
 

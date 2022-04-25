@@ -6,7 +6,7 @@ public class LedgerDeposit extends LedgerOperation
 {
     private static final long serialVersionUID = 44444451312312L;
 
-    private AccountId id;
+    private AccountId accountId;
 
     /**
      * @throws InvalidOperationException
@@ -14,7 +14,7 @@ public class LedgerDeposit extends LedgerOperation
      */
     public LedgerDeposit(int value, AccountId id) throws InvalidOperationException {
         super(value, Type.DEPOSIT);
-        this.id = id;
+        this.accountId = id;
     }
 
     /**
@@ -23,7 +23,7 @@ public class LedgerDeposit extends LedgerOperation
      */
     public LedgerDeposit(int value, String date, AccountId id) throws InvalidOperationException {
         super(value, Type.DEPOSIT, date);
-        this.id = id;
+        this.accountId = id;
     }
 
     /**
@@ -32,12 +32,12 @@ public class LedgerDeposit extends LedgerOperation
     public LedgerDeposit() {
     }
 
-    public AccountId getId() {
-        return id;
+    public AccountId getAccountId() {
+        return accountId;
     }
 
-    public void setId(AccountId id) {
-        this.id = id;
+    public void setAccountId(AccountId id) {
+        this.accountId = id;
     }
 
     @Override

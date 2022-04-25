@@ -254,7 +254,7 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource {
                 init();
                 return this.db.getState().resultOrThrow().getSerializedState();
             }catch(Exception e){
-                LOG.severe(e.getMessage());
+                //Utils.logError(e, LOG);
                 return new byte[0];
             }
         }
@@ -267,7 +267,7 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource {
                 this.db.loadState(new LedgerState(arg0)).resultOrThrow();
 
             }catch(Exception e){
-                LOG.severe(e.getMessage());
+                //Utils.logError(e, LOG);
             }
         }
 

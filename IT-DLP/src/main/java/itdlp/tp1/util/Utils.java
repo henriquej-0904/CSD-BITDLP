@@ -5,20 +5,32 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Base64;
 import java.util.Calendar;
+import java.util.logging.Logger;
 
 public class Utils
 {
+    public static void logError(Exception e, Logger log)
+    {
+        StringWriter sw = new StringWriter();
+            PrintWriter pw = new PrintWriter(sw);
+            e.printStackTrace(pw);
+            String sStackTrace = sw.toString();
+            log.severe(sStackTrace);
+    }
+
     public static Object readObject(byte[] arr) throws ClassNotFoundException {
         try (ByteArrayInputStream inputArr = new ByteArrayInputStream(arr);
                 ObjectInputStream as = new ObjectInputStream(inputArr);) {
             return as.readObject();
         } catch (IOException ex) {
             // never thrown
-            throw new Error(ex);
+            throw new RuntimeException(ex);
         }
     }
 
@@ -31,7 +43,7 @@ public class Utils
             return outputArr.toByteArray();
         } catch (IOException ex) {
             // never thrown
-            throw new Error(ex);
+            throw new RuntimeException(ex);
         }
     }
 

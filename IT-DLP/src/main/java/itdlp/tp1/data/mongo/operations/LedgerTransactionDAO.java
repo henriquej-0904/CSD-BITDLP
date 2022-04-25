@@ -1,37 +1,46 @@
-package itdlp.tp1.api.operations;
+package itdlp.tp1.data.mongo.operations;
 
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 
+import org.bson.codecs.pojo.annotations.BsonDiscriminator;
+
 import itdlp.tp1.api.AccountId;
+import itdlp.tp1.api.operations.InvalidOperationException;
+import itdlp.tp1.api.operations.LedgerOperation;
+import itdlp.tp1.api.operations.LedgerTransaction;
 import itdlp.tp1.util.Crypto;
 
-public class LedgerTransaction extends LedgerOperation {
-
-    private static final long serialVersionUID = 232326588562L;
+@BsonDiscriminator(value = "LedgerTransactionDAO", key = "_cls")
+public class LedgerTransactionDAO extends LedgerOperationDAO {
 
     private AccountId origin, dest;
     
     private int nonce;
 
-    public LedgerTransaction(AccountId origin, AccountId dest, int value, int nonce) throws InvalidOperationException {
+    public LedgerTransactionDAO(AccountId origin, AccountId dest, int value, int nonce) throws InvalidOperationException {
         super(value, Type.TRANSACTION);
         this.origin = origin;
         this.dest = dest;
         this.nonce = nonce;
     }
 
-    public LedgerTransaction(AccountId origin, AccountId dest, int value, String date, int nonce) throws InvalidOperationException {
+    public LedgerTransactionDAO(AccountId origin, AccountId dest, int value, String date, int nonce) throws InvalidOperationException {
         super(value, Type.TRANSACTION, date);
         this.origin = origin;
         this.dest = dest;
         this.nonce = nonce;
     }
 
+    public LedgerTransactionDAO(LedgerTransaction transaction) throws InvalidOperationException
+    {
+        this(transaction.getOrigin(), transaction.getDest(), transaction.getValue(), transaction.getDate(), transaction.getNonce());
+    }
+
     /**
      * 
      */
-    public LedgerTransaction() {
+    public LedgerTransactionDAO() {
     }
 
     /**
@@ -88,5 +97,14 @@ public class LedgerTransaction extends LedgerOperation {
         digest.update(buffer.array());
 
         return digest.digest();
+    }
+
+    public LedgerOperation toLedgerTransaction() {
+        try {
+            LedgerTransaction transaction = new LedgerTransaction(origin, dest, getValue(), getDate(), nonce);
+            return transaction;
+        } catch (Exception e) {
+            throw new Error(e.getMessage(), e);
+        }
     }
 }

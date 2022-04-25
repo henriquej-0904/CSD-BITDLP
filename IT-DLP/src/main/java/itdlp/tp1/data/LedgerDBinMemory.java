@@ -163,7 +163,7 @@ public class LedgerDBinMemory extends LedgerDBlayer
     @Override
     public Result<Void> loadMoney(LedgerDeposit deposit)
     {
-        Result<Account> accountRes = getAccount(deposit.getId());
+        Result<Account> accountRes = getAccount(deposit.getAccountId());
         if (!accountRes.isOK())
             return Result.error(accountRes.errorException());
 
@@ -245,7 +245,7 @@ public class LedgerDBinMemory extends LedgerDBlayer
                 if(lOp instanceof LedgerDeposit){
 
                     LedgerDeposit deposit = (LedgerDeposit) lOp;
-                    Account acc = this.accounts.get(deposit.getId());
+                    Account acc = this.accounts.get(deposit.getAccountId());
                     acc.processOperation(deposit);
 
                 }else if(lOp instanceof LedgerTransaction){
