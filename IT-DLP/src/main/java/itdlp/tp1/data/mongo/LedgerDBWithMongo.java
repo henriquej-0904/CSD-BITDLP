@@ -43,6 +43,7 @@ import itdlp.tp1.data.mongo.operations.LedgerOperationDAO;
 import itdlp.tp1.data.mongo.operations.LedgerTransactionDAO;
 import itdlp.tp1.api.Account;
 import itdlp.tp1.api.AccountId;
+import itdlp.tp1.api.UserId;
 import itdlp.tp1.api.operations.InvalidOperationException;
 import itdlp.tp1.api.operations.LedgerDeposit;
 import itdlp.tp1.api.operations.LedgerOperation;
@@ -319,13 +320,30 @@ public class LedgerDBWithMongo extends LedgerDBlayer
     @Override
     public Result<Void> loadState(LedgerState state) {
         init();
+
         return Result.error(500);
     }
 
     @Override
     public Result<LedgerState> getState() {
         init();
-        return Result.error(500);
+        
+        List<Pair<AccountId,UserId>> resAccounts = new LinkedList<>();
+        List<LedgerOperation> resOperations = new LinkedList<>();
+
+        for (AccountDAO account : this.accounts.find()) {
+            resAccounts.add(new Pair<>(account.getAccountId(), account.getOwner()));
+        }
+        
+        AggregateIterable<LedgerOperationDAO> ledgerIt = this.ledger.aggregate(Arrays.asList(
+		    Aggregates.sort(Sorts.ascending("ts"))
+			));
+
+        for (LedgerOperationDAO operation : ledgerIt) {
+            resOperations.add(operation.toLedgerOperation());
+        }
+
+        return Result.ok(new LedgerState(resAccounts, resOperations));
     }
 
     
