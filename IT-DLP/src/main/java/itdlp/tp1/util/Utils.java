@@ -30,7 +30,7 @@ public class Utils
             return as.readObject();
         } catch (IOException ex) {
             // never thrown
-            throw new Error(ex);
+            throw new RuntimeException(ex);
         }
     }
 
@@ -43,7 +43,7 @@ public class Utils
             return outputArr.toByteArray();
         } catch (IOException ex) {
             // never thrown
-            throw new Error(ex);
+            throw new RuntimeException(ex);
         }
     }
 

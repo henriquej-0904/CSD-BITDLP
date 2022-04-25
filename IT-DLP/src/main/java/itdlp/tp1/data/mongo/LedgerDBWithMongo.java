@@ -26,7 +26,6 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.Accumulators;
 import com.mongodb.client.model.Aggregates;
-import com.mongodb.client.model.BulkWriteOptions;
 import com.mongodb.client.model.IndexOptions;
 import com.mongodb.client.model.Indexes;
 import com.mongodb.client.model.InsertManyOptions;
@@ -38,6 +37,7 @@ import com.mongodb.client.model.UpdateOptions;
 import com.mongodb.client.model.Updates;
 import com.mongodb.client.model.WriteModel;
 import com.mongodb.client.result.InsertManyResult;
+import com.mongodb.client.result.UpdateResult;
 
 import org.bson.BsonValue;
 import org.bson.Document;
@@ -164,12 +164,10 @@ public class LedgerDBWithMongo extends LedgerDBlayer
         init();
 
         try {
-
             FindIterable<AccountDAO> result = this.accounts.find(eq("accountId", accountId));
-            if (result == null)
-                return accountNotFound(accountId);
-
             AccountDAO accountDAO = result.first();
+            if (accountDAO == null)
+                return accountNotFound(accountId);
             
             FindIterable<LedgerOperationDAO> operations =
                 this.ledger.find(in("id", accountDAO.getOperations()));
@@ -177,16 +175,13 @@ public class LedgerDBWithMongo extends LedgerDBlayer
             Account account = accountDAO.toAccount();
             List<LedgerOperation> accountOps = account.getOperations();
 
-            if (operations != null)
-            {
-                for (LedgerOperationDAO ledgerOperationDAO : operations) {
-                    accountOps.add(ledgerOperationDAO.toLedgerOperation());
-                }
+            for (LedgerOperationDAO ledgerOperationDAO : operations) {
+                accountOps.add(ledgerOperationDAO.toLedgerOperation());
             }
 
             return Result.ok(account);
         } catch (MongoException e) {
-            return accountNotFound(accountId);
+            return Result.error(new InternalServerErrorException(e.getMessage(), e));
         }
     }
 
@@ -246,19 +241,19 @@ public class LedgerDBWithMongo extends LedgerDBlayer
         op.upsert(false);
 
         try {
-            LedgerDBWithMongo.this.accounts.updateOne(eq("accountId", deposit.getAccountId()),
+            UpdateResult result = this.accounts.updateOne(eq("accountId", deposit.getAccountId()),
                     Updates.inc("balance", deposit.getValue()), op);
-        } catch (Exception e) {
-            return accountNotFound(deposit.getAccountId());
-        }
 
-        try {
-            ObjectId operationId = LedgerDBWithMongo.this.ledger.insertOne(toDAO(deposit))
+            if (result.getMatchedCount() == 0)
+                return accountNotFound(deposit.getAccountId());
+
+            ObjectId operationId = this.ledger.insertOne(toDAO(deposit))
                     .getInsertedId().asObjectId().getValue();
 
-            LedgerDBWithMongo.this.accounts.updateOne(eq("accountId", deposit.getAccountId()),
+            this.accounts.updateOne(eq("accountId", deposit.getAccountId()),
                     Updates.push("operations", operationId), op);
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             return Result.error(new InternalServerErrorException(e.getMessage(), e));
         }
 
@@ -270,6 +265,8 @@ public class LedgerDBWithMongo extends LedgerDBlayer
         init();
 
         try {
+            // add nonce
+
             UpdateOptions options = new UpdateOptions();
             options.upsert(true);
 
@@ -277,51 +274,50 @@ public class LedgerDBWithMongo extends LedgerDBlayer
                     eq("left", transaction.digest()),
                     not(in("right", transaction.getNonce())));
 
-            this.nonces.updateOne(filter,
+            UpdateResult result = this.nonces.updateOne(filter,
                     Updates.addToSet("right", transaction.getNonce()), options);
 
-        } catch (MongoException e) {
-            return Result.error(new ForbiddenException("Invalid nonce."));
-        }
+            if (!(result.getMatchedCount() > 0 || result.getUpsertedId() != null))
+                return Result.error(new ForbiddenException("Invalid nonce."));
 
-        UpdateOptions updateOptions = new UpdateOptions();
-        updateOptions.upsert(false);
+            // apply operation
 
-        try {
+            if (!checkAccountExists(transaction.getOrigin()))
+                return accountNotFound(transaction.getOrigin());
+
+            if (!checkAccountExists(transaction.getDest()))
+                return accountNotFound(transaction.getDest());
+
             Bson originFilter = and(
                     eq("accountId", transaction.getOrigin()),
                     gte("balance", transaction.getValue()));
 
             Bson destFilter = eq("accountId", transaction.getDest());
 
-            this.accounts.bulkWrite(Arrays.asList(
-                
-                new UpdateOneModel<>(originFilter,
-                    Updates.inc("balance", -transaction.getValue()), updateOptions),
-                
-                new UpdateOneModel<>(destFilter,
-                    Updates.inc("balance", transaction.getValue()), updateOptions)
+            options.upsert(false);
 
-            ), new BulkWriteOptions().ordered(true));
+            result = this.accounts.updateOne(originFilter,
+                Updates.inc("balance", -transaction.getValue()), options);
+            
+            if (result.getMatchedCount() == 0)
+                return Result.error(new WebApplicationException("Not enough money.", Status.CONFLICT));
 
-        } catch (MongoException e) {
-            return Result.error(new WebApplicationException(e.getMessage(), e, Status.CONFLICT.getStatusCode()));
-        }
-
-        try {
+            this.accounts.updateOne(destFilter, Updates.inc("balance", transaction.getValue()), options);
+            
+            // add operation to ledger
             ObjectId operationId = this.ledger.insertOne(toDAO(transaction)).getInsertedId().asObjectId()
                     .getValue();
 
-            Bson filter = or(
+            filter = or(
                     eq("accountId", transaction.getOrigin()),
                     eq("accountId", transaction.getDest()));
 
             this.accounts.updateMany(filter,
-                    Updates.push("operations", operationId), updateOptions);
+                    Updates.push("operations", operationId), options);
 
             return Result.ok();
 
-        } catch (MongoException e) {
+        } catch (Exception e) {
             return Result.error(new InternalServerErrorException(e.getMessage(), e));
         }
     }
@@ -470,6 +466,16 @@ public class LedgerDBWithMongo extends LedgerDBlayer
         }
 
         return Result.ok(new LedgerState(resAccounts, resOperations));
+    }
+
+    protected boolean checkAccountExists(AccountId accountId)
+    {
+        AggregateIterable<AccountDAO> result = this.accounts.aggregate(Arrays.asList(
+			Aggregates.match(eq("accountId", accountId)),
+            Aggregates.project(Projections.include("accountId"))
+			));
+
+        return result.first() != null;
     }
     
     protected LedgerOperationDAO toDAO(LedgerOperation operation)
