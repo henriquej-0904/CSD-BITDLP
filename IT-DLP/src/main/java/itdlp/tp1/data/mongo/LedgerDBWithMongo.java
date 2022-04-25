@@ -19,14 +19,17 @@ import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.Accumulators;
 import com.mongodb.client.model.Aggregates;
 import com.mongodb.client.model.IndexOptions;
 import com.mongodb.client.model.Indexes;
+import com.mongodb.client.model.Projections;
 import com.mongodb.client.model.Sorts;
 import com.mongodb.client.model.UpdateOneModel;
 import com.mongodb.client.model.UpdateOptions;
 import com.mongodb.client.model.Updates;
 
+import org.bson.Document;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.Conventions;
 import org.bson.codecs.pojo.PojoCodecProvider;
@@ -169,9 +172,12 @@ public class LedgerDBWithMongo extends LedgerDBlayer
     public Result<Integer> getBalance(AccountId accountId) {
         init();
 
-        FindIterable<AccountDAO> result = this.accounts.find(eq("accountId", accountId));
+        AggregateIterable<AccountDAO> result = this.accounts.aggregate(Arrays.asList(
+			Aggregates.match(eq("accountId", accountId)),
+            Aggregates.project(Projections.include("balance"))
+			));
 
-        if(result == null)
+        if (result.first() == null)
             return accountNotFound(accountId);
 
         return Result.ok(result.first().getBalance());
@@ -180,7 +186,18 @@ public class LedgerDBWithMongo extends LedgerDBlayer
     @Override
     public Result<Integer> getTotalValue(AccountId[] accounts) {
         init();
-        return Result.error(500);
+
+        MongoCollection<Document> collection = this.db.getCollection("Accounts");
+		AggregateIterable<Document> result = collection.aggregate(Arrays.asList(
+    		Aggregates.match(in("accountId", accounts)),
+            Aggregates.project(Projections.include("balance")),
+			Aggregates.group(null, Accumulators.sum("total_balance", "$balance"))
+			));
+
+        if (result.first() == null)
+            return Result.ok(0);
+
+        return Result.ok(result.first().getInteger("total_balance"));
     }
 
     @Override
