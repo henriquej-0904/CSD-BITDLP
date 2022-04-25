@@ -3,12 +3,15 @@ package itdlp.tp1.data.mongo.operations;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 
+import org.bson.codecs.pojo.annotations.BsonDiscriminator;
+
 import itdlp.tp1.api.AccountId;
 import itdlp.tp1.api.operations.InvalidOperationException;
 import itdlp.tp1.api.operations.LedgerOperation;
 import itdlp.tp1.api.operations.LedgerTransaction;
 import itdlp.tp1.util.Crypto;
 
+@BsonDiscriminator(value = "LedgerTransactionDAO", key = "_cls")
 public class LedgerTransactionDAO extends LedgerOperationDAO {
 
     private AccountId origin, dest;
@@ -27,6 +30,11 @@ public class LedgerTransactionDAO extends LedgerOperationDAO {
         this.origin = origin;
         this.dest = dest;
         this.nonce = nonce;
+    }
+
+    public LedgerTransactionDAO(LedgerTransaction transaction) throws InvalidOperationException
+    {
+        this(transaction.getOrigin(), transaction.getDest(), transaction.getValue(), transaction.getDate(), transaction.getNonce());
     }
 
     /**

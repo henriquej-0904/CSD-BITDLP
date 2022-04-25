@@ -6,6 +6,7 @@ import java.util.Calendar;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 
+import org.bson.codecs.pojo.annotations.BsonDiscriminator;
 import org.bson.types.ObjectId;
 
 import itdlp.tp1.api.operations.InvalidOperationException;
@@ -18,6 +19,8 @@ import itdlp.tp1.util.Utils;
 
     @JsonSubTypes.Type(value = LedgerTransactionDAO.class, name = "LedgerTransactionDAO") }
 )
+
+@BsonDiscriminator(key = "_cls")
 public abstract class LedgerOperationDAO {
     
     public static enum Type

@@ -1,10 +1,13 @@
 package itdlp.tp1.data.mongo.operations;
 
+import org.bson.codecs.pojo.annotations.BsonDiscriminator;
+
 import itdlp.tp1.api.AccountId;
 import itdlp.tp1.api.operations.InvalidOperationException;
 import itdlp.tp1.api.operations.LedgerDeposit;
 import itdlp.tp1.api.operations.LedgerOperation;
 
+@BsonDiscriminator(value = "LedgerDepositDAO", key = "_cls")
 public class LedgerDepositDAO extends LedgerOperationDAO
 {
     private AccountId accountId;
@@ -25,6 +28,14 @@ public class LedgerDepositDAO extends LedgerOperationDAO
     public LedgerDepositDAO(int value, String date, AccountId id) throws InvalidOperationException {
         super(value, Type.DEPOSIT, date);
         this.accountId = id;
+    }
+
+    /**
+     * @throws InvalidOperationException
+     * 
+     */
+    public LedgerDepositDAO(LedgerDeposit deposit) throws InvalidOperationException {
+        this(deposit.getValue(), deposit.getDate(), deposit.getAccountId());
     }
 
     /**

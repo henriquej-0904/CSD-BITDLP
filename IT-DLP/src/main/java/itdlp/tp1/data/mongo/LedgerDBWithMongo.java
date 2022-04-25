@@ -4,42 +4,52 @@ import static com.mongodb.MongoClientSettings.getDefaultCodecRegistry;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 
-import static com.mongodb.client.model.Filters.eq;
-import static com.mongodb.client.model.Filters.and;
-import static com.mongodb.client.model.Filters.in;
+import static com.mongodb.client.model.Filters.*;
 
-import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.List;
 
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.MongoException;
+import com.mongodb.client.AggregateIterable;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.Aggregates;
 import com.mongodb.client.model.IndexOptions;
 import com.mongodb.client.model.Indexes;
-import com.mongodb.client.model.InsertOneOptions;
 import com.mongodb.client.model.Sorts;
-import com.mongodb.client.result.InsertOneResult;
+import com.mongodb.client.model.UpdateOneModel;
+import com.mongodb.client.model.UpdateOptions;
+import com.mongodb.client.model.Updates;
 
-import org.bson.codecs.configuration.CodecProvider;
 import org.bson.codecs.configuration.CodecRegistry;
+import org.bson.codecs.pojo.Conventions;
 import org.bson.codecs.pojo.PojoCodecProvider;
+import org.bson.conversions.Bson;
+import org.bson.types.ObjectId;
 
 import itdlp.tp1.data.LedgerDBlayer;
 import itdlp.tp1.data.LedgerState;
+import itdlp.tp1.data.mongo.operations.LedgerDepositDAO;
 import itdlp.tp1.data.mongo.operations.LedgerOperationDAO;
+import itdlp.tp1.data.mongo.operations.LedgerTransactionDAO;
 import itdlp.tp1.api.Account;
 import itdlp.tp1.api.AccountId;
+import itdlp.tp1.api.operations.InvalidOperationException;
 import itdlp.tp1.api.operations.LedgerDeposit;
 import itdlp.tp1.api.operations.LedgerOperation;
 import itdlp.tp1.api.operations.LedgerTransaction;
 import itdlp.tp1.util.Pair;
 import itdlp.tp1.util.Result;
 import jakarta.ws.rs.InternalServerErrorException;
+import jakarta.ws.rs.NotFoundException;
+import jakarta.ws.rs.WebApplicationException;
+import jakarta.ws.rs.core.Response.Status;
 
 /**
  * Impl of LegerDB with Mongo-DB.
@@ -89,7 +99,9 @@ public class LedgerDBWithMongo extends LedgerDBlayer
 			return;
 
         try {
-            CodecProvider pojoCodecProvider = PojoCodecProvider.builder().automatic(true).build();
+            PojoCodecProvider pojoCodecProvider = PojoCodecProvider.builder().automatic(true)
+                .conventions(Conventions.DEFAULT_CONVENTIONS).build();
+
             CodecRegistry pojoCodecRegistry = fromRegistries(getDefaultCodecRegistry(),
                     fromProviders(pojoCodecProvider));
 
@@ -104,6 +116,7 @@ public class LedgerDBWithMongo extends LedgerDBlayer
 
             this.accounts.createIndex(Indexes.ascending("accountId"), indexOptions);
             this.nonces.createIndex(Indexes.ascending("left"), indexOptions);
+
         } catch (Exception e) {
             throw new InternalServerErrorException(e.getMessage(), e);
         }
@@ -155,7 +168,13 @@ public class LedgerDBWithMongo extends LedgerDBlayer
     @Override
     public Result<Integer> getBalance(AccountId accountId) {
         init();
-        return Result.error(500);
+
+        FindIterable<AccountDAO> result = this.accounts.find(eq("accountId", accountId));
+
+        if(result == null)
+            return accountNotFound(accountId);
+
+        return Result.ok(result.first().getBalance());
     }
 
     @Override
@@ -173,19 +192,101 @@ public class LedgerDBWithMongo extends LedgerDBlayer
     @Override
     public Result<Void> loadMoney(LedgerDeposit deposit) {
         init();
-        return Result.error(500);
+
+        try {
+            UpdateOptions op = new UpdateOptions();
+            op.upsert(false);
+
+            this.accounts.updateOne(eq("accountId", deposit.getAccountId()),
+                Updates.inc("balance", deposit.getValue()), op);
+
+        } catch (MongoException e) {
+            return accountNotFound(deposit.getAccountId());
+        }
+
+        try {
+            ObjectId operationId = this.ledger.insertOne(toDAO(deposit)).getInsertedId().asObjectId().getValue();
+
+            UpdateOptions op = new UpdateOptions();
+            op.upsert(false);
+
+            this.accounts.updateOne(eq("accountId", deposit.getAccountId()),
+                Updates.push("operations", operationId), op);
+
+            return Result.ok();
+
+        }catch (MongoException e) {
+            return Result.error(new InternalServerErrorException(e.getMessage(), e));
+        }
     }
 
     @Override
     public Result<Void> sendTransaction(LedgerTransaction transaction) {
         init();
-        return Result.error(500);
+
+        UpdateOptions updateOptions = new UpdateOptions();
+        updateOptions.upsert(false);
+
+        try {
+            Bson originFilter = and(
+                eq("accountId", transaction.getOrigin()),
+                gte("balance", transaction.getValue())
+            );
+
+            Bson destFilter = eq("accountId", transaction.getDest());
+
+            this.accounts.bulkWrite(Arrays.asList(
+                new UpdateOneModel<>(originFilter,
+                    Updates.inc("balance", -transaction.getValue()),
+                    updateOptions),
+                
+                new UpdateOneModel<>(destFilter,
+                    Updates.inc("balance", transaction.getValue()),
+                    updateOptions)
+            ));
+
+        } catch (MongoException e) {
+            return Result.error(new WebApplicationException(e.getMessage(), e, Status.CONFLICT.getStatusCode()));
+        }
+
+        try {
+            ObjectId operationId = this.ledger.insertOne(toDAO(transaction)).getInsertedId().asObjectId().getValue();
+
+            this.accounts.bulkWrite(Arrays.asList(
+                new UpdateOneModel<>(eq("accountId", transaction.getOrigin()),
+                    Updates.push("operations", operationId),
+                    updateOptions),
+                
+                new UpdateOneModel<>(eq("accountId", transaction.getDest()),
+                    Updates.push("operations", operationId),
+                    updateOptions)
+            ));
+
+            return Result.ok();
+
+        }catch (MongoException e) {
+            return Result.error(new InternalServerErrorException(e.getMessage(), e));
+        }
     }
 
     @Override
     public Result<LedgerOperation[]> getLedger() {
         init();
-        return Result.error(500);
+
+        AggregateIterable<LedgerOperationDAO> result = this.ledger.aggregate(Arrays.asList(
+			Aggregates.sort(Sorts.ascending("ts"))
+			));
+
+        if (result.first() == null)
+            return Result.error(new NotFoundException("The ledger is empty."));
+
+        List<LedgerOperation> list = new LinkedList<>();
+
+        for (LedgerOperationDAO lO : result) {
+            list.add(lO.toLedgerOperation());
+        }
+
+        return Result.ok(list.toArray(new LedgerOperation[0]));
     }
 
     @Override
@@ -199,6 +300,26 @@ public class LedgerDBWithMongo extends LedgerDBlayer
         init();
         return Result.error(500);
     }
+
+    
+    protected LedgerDepositDAO toDAO(LedgerDeposit deposit)
+    {
+        try {
+            return new LedgerDepositDAO(deposit);
+        } catch (InvalidOperationException e) {
+            throw new Error(e.getMessage(), e);
+        }
+    }
+
+    protected LedgerTransactionDAO toDAO(LedgerTransaction transaction)
+    {
+        try {
+            return new LedgerTransactionDAO(transaction);
+        } catch (InvalidOperationException e) {
+            throw new Error(e.getMessage(), e);
+        }
+    }
+
     
     protected static class Nonces extends Pair<byte[], List<Integer>> {}
 
