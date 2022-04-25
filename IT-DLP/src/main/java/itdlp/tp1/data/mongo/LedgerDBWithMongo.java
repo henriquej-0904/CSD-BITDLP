@@ -203,7 +203,17 @@ public class LedgerDBWithMongo extends LedgerDBlayer
     @Override
     public Result<Integer> getGlobalLedgerValue() {
         init();
-        return Result.error(500);
+
+        MongoCollection<Document> collection = this.db.getCollection("Accounts");
+		AggregateIterable<Document> result = collection.aggregate(Arrays.asList(
+            Aggregates.project(Projections.include("balance")),
+			Aggregates.group(null, Accumulators.sum("total_balance", "$balance"))
+			));
+
+        if (result.first() == null)
+            return Result.ok(0);
+
+        return Result.ok(result.first().getInteger("total_balance"));
     }
 
     @Override
