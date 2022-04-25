@@ -71,9 +71,9 @@ public class Workload implements Runnable
         Workload workload = new Workload(endpoint, nUsers, nAccounts);
         workload.run();
 
-        System.out.println("Latencies:");
+        /* System.out.println("Latencies:");
         System.out.println(workload.latencies);
-        System.out.println();
+        System.out.println(); */
 
         System.out.println("Status Codes:");
         System.out.println(workload.statusCodes);
@@ -123,6 +123,15 @@ public class Workload implements Runnable
                 request(() -> client.createAccount(accountId, userId, userKeys),
                     itdlp.tp1.impl.srv.resources.requests.Request.Operation.CREATE_ACCOUNT);
         }
+
+        // expected to fail!!!
+        Entry<UserId, Map<AccountId, KeyPair>> entry = this.accounts.entrySet().iterator().next();
+        UserId userId = entry.getKey();
+        KeyPair userKeys = this.users.get(userId);
+
+        for (AccountId accountId : entry.getValue().keySet())
+            request(() -> client.createAccount(accountId, userId, userKeys),
+                itdlp.tp1.impl.srv.resources.requests.Request.Operation.CREATE_ACCOUNT);
     }
 
     
@@ -135,6 +144,17 @@ public class Workload implements Runnable
                 request(() -> client.getAccount(accountId),
                 itdlp.tp1.impl.srv.resources.requests.Request.Operation.GET_ACCOUNT);
         }
+
+        // expected to fail with 404
+        byte[] randomBytes = new byte[60];
+        for (int i = 0; i < 10; i++)
+        {
+            this.random.nextBytes(randomBytes);
+            AccountId accountId = new AccountId(randomBytes);
+            request(() -> client.getAccount(accountId),
+                itdlp.tp1.impl.srv.resources.requests.Request.Operation.GET_ACCOUNT);
+        }
+        
     }
 
     private void getBalance(LedgerClient client)
@@ -257,7 +277,7 @@ public class Workload implements Runnable
         return randomKeyPairStream(random)
             .limit(n)
             .collect(Collectors.toUnmodifiableMap
-                (   (keyPair) -> new AccountId("workload.test@test.com", keyPair.getPublic() ),
+                (   (keyPair) -> new AccountId("workload.test@test.com", keyPair.getPublic(), random ),
                     (keyPair) -> keyPair)
             );
     }
