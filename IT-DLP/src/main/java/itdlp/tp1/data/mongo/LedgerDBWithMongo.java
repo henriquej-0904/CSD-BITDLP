@@ -11,6 +11,8 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.SortedMap;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 import com.mongodb.ConnectionString;
@@ -445,19 +447,26 @@ public class LedgerDBWithMongo extends LedgerDBlayer
     public Result<LedgerState> getState() {
         init();
         
-        List<Pair<AccountId,UserId>> resAccounts = new LinkedList<>();
+        SortedMap<AccountId, UserId> sortedAccounts = new TreeMap<>();
         List<LedgerOperation> resOperations = new LinkedList<>();
 
         for (AccountDAO account : this.accounts.find()) {
-            resAccounts.add(new Pair<>(account.getAccountId(), account.getOwner()));
+            sortedAccounts.put(account.getAccountId(), account.getOwner());
         }
+
+        List<Pair<AccountId, UserId>> resAccounts = sortedAccounts.entrySet().stream()
+            .map((entry) -> new Pair<>(entry.getKey(), entry.getValue()))
+            .toList();
         
         AggregateIterable<LedgerOperationDAO> ledgerIt = this.ledger.aggregate(Arrays.asList(
 		    Aggregates.sort(Sorts.ascending("ts"))
 			));
 
-        for (LedgerOperationDAO operation : ledgerIt) {
-            resOperations.add(operation.toLedgerOperation());
+        if (ledgerIt.first() != null)
+        {
+            for (LedgerOperationDAO operation : ledgerIt) {
+                resOperations.add(operation.toLedgerOperation());
+            }
         }
 
         return Result.ok(new LedgerState(resAccounts, resOperations));
