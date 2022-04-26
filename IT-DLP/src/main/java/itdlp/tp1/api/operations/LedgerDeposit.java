@@ -14,18 +14,20 @@ public class LedgerDeposit extends LedgerOperation
      * @throws InvalidOperationException
      * 
      */
-    public LedgerDeposit(int value, AccountId id) throws InvalidOperationException {
+    public LedgerDeposit(int value, AccountId id, byte[] clientSignature) throws InvalidOperationException {
         super(value, Type.DEPOSIT);
         this.accountId = id;
+        this.clientSignature = clientSignature;
     }
 
     /**
      * @throws InvalidOperationException
      * 
      */
-    public LedgerDeposit(int value, String date, AccountId id) throws InvalidOperationException {
+    public LedgerDeposit(int value, String date, AccountId id, byte[] clientSignature) throws InvalidOperationException {
         super(value, Type.DEPOSIT, date);
         this.accountId = id;
+        this.clientSignature = clientSignature;
     }
 
     /**

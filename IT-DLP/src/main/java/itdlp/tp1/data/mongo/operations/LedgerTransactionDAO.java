@@ -18,23 +18,25 @@ public class LedgerTransactionDAO extends LedgerOperationDAO {
     
     private int nonce;
 
-    public LedgerTransactionDAO(AccountId origin, AccountId dest, int value, int nonce) throws InvalidOperationException {
+    public LedgerTransactionDAO(AccountId origin, AccountId dest, int value, int nonce, byte[] clientSignature) throws InvalidOperationException {
         super(value, Type.TRANSACTION);
         this.origin = origin;
         this.dest = dest;
         this.nonce = nonce;
+        this.clientSignature = clientSignature;
     }
 
-    public LedgerTransactionDAO(AccountId origin, AccountId dest, int value, String date, int nonce) throws InvalidOperationException {
+    public LedgerTransactionDAO(AccountId origin, AccountId dest, int value, String date, int nonce, byte[] clientSignature) throws InvalidOperationException {
         super(value, Type.TRANSACTION, date);
         this.origin = origin;
         this.dest = dest;
         this.nonce = nonce;
+        this.clientSignature = clientSignature;
     }
 
     public LedgerTransactionDAO(LedgerTransaction transaction) throws InvalidOperationException
     {
-        this(transaction.getOrigin(), transaction.getDest(), transaction.getValue(), transaction.getDate(), transaction.getNonce());
+        this(transaction.getOrigin(), transaction.getDest(), transaction.getValue(), transaction.getDate(), transaction.getNonce(), transaction.getClientSignature());
     }
 
     /**
@@ -101,7 +103,7 @@ public class LedgerTransactionDAO extends LedgerOperationDAO {
 
     public LedgerOperation toLedgerTransaction() {
         try {
-            LedgerTransaction transaction = new LedgerTransaction(origin, dest, getValue(), getDate(), nonce);
+            LedgerTransaction transaction = new LedgerTransaction(origin, dest, getValue(), getDate(), nonce, getClientSignature());
             return transaction;
         } catch (Exception e) {
             throw new Error(e.getMessage(), e);

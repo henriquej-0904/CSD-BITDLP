@@ -32,6 +32,8 @@ public abstract class LedgerOperation implements Serializable {
     private Type type;
     private String date;
 
+    protected byte[] clientSignature;
+
     /**
      * @param value
      * @param type
@@ -110,6 +112,20 @@ public abstract class LedgerOperation implements Serializable {
     @Override
     public String toString() {
         return date + " " + type.toString() + ": ";
+    }
+
+    /**
+     * @return the clientSignature
+     */
+    public byte[] getClientSignature() {
+        return clientSignature;
+    }
+
+    /**
+     * @param clientSignature the clientSignature to set
+     */
+    public void setClientSignature(byte[] clientSignature) {
+        this.clientSignature = clientSignature;
     }
 
     public abstract byte[] digest();

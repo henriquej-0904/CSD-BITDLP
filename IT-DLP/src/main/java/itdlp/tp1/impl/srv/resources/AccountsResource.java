@@ -296,11 +296,12 @@ public abstract class AccountsResource implements Accounts
             ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES);
             buffer.putInt(value);
 
-            if (!verifySignature(id, Utils.fromHex(accountSignature), accountId, buffer.array()))
+            byte[] clientSignature = Utils.fromHex(accountSignature);
+            if (!verifySignature(id, clientSignature, accountId, buffer.array()))
                 throw new ForbiddenException("Invalid Account Signature.");   
             
             // execute operation
-            LedgerDeposit deposit = new LedgerDeposit(value, id);
+            LedgerDeposit deposit = new LedgerDeposit(value, id, clientSignature);
 
             loadMoney(deposit);
 
@@ -345,11 +346,12 @@ public abstract class AccountsResource implements Accounts
             buffer.putInt(value);
             buffer.putInt(nonce);
 
-            if (!verifySignature(originId, Utils.fromHex(accountSignature), originDestPair.getLeft(),
+            byte[] clientSignature = Utils.fromHex(accountSignature);
+            if (!verifySignature(originId, clientSignature, originDestPair.getLeft(),
                 originDestPair.getRight(), buffer.array()))
                 throw new ForbiddenException("Invalid Account Signature.");    
         
-            LedgerTransaction transaction = new LedgerTransaction(originId, destId, value, nonce);
+            LedgerTransaction transaction = new LedgerTransaction(originId, destId, value, nonce, clientSignature);
             
             sendTransaction(transaction);
 

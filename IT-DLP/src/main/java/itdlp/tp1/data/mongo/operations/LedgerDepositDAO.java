@@ -16,18 +16,20 @@ public class LedgerDepositDAO extends LedgerOperationDAO
      * @throws InvalidOperationException
      * 
      */
-    public LedgerDepositDAO(int value, AccountId id) throws InvalidOperationException {
+    public LedgerDepositDAO(int value, AccountId id, byte[] clientSignature) throws InvalidOperationException {
         super(value, Type.DEPOSIT);
         this.accountId = id;
+        this.clientSignature = clientSignature;
     }
 
     /**
      * @throws InvalidOperationException
      * 
      */
-    public LedgerDepositDAO(int value, String date, AccountId id) throws InvalidOperationException {
+    public LedgerDepositDAO(int value, String date, AccountId id, byte[] clientSignature) throws InvalidOperationException {
         super(value, Type.DEPOSIT, date);
         this.accountId = id;
+        this.clientSignature = clientSignature;
     }
 
     /**
@@ -35,7 +37,7 @@ public class LedgerDepositDAO extends LedgerOperationDAO
      * 
      */
     public LedgerDepositDAO(LedgerDeposit deposit) throws InvalidOperationException {
-        this(deposit.getValue(), deposit.getDate(), deposit.getAccountId());
+        this(deposit.getValue(), deposit.getDate(), deposit.getAccountId(), deposit.getClientSignature());
     }
 
     /**
@@ -59,7 +61,7 @@ public class LedgerDepositDAO extends LedgerOperationDAO
 
     public LedgerOperation toLedgerDeposit() {
         try {
-            LedgerDeposit deposit = new LedgerDeposit(getValue(), getDate(), getAccountId());
+            LedgerDeposit deposit = new LedgerDeposit(getValue(), getDate(), getAccountId(), getClientSignature());
             return deposit;
         } catch (Exception e) {
             throw new Error(e.getMessage(), e);

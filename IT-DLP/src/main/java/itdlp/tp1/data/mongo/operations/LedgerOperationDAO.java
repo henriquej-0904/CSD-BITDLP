@@ -37,6 +37,8 @@ public abstract class LedgerOperationDAO {
     private Type type;
     private String date;
 
+    protected byte[] clientSignature;
+
     /**
      * @param value
      * @param type
@@ -124,6 +126,20 @@ public abstract class LedgerOperationDAO {
      */
     public void setId(ObjectId id) {
         this.id = id;
+    }
+
+    /**
+     * @return the clientSignature
+     */
+    public byte[] getClientSignature() {
+        return clientSignature;
+    }
+
+    /**
+     * @param clientSignature the clientSignature to set
+     */
+    public void setClientSignature(byte[] clientSignature) {
+        this.clientSignature = clientSignature;
     }
 
     @Override

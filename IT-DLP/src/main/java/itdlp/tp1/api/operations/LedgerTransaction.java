@@ -13,18 +13,20 @@ public class LedgerTransaction extends LedgerOperation {
     
     private int nonce;
 
-    public LedgerTransaction(AccountId origin, AccountId dest, int value, int nonce) throws InvalidOperationException {
+    public LedgerTransaction(AccountId origin, AccountId dest, int value, int nonce, byte[] clientSignature) throws InvalidOperationException {
         super(value, Type.TRANSACTION);
         this.origin = origin;
         this.dest = dest;
         this.nonce = nonce;
+        this.clientSignature = clientSignature;
     }
 
-    public LedgerTransaction(AccountId origin, AccountId dest, int value, String date, int nonce) throws InvalidOperationException {
+    public LedgerTransaction(AccountId origin, AccountId dest, int value, String date, int nonce, byte[] clientSignature) throws InvalidOperationException {
         super(value, Type.TRANSACTION, date);
         this.origin = origin;
         this.dest = dest;
         this.nonce = nonce;
+        this.clientSignature = clientSignature;
     }
 
     /**
