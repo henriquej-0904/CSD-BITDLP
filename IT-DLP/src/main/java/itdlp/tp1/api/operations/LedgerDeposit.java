@@ -1,5 +1,7 @@
 package itdlp.tp1.api.operations;
 
+import java.security.MessageDigest;
+
 import itdlp.tp1.api.AccountId;
 
 public class LedgerDeposit extends LedgerOperation
@@ -43,5 +45,17 @@ public class LedgerDeposit extends LedgerOperation
     @Override
     public String toString() {
         return super.toString() + getValue();
+    }
+
+    @Override
+    public byte[] digest() {
+        return computeDigest().digest();
+    }
+
+    @Override
+    protected MessageDigest computeDigest() {
+        MessageDigest digest = super.computeDigest();
+        digest.update(accountId.getObjectId());
+        return digest;
     }
 }

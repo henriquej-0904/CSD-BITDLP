@@ -1,12 +1,15 @@
 package itdlp.tp1.api.operations;
 
 import java.io.Serializable;
+import java.nio.ByteBuffer;
+import java.security.MessageDigest;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 
+import itdlp.tp1.util.Crypto;
 import itdlp.tp1.util.Utils;
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY)
@@ -107,5 +110,21 @@ public abstract class LedgerOperation implements Serializable {
     @Override
     public String toString() {
         return date + " " + type.toString() + ": ";
+    }
+
+    public abstract byte[] digest();
+
+    protected MessageDigest computeDigest()
+    {
+        MessageDigest digest =  Crypto.getSha256Digest();
+
+        ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES);
+        buffer.putInt(getValue());
+
+        digest.update(buffer.array());
+        digest.update(type.name().getBytes());
+        digest.update(date.getBytes());
+        
+        return digest;
     }
 }

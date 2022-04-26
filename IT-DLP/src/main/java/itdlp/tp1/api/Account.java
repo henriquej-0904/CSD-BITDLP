@@ -1,6 +1,8 @@
 package itdlp.tp1.api;
 
 import java.io.Serializable;
+import java.nio.ByteBuffer;
+import java.security.MessageDigest;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -8,6 +10,7 @@ import itdlp.tp1.api.operations.InvalidOperationException;
 import itdlp.tp1.api.operations.LedgerDeposit;
 import itdlp.tp1.api.operations.LedgerOperation;
 import itdlp.tp1.api.operations.LedgerTransaction;
+import itdlp.tp1.util.Crypto;
 
 /**
  * Represents an Account in the system.
@@ -121,6 +124,23 @@ public class Account implements Serializable {
         this.balance += value;
     }
 
+    public byte[] digest()
+    {
+        MessageDigest digest =  Crypto.getSha256Digest();
+        digest.update(getId().getObjectId());
+        digest.update(getOwner().getObjectId());
+
+        ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES);
+        buffer.putInt(getBalance());
+
+        digest.update(buffer.array());
+
+        for (LedgerOperation ledgerOperation : operations) {
+            digest.update(ledgerOperation.digest());
+        }
+
+        return digest.digest();
+    }
 
     private int processTransaction(LedgerTransaction transaction) throws InvalidOperationException
     {

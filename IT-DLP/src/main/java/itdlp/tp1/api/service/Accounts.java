@@ -22,6 +22,7 @@ public interface Accounts {
 
     static final String USER_SIG = "User-signature";
     static final String ACC_SIG = "Account-signature";
+    static final String SERVER_SIG = "Server-signature";
     static final String NONCE = "Nonce";
 
     /**

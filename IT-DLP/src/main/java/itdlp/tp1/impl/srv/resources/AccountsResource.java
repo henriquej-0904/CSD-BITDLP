@@ -21,6 +21,7 @@ import itdlp.tp1.api.operations.LedgerTransaction;
 import itdlp.tp1.api.service.Accounts;
 import itdlp.tp1.data.LedgerDBlayer;
 import itdlp.tp1.data.LedgerDBlayerException;
+import itdlp.tp1.impl.srv.config.ServerConfig;
 import itdlp.tp1.util.Crypto;
 import itdlp.tp1.util.Pair;
 import itdlp.tp1.util.Utils;
@@ -28,6 +29,9 @@ import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.InternalServerErrorException;
 import jakarta.ws.rs.WebApplicationException;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response.Status;
 
 public abstract class AccountsResource implements Accounts
 {
@@ -118,7 +122,12 @@ public abstract class AccountsResource implements Accounts
             Account account = createAccount(new Account(accountId, owner));
             LOG.info(String.format("Created account with %s,\n%s\n", accountId, owner));
 
-            return account;
+            throw new WebApplicationException(
+                Response.status(Status.OK)
+                .entity(account)
+                .header(Accounts.SERVER_SIG, Crypto.sign(ServerConfig.getKeyPair(), account.digest()))
+                .build()
+            );
         } catch (WebApplicationException e) {
             LOG.info(e.getMessage());
             throw e;

@@ -76,17 +76,21 @@ public class LedgerTransaction extends LedgerOperation {
         return super.toString() + String.format("%s -> %s, value = %d", origin, dest, getValue());
     }
 
+    @Override
     public byte[] digest() {
+        return computeDigest().digest();
+    }
 
-        MessageDigest digest = Crypto.getSha256Digest();
-
-        ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES);
-        buffer.putInt(getValue());
+    @Override
+    protected MessageDigest computeDigest() {
+        MessageDigest digest = super.computeDigest();
 
         digest.update(origin.getObjectId());
         digest.update(dest.getObjectId());
-        digest.update(buffer.array());
 
-        return digest.digest();
+        ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES);
+        buffer.putInt(getNonce());
+
+        return digest;
     }
 }

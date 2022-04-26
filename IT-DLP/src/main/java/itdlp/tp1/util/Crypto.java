@@ -32,6 +32,22 @@ public class Crypto {
 
     public static final String KEYSTORE_PWD = "keystorepwd";
 
+    public static String sign(KeyPair keys, byte[]... data)
+    {
+        try {
+            Signature signature = Crypto.createSignatureInstance();
+            signature.initSign(keys.getPrivate());
+        
+            for (byte[] buff : data) {
+                signature.update(buff);
+            }
+
+            return Utils.toHex(signature.sign());
+        } catch (Exception e) {
+            throw new RuntimeException(e.getMessage(), e);
+        }
+    }
+
     public static KeyStore getKeyStorePkcs12(File keystoreFile, String password)
     {
         return getKeyStore(keystoreFile, password, "PKCS12");
