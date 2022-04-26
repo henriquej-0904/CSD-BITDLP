@@ -183,7 +183,17 @@ public abstract class AccountsResource implements Accounts
             int result = getBalance(id);
             LOG.info(String.format("Balance - %d, %s\n", result, accountId));
 
-            return result;
+            // sign result
+            ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES);
+            buffer.putInt(result);
+
+            throw new WebApplicationException(
+                Response.status(Status.OK)
+                .entity(result)
+                .header(Accounts.SERVER_SIG, Crypto.sign(ServerConfig.getKeyPair(), buffer.array()))
+                .build()
+            );            
+
         } catch (WebApplicationException e) {
             LOG.info(e.getMessage());
             throw e;
@@ -216,7 +226,17 @@ public abstract class AccountsResource implements Accounts
             int result = getTotalValue(accountIds);
             LOG.info(String.format("Total value for %d accounts: %d\n", accountIds.length, result));
 
-            return result;
+            // sign result
+            ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES);
+            buffer.putInt(result);
+
+            throw new WebApplicationException(
+                Response.status(Status.OK)
+                .entity(result)
+                .header(Accounts.SERVER_SIG, Crypto.sign(ServerConfig.getKeyPair(), buffer.array()))
+                .build()
+            );
+
         } catch (WebApplicationException e) {
             LOG.info(e.getMessage());
             throw e;
@@ -235,11 +255,21 @@ public abstract class AccountsResource implements Accounts
         try {
             init();
             
-            int value = getGlobalValue();
+            int result = getGlobalValue();
 
-            LOG.info("Global Ledger Value: " + value);
+            LOG.info("Global Ledger Value: " + result);
 
-            return value;
+            // sign result
+            ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES);
+            buffer.putInt(result);
+
+            throw new WebApplicationException(
+                Response.status(Status.OK)
+                .entity(result)
+                .header(Accounts.SERVER_SIG, Crypto.sign(ServerConfig.getKeyPair(), buffer.array()))
+                .build()
+            );
+            
         } catch (WebApplicationException e) {
             LOG.info(e.getMessage());
             throw e;
