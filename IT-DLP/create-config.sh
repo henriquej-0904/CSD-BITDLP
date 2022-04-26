@@ -2,7 +2,7 @@
 
 # Script to create all keystores and truststores needed.
 
-nReplicas=4
+nReplicas=$1
 configFolder="./tls-config"
 keystorepass="keystorepwd"
 

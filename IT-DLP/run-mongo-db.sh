@@ -1,6 +1,6 @@
 #! /bin/bash
 
-n_replicas=4
+n_replicas=$1
 
 for (( replicaId=0; replicaId < $n_replicas; replicaId++ ));
 do

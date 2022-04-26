@@ -1,3 +1,7 @@
-for ((i=0; i<4; i++)); do ./run-bft.sh $i `expr 8080 + $i`; done
+#! /bin/bash
 
-sleep 5
+n_replicas=$1
+
+for ((i=0; i<$n_replicas; i++)); do ./run-bft.sh $i; done
+
+sleep 10

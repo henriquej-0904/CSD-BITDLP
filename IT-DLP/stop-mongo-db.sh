@@ -1,1 +1,5 @@
-for ((i=0; i<4; i++)); do docker kill "mongo-$i"; done
+#! /bin/bash
+
+n_replicas=$1
+
+for ((i=0; i<$n_replicas; i++)); do docker kill "mongo-$i"; done
