@@ -2,6 +2,7 @@ package itdlp.tp1.impl.srv.resources;
 
 import java.nio.ByteBuffer;
 import java.security.InvalidKeyException;
+import java.security.MessageDigest;
 import java.security.PublicKey;
 import java.security.Signature;
 import java.security.SignatureException;
@@ -9,6 +10,8 @@ import java.security.spec.InvalidKeySpecException;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import org.bson.ByteBuf;
 
 import itdlp.tp1.api.Account;
 import itdlp.tp1.api.AccountId;
@@ -155,7 +158,12 @@ public abstract class AccountsResource implements Accounts
             Account account = getAccount(id);
             LOG.info(id.toString());
 
-            return account;
+            throw new WebApplicationException(
+                Response.status(Status.OK)
+                .entity(account)
+                .header(Accounts.SERVER_SIG, Crypto.sign(ServerConfig.getKeyPair(), account.digest()))
+                .build()
+            );
         } catch (WebApplicationException e) {
             LOG.info(e.getMessage());
             throw e;
@@ -216,7 +224,14 @@ public abstract class AccountsResource implements Accounts
             int result = getTotalValue(accountIds);
             LOG.info(String.format("Total value for %d accounts: %d\n", accountIds.length, result));
 
-            return result;
+            ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES);
+            buffer.putInt(result);
+
+            throw new WebApplicationException(
+                Response.status(Status.OK)
+                .header(Accounts.SERVER_SIG, Crypto.sign(ServerConfig.getKeyPair(), buffer.array()))
+                .build()
+            );
         } catch (WebApplicationException e) {
             LOG.info(e.getMessage());
             throw e;
@@ -343,7 +358,17 @@ public abstract class AccountsResource implements Accounts
 
             LOG.info(String.format("Get Ledger with %d operations.", result.length));
 
-            return result;
+            MessageDigest digest = Crypto.getSha256Digest();
+
+            for(int i = 0; i < result.length; i++){
+                digest.update(result[i].digest());
+            }
+
+            throw new WebApplicationException(
+                Response.status(Status.OK)
+                .header(Accounts.SERVER_SIG, Crypto.sign(ServerConfig.getKeyPair(), digest.digest()))
+                .build()
+            );
         } catch (WebApplicationException e) {
             LOG.info(e.getMessage());
             throw e;
