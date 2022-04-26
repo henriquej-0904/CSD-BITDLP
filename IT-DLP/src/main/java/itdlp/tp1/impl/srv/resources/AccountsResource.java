@@ -11,8 +11,6 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.bson.ByteBuf;
-
 import itdlp.tp1.api.Account;
 import itdlp.tp1.api.AccountId;
 import itdlp.tp1.api.ObjectId;
@@ -32,7 +30,6 @@ import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.InternalServerErrorException;
 import jakarta.ws.rs.WebApplicationException;
-import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
 
@@ -289,7 +286,7 @@ public abstract class AccountsResource implements Accounts
     public abstract int getGlobalValue();
 
     @Override
-    public final void loadMoney(byte[] accountId, int value, String accountSignature) {
+    public final LedgerDeposit loadMoney(byte[] accountId, int value, String accountSignature) {
         try {
             init();
             
@@ -308,6 +305,13 @@ public abstract class AccountsResource implements Accounts
             loadMoney(deposit);
 
             LOG.info(String.format("ID: %s, TYPE: %s, VALUE: %s", id, deposit.getType(), value));
+
+            throw new WebApplicationException(
+                Response.status(Status.OK)
+                .entity(deposit)
+                .header(Accounts.SERVER_SIG, Crypto.sign(ServerConfig.getKeyPair(), deposit.digest()))
+                .build()
+            );
 
         } catch (WebApplicationException e) {
             LOG.info(e.getMessage());
@@ -328,7 +332,7 @@ public abstract class AccountsResource implements Accounts
 
 
     @Override
-    public final void sendTransaction(Pair<byte[],byte[]> originDestPair, int value,
+    public final LedgerTransaction sendTransaction(Pair<byte[],byte[]> originDestPair, int value,
         String accountSignature, int nonce) {
         try {
             init();
@@ -353,7 +357,13 @@ public abstract class AccountsResource implements Accounts
             LOG.info(String.format("ORIGIN: %s, DEST: %s, TYPE: %s, VALUE: %d", 
                 originId, destId, transaction.getType(), value));
 
-            
+            throw new WebApplicationException(
+                Response.status(Status.OK)
+                .entity(transaction)
+                .header(Accounts.SERVER_SIG, Crypto.sign(ServerConfig.getKeyPair(), transaction.digest()))
+                .build()
+            );
+                
         } catch (WebApplicationException e) {
             LOG.info(e.getMessage());
             throw e;

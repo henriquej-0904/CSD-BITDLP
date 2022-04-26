@@ -4,7 +4,6 @@ import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 
 import itdlp.tp1.api.AccountId;
-import itdlp.tp1.util.Crypto;
 
 public class LedgerTransaction extends LedgerOperation {
 

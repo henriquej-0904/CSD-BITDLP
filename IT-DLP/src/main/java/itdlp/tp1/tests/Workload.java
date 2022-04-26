@@ -98,9 +98,9 @@ public class Workload implements Runnable
         )
         {
             createAccounts(client);
-            //loadMoney(client);
+            loadMoney(client);
             getAccounts(client);
-            //sendTransaction(client);
+            sendTransaction(client);
             getBalance(client);
             getTotalValue(client);
             getGlobalLedgerValue(client);
@@ -195,43 +195,43 @@ public class Workload implements Runnable
         
     }
 
-    // private void loadMoney(LedgerClient client)
-    // {
-    //     // send loadMoney requests
-    //     for (Map<AccountId, KeyPair> accounts : this.accounts.values())
-    //     {
-    //         for (Entry<AccountId, KeyPair> account : accounts.entrySet())
-    //         {
-    //             request(() -> client.loadMoney(account.getKey(), 100, account.getValue()),
-    //             itdlp.tp1.impl.srv.resources.requests.Request.Operation.LOAD_MONEY);
-    //         }
-    //     }
-    // }
+    private void loadMoney(LedgerClient client) throws InvalidServerSignatureException
+    {
+        // send loadMoney requests
+        for (Map<AccountId, KeyPair> accounts : this.accounts.values())
+        {
+            for (Entry<AccountId, KeyPair> account : accounts.entrySet())
+            {
+                request(() -> client.loadMoney(account.getKey(), 100, account.getValue()),
+                itdlp.tp1.impl.srv.resources.requests.Request.Operation.LOAD_MONEY);
+            }
+        }
+    }
 
-    // private void sendTransaction(LedgerClient client)
-    // {
-    //     // sendTransaction requests
+    private void sendTransaction(LedgerClient client) throws InvalidServerSignatureException
+    {
+        // sendTransaction requests
 
-    //     Iterator<Map<AccountId, KeyPair>> accountsIt = this.accounts.values().iterator();
-    //     Map<AccountId, KeyPair> accounts1 = accountsIt.next();
-    //     Map<AccountId, KeyPair> accounts2 = accountsIt.next();
+        Iterator<Map<AccountId, KeyPair>> accountsIt = this.accounts.values().iterator();
+        Map<AccountId, KeyPair> accounts1 = accountsIt.next();
+        Map<AccountId, KeyPair> accounts2 = accountsIt.next();
 
-    //     for (Entry<AccountId, KeyPair> originAccount : accounts1.entrySet()) {
+        for (Entry<AccountId, KeyPair> originAccount : accounts1.entrySet()) {
             
-    //         for (AccountId destAccountId : accounts2.keySet()) {
-    //             int nonce = this.random.nextInt();
+            for (AccountId destAccountId : accounts2.keySet()) {
+                int nonce = this.random.nextInt();
 
-    //             request(() -> client.sendTransaction(originAccount.getKey(), destAccountId,
-    //                 55, originAccount.getValue(), nonce),
-    //                 itdlp.tp1.impl.srv.resources.requests.Request.Operation.SEND_TRANSACTION);
+                request(() -> client.sendTransaction(originAccount.getKey(), destAccountId,
+                    55, originAccount.getValue(), nonce),
+                    itdlp.tp1.impl.srv.resources.requests.Request.Operation.SEND_TRANSACTION);
 
-    //             // expected to fail with 403
-    //             request(() -> client.sendTransaction(originAccount.getKey(), destAccountId,
-    //                 55, originAccount.getValue(), nonce),
-    //                 itdlp.tp1.impl.srv.resources.requests.Request.Operation.SEND_TRANSACTION);
-    //         }
-    //     }
-    // }
+                // expected to fail with 403
+                request(() -> client.sendTransaction(originAccount.getKey(), destAccountId,
+                    55, originAccount.getValue(), nonce),
+                    itdlp.tp1.impl.srv.resources.requests.Request.Operation.SEND_TRANSACTION);
+            }
+        }
+    }
 
     private void getLedger(LedgerClient client) throws InvalidServerSignatureException
     {

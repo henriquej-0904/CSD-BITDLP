@@ -1,7 +1,9 @@
 package itdlp.tp1.api.service;
 
 import itdlp.tp1.api.Account;
+import itdlp.tp1.api.operations.LedgerDeposit;
 import itdlp.tp1.api.operations.LedgerOperation;
+import itdlp.tp1.api.operations.LedgerTransaction;
 import itdlp.tp1.util.Pair;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.POST;
@@ -90,7 +92,8 @@ public interface Accounts {
     @Path("/balance/{value}")
     @POST
     @Consumes(MediaType.APPLICATION_OCTET_STREAM)
-    void loadMoney(byte[] accountId, @PathParam("value") int value, @HeaderParam(ACC_SIG) String accountSignature);
+    @Produces(MediaType.APPLICATION_JSON)
+    LedgerDeposit loadMoney(byte[] accountId, @PathParam("value") int value, @HeaderParam(ACC_SIG) String accountSignature);
 
     /**
 	 * Transfers money from an origin to a destination.
@@ -103,7 +106,8 @@ public interface Accounts {
     @Path("/transaction/{value}")
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
-    void sendTransaction(Pair<byte[],byte[]> originDestPair, @PathParam("value") int value,
+    @Produces(MediaType.APPLICATION_JSON)
+    LedgerTransaction sendTransaction(Pair<byte[],byte[]> originDestPair, @PathParam("value") int value,
         @HeaderParam(ACC_SIG) String accountSignature, @HeaderParam(NONCE) int nonce);
 
     /**
