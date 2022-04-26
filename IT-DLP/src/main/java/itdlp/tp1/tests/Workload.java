@@ -19,6 +19,7 @@ import javax.net.ssl.SSLContext;
 
 import itdlp.tp1.api.AccountId;
 import itdlp.tp1.api.UserId;
+import itdlp.tp1.impl.client.InvalidServerSignatureException;
 import itdlp.tp1.impl.client.LedgerClient;
 import itdlp.tp1.util.Crypto;
 import itdlp.tp1.util.Result;
@@ -28,7 +29,7 @@ public class Workload implements Runnable
 {
     private static interface Request<T>
     {
-        Result<T> request();
+        Result<T> request() throws InvalidServerSignatureException;
     }
 
     // statistics
@@ -45,7 +46,9 @@ public class Workload implements Runnable
     private URI endpoint;
     private boolean isHttps;
 
-    public Workload(URI endpoint, int nUsers, int nAccounts) throws MalformedURLException
+    private String replicaId;
+
+    public Workload(String replicaId, URI endpoint, int nUsers, int nAccounts) throws MalformedURLException
     {
         this.latencies = Stream.of(itdlp.tp1.impl.srv.resources.requests.Request.Operation.values())
             .collect(Collectors.toUnmodifiableMap((op) -> op, (op) -> new LinkedList<>()));
@@ -60,15 +63,17 @@ public class Workload implements Runnable
 
         this.endpoint = endpoint;
         this.isHttps = this.endpoint.toURL().getProtocol().equals("https");
+        this.replicaId = replicaId;
     }
 
     public static void main(String[] args) throws MalformedURLException
     {
         URI endpoint = URI.create(args[0]);
-        int nUsers = Integer.parseInt(args[1]);
-        int nAccounts = Integer.parseInt(args[2]);
+        String replicaId = args[1];
+        int nUsers = Integer.parseInt(args[2]);
+        int nAccounts = Integer.parseInt(args[3]);
 
-        Workload workload = new Workload(endpoint, nUsers, nAccounts);
+        Workload workload = new Workload(replicaId, endpoint, nUsers, nAccounts);
         workload.run();
 
         /* System.out.println("Latencies:");
@@ -88,18 +93,22 @@ public class Workload implements Runnable
         try
         (
             LedgerClient client = isHttps
-                ? new LedgerClient(this.endpoint, this.random, getSSLContext())
+                ? new LedgerClient(this.replicaId, this.endpoint, this.random, getSSLContext())
                 : new LedgerClient(this.endpoint, this.random);
         )
         {
             createAccounts(client);
-            loadMoney(client);
+            //loadMoney(client);
             getAccounts(client);
-            sendTransaction(client);
+            //sendTransaction(client);
             getBalance(client);
             getTotalValue(client);
             getGlobalLedgerValue(client);
             getLedger(client);
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
         }
     }
 
@@ -111,7 +120,7 @@ public class Workload implements Runnable
 		return Crypto.getSSLContext(null, truststore, Crypto.KEYSTORE_PWD);
 	}
 
-    private void createAccounts(LedgerClient client)
+    private void createAccounts(LedgerClient client) throws InvalidServerSignatureException
     {
         // send create account requests
         for (Entry<UserId, Map<AccountId, KeyPair>> entry : this.accounts.entrySet())
@@ -135,7 +144,7 @@ public class Workload implements Runnable
     }
 
     
-    private void getAccounts(LedgerClient client)
+    private void getAccounts(LedgerClient client) throws InvalidServerSignatureException
     {
         // send get account requests
         for (Entry<UserId, Map<AccountId, KeyPair>> entry : this.accounts.entrySet())
@@ -157,7 +166,7 @@ public class Workload implements Runnable
         
     }
 
-    private void getBalance(LedgerClient client)
+    private void getBalance(LedgerClient client) throws InvalidServerSignatureException
     {
         // send get balance requests
         for (Entry<UserId, Map<AccountId, KeyPair>> entry : this.accounts.entrySet())
@@ -168,7 +177,7 @@ public class Workload implements Runnable
         }
     }
 
-    private void getTotalValue(LedgerClient client)
+    private void getTotalValue(LedgerClient client) throws InvalidServerSignatureException
     {
         // send create account requests
         for (Entry<UserId, Map<AccountId, KeyPair>> entry : this.accounts.entrySet())
@@ -178,7 +187,7 @@ public class Workload implements Runnable
         }
     }
 
-    private void getGlobalLedgerValue(LedgerClient client)
+    private void getGlobalLedgerValue(LedgerClient client) throws InvalidServerSignatureException
     {
         // send getGlovalLedgerValue requests
         request(() -> client.getGlobalLedgerValue(),
@@ -186,50 +195,50 @@ public class Workload implements Runnable
         
     }
 
-    private void loadMoney(LedgerClient client)
-    {
-        // send loadMoney requests
-        for (Map<AccountId, KeyPair> accounts : this.accounts.values())
-        {
-            for (Entry<AccountId, KeyPair> account : accounts.entrySet())
-            {
-                request(() -> client.loadMoney(account.getKey(), 100, account.getValue()),
-                itdlp.tp1.impl.srv.resources.requests.Request.Operation.LOAD_MONEY);
-            }
-        }
-    }
+    // private void loadMoney(LedgerClient client)
+    // {
+    //     // send loadMoney requests
+    //     for (Map<AccountId, KeyPair> accounts : this.accounts.values())
+    //     {
+    //         for (Entry<AccountId, KeyPair> account : accounts.entrySet())
+    //         {
+    //             request(() -> client.loadMoney(account.getKey(), 100, account.getValue()),
+    //             itdlp.tp1.impl.srv.resources.requests.Request.Operation.LOAD_MONEY);
+    //         }
+    //     }
+    // }
 
-    private void sendTransaction(LedgerClient client)
-    {
-        // sendTransaction requests
+    // private void sendTransaction(LedgerClient client)
+    // {
+    //     // sendTransaction requests
 
-        Iterator<Map<AccountId, KeyPair>> accountsIt = this.accounts.values().iterator();
-        Map<AccountId, KeyPair> accounts1 = accountsIt.next();
-        Map<AccountId, KeyPair> accounts2 = accountsIt.next();
+    //     Iterator<Map<AccountId, KeyPair>> accountsIt = this.accounts.values().iterator();
+    //     Map<AccountId, KeyPair> accounts1 = accountsIt.next();
+    //     Map<AccountId, KeyPair> accounts2 = accountsIt.next();
 
-        for (Entry<AccountId, KeyPair> originAccount : accounts1.entrySet()) {
+    //     for (Entry<AccountId, KeyPair> originAccount : accounts1.entrySet()) {
             
-            for (AccountId destAccountId : accounts2.keySet()) {
-                int nonce = this.random.nextInt();
+    //         for (AccountId destAccountId : accounts2.keySet()) {
+    //             int nonce = this.random.nextInt();
 
-                request(() -> client.sendTransaction(originAccount.getKey(), destAccountId,
-                    55, originAccount.getValue(), nonce),
-                    itdlp.tp1.impl.srv.resources.requests.Request.Operation.SEND_TRANSACTION);
+    //             request(() -> client.sendTransaction(originAccount.getKey(), destAccountId,
+    //                 55, originAccount.getValue(), nonce),
+    //                 itdlp.tp1.impl.srv.resources.requests.Request.Operation.SEND_TRANSACTION);
 
-                // expected to fail with 403
-                request(() -> client.sendTransaction(originAccount.getKey(), destAccountId,
-                    55, originAccount.getValue(), nonce),
-                    itdlp.tp1.impl.srv.resources.requests.Request.Operation.SEND_TRANSACTION);
-            }
-        }
-    }
+    //             // expected to fail with 403
+    //             request(() -> client.sendTransaction(originAccount.getKey(), destAccountId,
+    //                 55, originAccount.getValue(), nonce),
+    //                 itdlp.tp1.impl.srv.resources.requests.Request.Operation.SEND_TRANSACTION);
+    //         }
+    //     }
+    // }
 
-    private void getLedger(LedgerClient client)
+    private void getLedger(LedgerClient client) throws InvalidServerSignatureException
     {
         request(() -> client.getLedger(), itdlp.tp1.impl.srv.resources.requests.Request.Operation.GET_LEDGER);
     }
 
-    private <T> Result<T> request(Request<T> request, itdlp.tp1.impl.srv.resources.requests.Request.Operation operation)
+    private <T> Result<T> request(Request<T> request, itdlp.tp1.impl.srv.resources.requests.Request.Operation operation) throws InvalidServerSignatureException
     {
         long before = System.currentTimeMillis();
         Result<T> result = request.request();

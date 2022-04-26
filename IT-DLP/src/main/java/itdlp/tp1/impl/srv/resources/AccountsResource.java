@@ -239,6 +239,7 @@ public abstract class AccountsResource implements Accounts
 
             throw new WebApplicationException(
                 Response.status(Status.OK)
+                .entity(result)
                 .header(Accounts.SERVER_SIG, Crypto.sign(ServerConfig.getKeyPair(), buffer.array()))
                 .build()
             );
@@ -386,6 +387,7 @@ public abstract class AccountsResource implements Accounts
 
             throw new WebApplicationException(
                 Response.status(Status.OK)
+                .entity(result)
                 .header(Accounts.SERVER_SIG, Crypto.sign(ServerConfig.getKeyPair(), digest.digest()))
                 .build()
             );

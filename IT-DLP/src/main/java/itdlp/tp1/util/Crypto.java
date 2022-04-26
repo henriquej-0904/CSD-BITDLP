@@ -23,6 +23,8 @@ import javax.net.ssl.TrustManagerFactory;
 
 public class Crypto {
 
+    public static final File CONFIG_FOLDER = new File("tls-config");
+
     public static final String DEFAULT_SIGNATURE_TRANSFORMATION = "SHA256withECDSA";
 	public static final String DEFAULT_SIGNATURE_PROVIDER = "BC";
 
@@ -48,6 +50,20 @@ public class Crypto {
         }
     }
 
+    public static boolean verifySignature(PublicKey publicKey, String signature, byte[]... data){
+        try {
+            Signature verify = Crypto.createSignatureInstance();
+            verify.initVerify(publicKey);
+
+            for (byte[] buff : data)
+                verify.update(buff);
+
+            return verify.verify(Utils.fromHex(signature));
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     public static KeyStore getKeyStorePkcs12(File keystoreFile, String password)
     {
         return getKeyStore(keystoreFile, password, "PKCS12");
@@ -64,6 +80,10 @@ public class Crypto {
         {
             throw new Error(e.getMessage(), e);
         }
+    }
+
+    public static KeyStore getTrustStore() {
+        return Crypto.getKeyStorePkcs12(new File(CONFIG_FOLDER, "truststore.pkcs12"), Crypto.KEYSTORE_PWD);
     }
 
     public static SSLContext getSSLContext(KeyStore keystore, KeyStore truststore, String password)

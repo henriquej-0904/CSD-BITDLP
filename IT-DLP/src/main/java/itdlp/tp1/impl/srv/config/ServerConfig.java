@@ -13,8 +13,6 @@ import javax.net.ssl.SSLContext;
 import itdlp.tp1.util.Crypto;
 
 public class ServerConfig {
-    
-    private static final File CONFIG_FOLDER = new File("tls-config");
 
     private static KeyPair keyPair;
     private static KeyStore keyStore;
@@ -45,7 +43,7 @@ public class ServerConfig {
 
     public static KeyStore getTrustStore() {
         if(trustStore == null){
-            trustStore = Crypto.getKeyStorePkcs12(new File(CONFIG_FOLDER, "truststore.pkcs12"), Crypto.KEYSTORE_PWD);
+            trustStore = Crypto.getTrustStore();
         }
         return trustStore;
     }
@@ -56,7 +54,7 @@ public class ServerConfig {
 
     public static void setReplicaId(int replicaId) {
         ServerConfig.replicaId = "replica-" + replicaId;
-        replicaConfigFolder = new File(CONFIG_FOLDER, ServerConfig.replicaId);
+        replicaConfigFolder = new File(Crypto.CONFIG_FOLDER, ServerConfig.replicaId);
     }
 
     public static SSLContext getSSLContext()

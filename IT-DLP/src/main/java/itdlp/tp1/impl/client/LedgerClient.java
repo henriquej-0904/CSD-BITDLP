@@ -4,9 +4,13 @@ import java.io.Closeable;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.security.KeyPair;
+import java.security.KeyStoreException;
+import java.security.MessageDigest;
+import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -39,6 +43,8 @@ public class LedgerClient implements Closeable
 
     private Client client;
 
+    private PublicKey serverPublicKey;
+
     private URI endpoint;
 
     private SecureRandom random;
@@ -51,7 +57,7 @@ public class LedgerClient implements Closeable
         this.random = random;
     }
 
-    public LedgerClient(URI endpoint, SecureRandom random, SSLContext sslContext)
+    public LedgerClient(String replicaId, URI endpoint, SecureRandom random, SSLContext sslContext) throws KeyStoreException
     {
         ClientBuilder builder = getClientBuilder().sslContext(sslContext)
             .hostnameVerifier((arg0, arg1) -> true);
@@ -59,6 +65,8 @@ public class LedgerClient implements Closeable
         this.client = builder.build();
         this.endpoint = endpoint;
         this.random = random;
+
+        this.serverPublicKey = Crypto.getTrustStore().getCertificate(replicaId).getPublicKey();
     }
 
     private static ClientBuilder getClientBuilder()
@@ -67,106 +75,143 @@ public class LedgerClient implements Closeable
         .readTimeout(READ_TIMEOUT, TimeUnit.SECONDS);
     }
 
-    public Result<Account> createAccount(AccountId accountId, UserId userId, KeyPair userKeys) {
+    protected <T> Result<T> verifyResponseSignature(Pair<Result<T>, Response> pairResponse,
+        Function<T, byte[]> digestFunc) throws InvalidServerSignatureException
+    {
+        if (!pairResponse.getLeft().isOK())
+            return pairResponse.getLeft();
+
+        String signature = pairResponse.getRight().getHeaderString(Accounts.SERVER_SIG);
+        if (signature == null || signature.equals(""))
+            throw new InvalidServerSignatureException("Invalid server signature.");
+
+        if (!Crypto.verifySignature(serverPublicKey, signature, digestFunc.apply(pairResponse.getLeft().value()) ))
+            throw new InvalidServerSignatureException("Invalid server signature.");
+
+        return pairResponse.getLeft();
+    }
+
+    public Result<Account> createAccount(AccountId accountId, UserId userId, KeyPair userKeys)
+        throws InvalidServerSignatureException
+    {
         String signature = Crypto.sign(userKeys, accountId.getObjectId(), userId.getObjectId());
 
-        return request(this.client.target(this.endpoint).path(Accounts.PATH)
+        Pair<Result<Account>, Response> resultPair = request(this.client.target(this.endpoint).path(Accounts.PATH)
         .request().accept(MediaType.APPLICATION_JSON)
         .header(Accounts.USER_SIG, signature)
         .buildPost(
             Entity.json(new Pair<>(accountId.getObjectId(), userId.getObjectId()))
             ), Account.class);
+
+        return verifyResponseSignature(resultPair, Account::digest);
     }
 
-    public Result<Account> getAccount(AccountId accountId) {
-
-
-        return request(this.client.target(this.endpoint)
+    public Result<Account> getAccount(AccountId accountId) throws InvalidServerSignatureException {
+        Pair<Result<Account>, Response> resultPair = request(this.client.target(this.endpoint)
             .path(Accounts.PATH).path(Utils.toHex(accountId.getObjectId()))
             .request().accept(MediaType.APPLICATION_JSON)
             .buildGet(), Account.class);
+
+        return verifyResponseSignature(resultPair, Account::digest);
     }
 
-    public Result<Integer> getBalance(AccountId accountId) {
-        return request(this.client.target(this.endpoint)
+    public Result<Integer> getBalance(AccountId accountId) throws InvalidServerSignatureException {
+        Pair<Result<Integer>, Response> resultPair =  request(this.client.target(this.endpoint)
             .path(Accounts.PATH).path("balance").path(Utils.toHex(accountId.getObjectId()))
             .request()
             .buildGet(), Integer.class);
+
+        return verifyResponseSignature(resultPair, this::getBytes);
     }
 
-    public Result<Integer> getTotalValue(AccountId[] accounts) {
+    public Result<Integer> getTotalValue(AccountId[] accounts) throws InvalidServerSignatureException {
 
         List<byte[]> arr = Stream.of(accounts).map(AccountId::getObjectId).collect(Collectors.toList());
 
-        return request(this.client.target(this.endpoint)
+        Pair<Result<Integer>, Response> resultPair = request(this.client.target(this.endpoint)
             .path(Accounts.PATH).path("balance/sum")
             .request()
             .buildPost(Entity.json(arr)), Integer.class);
+
+        return verifyResponseSignature(resultPair, this::getBytes);
     }
 
-    public Result<Integer> getGlobalLedgerValue() {
-        return request(this.client.target(this.endpoint)
+    public Result<Integer> getGlobalLedgerValue() throws InvalidServerSignatureException {
+        Pair<Result<Integer>, Response> resultPair = request(this.client.target(this.endpoint)
             .path(Accounts.PATH).path("balance/ledger")
             .request()
             .buildGet(), Integer.class);
+
+        return verifyResponseSignature(resultPair, this::getBytes);
     }
 
-    public Result<Void> loadMoney(AccountId accountId, int value, KeyPair accountKeys)
-    {
-        ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES);
-        buffer.putInt(value);
+    // public Result<Void> loadMoney(AccountId accountId, int value, KeyPair accountKeys)
+    // {
+    //     ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES);
+    //     buffer.putInt(value);
 
-        String signature = Crypto.sign(accountKeys, accountId.getObjectId(), buffer.array());
+    //     String signature = Crypto.sign(accountKeys, accountId.getObjectId(), buffer.array());
 
-        return request(this.client.target(this.endpoint).path(Accounts.PATH)
-            .path("balance").path(Integer.toString(value))
-            .request()
-            .header(Accounts.ACC_SIG, signature)
-            .buildPost(Entity.entity(accountId.getObjectId(), MediaType.APPLICATION_OCTET_STREAM)),
-                Void.class);
-    }
+    //     return request(this.client.target(this.endpoint).path(Accounts.PATH)
+    //         .path("balance").path(Integer.toString(value))
+    //         .request()
+    //         .header(Accounts.ACC_SIG, signature)
+    //         .buildPost(Entity.entity(accountId.getObjectId(), MediaType.APPLICATION_OCTET_STREAM)),
+    //             Void.class);
+    // }
 
-    public Result<Void> sendTransaction(AccountId originId, AccountId destId, int value, KeyPair originAccountKeys)
-    {
-        ByteBuffer buffer = ByteBuffer.allocate(2 * Integer.BYTES);
-        buffer.putInt(value);
-        int nonce = this.random.nextInt();
-        buffer.putInt(nonce);
+    // public Result<Void> sendTransaction(AccountId originId, AccountId destId, int value, KeyPair originAccountKeys)
+    // {
+    //     ByteBuffer buffer = ByteBuffer.allocate(2 * Integer.BYTES);
+    //     buffer.putInt(value);
+    //     int nonce = this.random.nextInt();
+    //     buffer.putInt(nonce);
 
-        String signature = Crypto.sign(originAccountKeys, originId.getObjectId(), destId.getObjectId(), buffer.array());
+    //     String signature = Crypto.sign(originAccountKeys, originId.getObjectId(), destId.getObjectId(), buffer.array());
 
-        return request(this.client.target(this.endpoint).path(Accounts.PATH)
-            .path("transaction").path(Integer.toString(value))
-            .request()
-            .header(Accounts.ACC_SIG, signature)
-            .header(Accounts.NONCE, nonce)
-            .buildPost(Entity.json(new Pair<>(originId.getObjectId(), destId.getObjectId()))),
-                Void.class);
-    }
+    //     return request(this.client.target(this.endpoint).path(Accounts.PATH)
+    //         .path("transaction").path(Integer.toString(value))
+    //         .request()
+    //         .header(Accounts.ACC_SIG, signature)
+    //         .header(Accounts.NONCE, nonce)
+    //         .buildPost(Entity.json(new Pair<>(originId.getObjectId(), destId.getObjectId()))),
+    //             Void.class);
+    // }
 
-    public Result<Void> sendTransaction(AccountId originId, AccountId destId, int value, KeyPair originAccountKeys,
-        int nonce)
-    {
-        ByteBuffer buffer = ByteBuffer.allocate(2 * Integer.BYTES);
-        buffer.putInt(value);
-        buffer.putInt(nonce);
+    // public Result<Void> sendTransaction(AccountId originId, AccountId destId, int value, KeyPair originAccountKeys,
+    //     int nonce)
+    // {
+    //     ByteBuffer buffer = ByteBuffer.allocate(2 * Integer.BYTES);
+    //     buffer.putInt(value);
+    //     buffer.putInt(nonce);
 
-        String signature = Crypto.sign(originAccountKeys, originId.getObjectId(), destId.getObjectId(), buffer.array());
+    //     String signature = Crypto.sign(originAccountKeys, originId.getObjectId(), destId.getObjectId(), buffer.array());
 
-        return request(this.client.target(this.endpoint).path(Accounts.PATH)
-            .path("transaction").path(Integer.toString(value))
-            .request()
-            .header(Accounts.ACC_SIG, signature)
-            .header(Accounts.NONCE, nonce)
-            .buildPost(Entity.json(new Pair<>(originId.getObjectId(), destId.getObjectId()))),
-                Void.class);
-    }
+    //     return request(this.client.target(this.endpoint).path(Accounts.PATH)
+    //         .path("transaction").path(Integer.toString(value))
+    //         .request()
+    //         .header(Accounts.ACC_SIG, signature)
+    //         .header(Accounts.NONCE, nonce)
+    //         .buildPost(Entity.json(new Pair<>(originId.getObjectId(), destId.getObjectId()))),
+    //             Void.class);
+    // }
 
-    public Result<LedgerOperation[]> getLedger() {
-        return request(this.client.target(this.endpoint)
+    public Result<LedgerOperation[]> getLedger() throws InvalidServerSignatureException {
+        Pair<Result<LedgerOperation[]>, Response> resultPair = request(this.client.target(this.endpoint)
         .path(Accounts.PATH).path("ledger")
         .request()
         .buildGet(), LedgerOperation[].class);
+
+        return verifyResponseSignature(resultPair, (ledgerOps) -> 
+        {
+            MessageDigest digest = Crypto.getSha256Digest();
+
+            for(int i = 0; i < ledgerOps.length; i++){
+                digest.update(ledgerOps[i].digest());
+            }
+
+            return digest.digest();
+        });
     }
 
     @Override
@@ -174,7 +219,14 @@ public class LedgerClient implements Closeable
         this.client.close();
     }
 
-    private <T> Result<T> request(Invocation invocation, Class<T> responseType)
+    private byte[] getBytes(int value)
+    {
+        ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES);
+        buffer.putInt(value);
+        return buffer.array();
+    }
+
+    private <T> Pair<Result<T>, Response> request(Invocation invocation, Class<T> responseType)
     {
         int numberTries = MAX_TRIES;
         RuntimeException error = null;
@@ -184,7 +236,7 @@ public class LedgerClient implements Closeable
             try (Response response = invocation.invoke();)
             {
                 Result<T> result = parseResponse(response, responseType);
-                return result;
+                return new Pair<>(result, response);
             }
             catch (Exception e) {
                 error = new RuntimeException(e.getMessage(), e);
