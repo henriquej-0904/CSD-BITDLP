@@ -19,6 +19,7 @@ import itdlp.tp1.api.operations.LedgerOperation;
 import itdlp.tp1.api.operations.LedgerTransaction;
 import itdlp.tp1.util.Pair;
 import itdlp.tp1.util.Result;
+import itdlp.tp1.util.Utils;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.InternalServerErrorException;
 import jakarta.ws.rs.WebApplicationException;
@@ -35,7 +36,7 @@ public class LedgerDBinMemory extends LedgerDBlayer
     private List<LedgerOperation> ledger;
     private ReadWriteLock lock;
 
-    private Map<byte[], List<Integer>> nonceMap;
+    private Map<String, List<Integer>> nonceMap;
 
     /**
      * Get the current instance of the Ledger DB.
@@ -209,7 +210,10 @@ public class LedgerDBinMemory extends LedgerDBlayer
             return Result.ok();
         } catch (InvalidOperationException e){
             return Result.error(new WebApplicationException(e.getMessage(), e, Status.CONFLICT));
-        } finally
+        }catch (WebApplicationException e){
+            return Result.error(e);
+        }
+         finally
         {
             getWriteLock().unlock();
         }
@@ -286,21 +290,18 @@ public class LedgerDBinMemory extends LedgerDBlayer
     }
 
     protected void addNonce(byte[] requestKey, int nonce){
-        boolean result = true;
-        List<Integer> res = nonceMap.get(requestKey);
+        String hash = Utils.toBase64(requestKey);
+        List<Integer> res = nonceMap.get(hash);
 
         if(res == null){
             res = new LinkedList<>();
-            nonceMap.put(requestKey, res);
+            nonceMap.put(hash, res);
         }
         
         if(!res.contains(nonce))
             res.add(nonce);
         else
-            result = false;
-        
-        if (!result)
-            throw new ForbiddenException("Invalid Nonce.");
+            throw new ForbiddenException("Invalid Nonce.");    
     }
 
     protected Lock getReadLock()
