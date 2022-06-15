@@ -119,4 +119,38 @@ public interface Accounts {
     @Produces(MediaType.APPLICATION_JSON)
     LedgerOperation[] getLedger();
 
+
+    // ASYNC OPERATIONS
+
+    /**
+	 * Returns the balance of an account.
+	 *
+	 * @param accountId account id
+     * 
+     * @return The balance of the account and a set of
+     * 2f + 1 signatures of the replicas, all signed by the replica that responds to the client.
+	 */
+    @Path("/balance_async/{accountId}")
+    @GET
+    int getBalanceAsync(@PathParam("accountId") String accountId);
+
+
+    /**
+	 * Transfers money from an origin to a destination.
+	 *
+     * @param originDestPair A pair of origin and destination accounts.
+     * @param value value to be transfered
+     * @param accountSignature The signature of the account.
+     * @param nonce The nonce.
+     * 
+     * @return the transaction and a set of
+     * 2f + 1 signatures of the replicas, all signed by the replica that responds to the client.
+	 */
+    @Path("/transaction_async/{value}")
+    @POST
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    LedgerTransaction sendTransactionAsync(Pair<byte[],byte[]> originDestPair, @PathParam("value") int value,
+        @HeaderParam(ACC_SIG) String accountSignature, @HeaderParam(NONCE) int nonce);
+
 }
