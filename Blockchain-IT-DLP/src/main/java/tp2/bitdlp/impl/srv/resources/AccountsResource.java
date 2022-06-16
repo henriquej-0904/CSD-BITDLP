@@ -23,6 +23,7 @@ import tp2.bitdlp.api.service.Accounts;
 import tp2.bitdlp.data.LedgerDBlayer;
 import tp2.bitdlp.data.LedgerDBlayerException;
 import tp2.bitdlp.impl.srv.config.ServerConfig;
+import tp2.bitdlp.impl.srv.resources.requests.CreateAccount;
 import tp2.bitdlp.util.Crypto;
 import tp2.bitdlp.util.Pair;
 import tp2.bitdlp.util.Utils;
@@ -107,41 +108,46 @@ public abstract class AccountsResource implements Accounts
 
     @Override
     public final Account createAccount(Pair<byte[],byte[]> accountUserPair, String userSignature) {
-        try {
-            init();
+        init();
 
-            AccountId accountId = getAccountId(accountUserPair.getLeft());
-            UserId owner = getUserId(accountUserPair.getRight());
+        CreateAccount clientParams = new CreateAccount(accountUserPair, userSignature);
+        Account newAccount = verifyCreateAccount(clientParams);
 
-            // verify signature
-            if (!verifySignature(owner, Utils.fromHex(userSignature), accountUserPair.getLeft(),
-                accountUserPair.getRight()))
+        // execute operation
+        Account account = createAccount(clientParams, newAccount);
+        //LOG.info(String.format("Created account with %s,\n%s\n", accountId, owner));
+
+        throw new WebApplicationException(
+            Response.status(Status.OK)
+            .entity(account)
+            .header(Accounts.SERVER_SIG, Crypto.sign(ServerConfig.getKeyPair(), account.digest()))
+            .build()
+        );
+    }
+
+    protected Account verifyCreateAccount(CreateAccount params)
+    {
+        AccountId accountId = getAccountId(params.getAccountUserPair().getLeft());
+        UserId owner = getUserId(params.getAccountUserPair().getRight());
+
+        // verify signature
+        if (!verifySignature(owner, Utils.fromHex(params.getUserSignature()),
+            params.getAccountUserPair().getLeft(),
+            params.getAccountUserPair().getRight()))
                 throw new ForbiddenException("Invalid User Signature.");
 
-            // execute operation
-            Account account = createAccount(new Account(accountId, owner));
-            LOG.info(String.format("Created account with %s,\n%s\n", accountId, owner));
-
-            throw new WebApplicationException(
-                Response.status(Status.OK)
-                .entity(account)
-                .header(Accounts.SERVER_SIG, Crypto.sign(ServerConfig.getKeyPair(), account.digest()))
-                .build()
-            );
-        } catch (WebApplicationException e) {
-            LOG.info(e.getMessage());
-            throw e;
-        }
+        return new Account(accountId, owner);
     }
 
     /**
 	 * Creates a new account.
 	 *
+     * @param clientParams The params sent by the client.
 	 * @param account The new account
      * 
      * @return The created account object.
 	 */
-    public abstract Account createAccount(Account account);
+    public abstract Account createAccount(CreateAccount clientParams, Account account);
 
 
 
