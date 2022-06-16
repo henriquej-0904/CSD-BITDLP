@@ -25,6 +25,7 @@ import tp2.bitdlp.impl.srv.resources.requests.Request;
 import tp2.bitdlp.util.Result;
 import tp2.bitdlp.util.Utils;
 import jakarta.ws.rs.InternalServerErrorException;
+import jakarta.ws.rs.WebApplicationException;
 
 /**
  * An implementation of the Accounts API with BFT SMaRt
@@ -101,32 +102,32 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource {
     }
 
     @Override
-    public Account createAccount(Account account) {
-        byte[] request = writeObject(new CreateAccount(account));
+    public Account createAccount(CreateAccount clientParams, Account account) {
+        byte[] request = writeObject(clientParams);
         byte[] result = invokeOrdered(request);
 
         return this.<Account>readResult(result).resultOrThrow();
     }
 
     @Override
-    public Account getAccount(AccountId accountId) {
-        byte[] request = writeObject(new GetAccount(accountId));
+    public Account getAccount(GetAccount clientParams, AccountId accountId) {
+        byte[] request = writeObject(clientParams);
         byte[] result = invokeUnordered(request);
 
         return this.<Account>readResult(result).resultOrThrow();
     }
 
     @Override
-    public int getBalance(AccountId accountId) {
-        byte[] request = writeObject(new GetBalance(accountId));
+    public int getBalance(GetBalance clientParams, AccountId accountId) {
+        byte[] request = writeObject(clientParams);
         byte[] result = invokeUnordered(request);
 
         return this.<Integer>readResult(result).resultOrThrow();
     }
 
     @Override
-    public int getTotalValue(AccountId[] accounts) {
-        byte[] request = writeObject(new GetTotalValue(accounts));
+    public int getTotalValue(GetTotalValue clientParams, AccountId[] accounts) {
+        byte[] request = writeObject(clientParams);
         byte[] result = invokeUnordered(request);
 
         return this.<Integer>readResult(result).resultOrThrow();
@@ -141,16 +142,16 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource {
     }
 
     @Override
-    public void loadMoney(LedgerDeposit value) {
-        byte[] request = writeObject(new LoadMoney(value));
+    public void loadMoney(LoadMoney clientParams, LedgerDeposit value) {
+        byte[] request = writeObject(clientParams);
         byte[] result = invokeOrdered(request);
 
         this.<Void>readResult(result).resultOrThrow();
     }
 
     @Override
-    public void sendTransaction(LedgerTransaction transaction) {
-        byte[] request = writeObject(new SendTransaction(transaction));
+    public void sendTransaction(SendTransaction clientParams, LedgerTransaction transaction) {
+        byte[] request = writeObject(clientParams);
         byte[] result = invokeOrdered(request);
 
         this.<Void>readResult(result).resultOrThrow();
@@ -164,22 +165,11 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource {
         return this.<LedgerOperation[]>readResult(result).resultOrThrow();
     }
 
-    public static class BFTSMaRtServerReplica extends DefaultSingleRecoverable {
+    public class BFTSMaRtServerReplica extends DefaultSingleRecoverable {
         private LedgerDBlayer db;
 
         public BFTSMaRtServerReplica(int id) {
             new ServiceReplica(id, this, this);
-        }
-
-        /**
-         * Init the db layer instance.
-         */
-        protected void init() {
-            try {
-                this.db = LedgerDBlayer.getInstance();
-            } catch (LedgerDBlayerException e) {
-                throw new InternalServerErrorException(e.getMessage(), e);
-            }
         }
 
         @Override
@@ -272,35 +262,130 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource {
         }
 
         protected Result<Account> getAccount(GetAccount request) {
-            return this.db.getAccount(request.getId());
+            // verify and execute
+            Result<Account> result;
+            try {
+                result = this.db.getAccount(verifyGetAccount(request));
+            } catch (WebApplicationException e) {
+                result = Result.error(e);
+            }
+
+            if (result.isOK())
+                LOG.info(result.value().getId().toString());
+            else
+                LOG.info(result.errorException().getMessage());
+
+            return result;
         }
 
         protected Result<Integer> getBalance(GetBalance request) {
-            return this.db.getBalance(request.getAccount());
+            // verify and execute
+            Result<Integer> result;
+            try {
+                result = this.db.getBalance(verifyGetBalance(request));
+            } catch (WebApplicationException e) {
+                result = Result.error(e);
+            }
+
+            if (result.isOK())
+                LOG.info(String.format("Balance - %d, %s\n", result.value(), request.getAccount()));
+            else
+                LOG.info(result.errorException().getMessage());
+
+            return result;
         }
 
         protected Result<Integer> getGlobalLedgerValue() {
-            return this.db.getGlobalLedgerValue();
+            Result<Integer> result = this.db.getGlobalLedgerValue();
+
+            if (result.isOK())
+                LOG.info("Global Ledger Value: " + result.value());
+            else
+                LOG.info(result.errorException().getMessage());
+
+            return result;
         }
 
         protected Result<LedgerOperation[]> getLedger(GetFullLedger request) {
-            return this.db.getLedger();
+            Result<LedgerOperation[]> result = this.db.getLedger();
+
+            if (result.isOK())
+                LOG.info(String.format("Get Ledger with %d operations.", result.value().length));
+            else
+                LOG.info(result.errorException().getMessage());
+
+            return result;
         }
 
         protected Result<Integer> getTotalValue(GetTotalValue request) {
-            return this.db.getTotalValue(request.getAccounts());
+            // verify and execute
+            Result<Integer> result;
+            try {
+                result = this.db.getTotalValue(verifyGetTotalValue(request));
+            } catch (WebApplicationException e) {
+                result = Result.error(e);
+            }
+
+            if (result.isOK())
+                LOG.info(String.format("Total value for %d accounts: %d\n", request.getAccounts().length, result.value()));
+            else
+                LOG.info(result.errorException().getMessage());
+
+            return result;
         }
 
         protected Result<Void> sendTransaction(SendTransaction request) {
-            return this.db.sendTransaction(request.getTransaction());
+            // verify and execute
+            Result<Void> result;
+            try {
+                result = this.db.sendTransaction(verifySendTransaction(request));
+            } catch (WebApplicationException e) {
+                result = Result.error(e);
+            }
+
+            if (result.isOK())
+                LOG.info(String.format("ORIGIN: %s, DEST: %s, TYPE: %s, VALUE: %d", 
+                    request.getTransaction().getOrigin(), request.getTransaction().getOrigin(),
+                    request.getTransaction().getType(), request.getTransaction().getValue()));
+            else
+                LOG.info(result.errorException().getMessage());
+
+            return result;
         }
 
         protected Result<Account> createAccount(CreateAccount request) {
-            return this.db.createAccount(request.getAccount());
+            // verify and execute
+            Result<Account> result;
+            try {
+                result = this.db.createAccount(verifyCreateAccount(request));
+            } catch (WebApplicationException e) {
+                result = Result.error(e);
+            }
+
+            if (result.isOK())
+                LOG.info(String.format("Created account with %s,\n%s\n", result.value().getId(), result.value().getOwner()));
+            else
+                LOG.info(result.errorException().getMessage());
+
+            return result;
         }
 
         protected Result<Void> loadMoney(LoadMoney request) {
-            return this.db.loadMoney(request.getValue());
+            // verify and execute
+            Result<Void> result;
+            try {
+                result = this.db.loadMoney(verifyLoadMoney(request));
+            } catch (WebApplicationException e) {
+                result = Result.error(e);
+            }
+
+            if (result.isOK())
+                LOG.info(String.format("ID: %s, TYPE: %s, VALUE: %s",
+                    request.getValue().getAccountId(), request.getValue().getType(), request.getValue().getValue()));
+            else
+                LOG.info(result.errorException().getMessage());
+
+            return result;
         }
     }
 }
