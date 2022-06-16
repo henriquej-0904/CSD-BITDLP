@@ -474,5 +474,56 @@ public abstract class AccountsResource implements Accounts
      * @return The current Ledger.
      */
     public abstract LedgerOperation[] getFullLedger();
+
+
+
+
+    @Override
+    public int getBalanceAsync(String accountId) {
+        GetBalance clientParams;
+        AccountId id;
+
+        try {
+            init();
+
+            clientParams = new GetBalance(accountId);
+            id = verifyGetBalance(clientParams);
+        } catch (WebApplicationException e) {
+            LOG.info(e.getMessage());
+            throw e;
+        }
+
+        int result = getBalanceAsync(clientParams, id);
+        // LOG.info(String.format("Balance - %d, %s\n", result, accountId));
+
+        // sign result
+        ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES);
+        buffer.putInt(result);
+
+        throw new WebApplicationException(
+                Response.status(Status.OK)
+                        .entity(result)
+                        .header(Accounts.SERVER_SIG, Crypto.sign(ServerConfig.getKeyPair(), buffer.array()))
+                        .build());
+    }
+
+    /**
+	 * Returns the balance of an account.
+	 *
+     * @param clientParams
+	 * @param accountId account id
+     * 
+     * @return The balance of the account.
+	 */
+    public abstract int getBalanceAsync(GetBalance clientParams, AccountId accountId);
+
+
+
+    @Override
+    public LedgerTransaction sendTransactionAsync(Pair<byte[], byte[]> originDestPair, int value,
+            String accountSignature, int nonce) {
+        // TODO Auto-generated method stub
+        return null;
+    }
     
 }

@@ -1,8 +1,13 @@
 package tp2.bitdlp.impl.srv.resources.bft;
 
+import bftsmart.communication.client.ReplyListener;
+import bftsmart.tom.AsynchServiceProxy;
 import bftsmart.tom.MessageContext;
+import bftsmart.tom.RequestContext;
 import bftsmart.tom.ServiceProxy;
 import bftsmart.tom.ServiceReplica;
+import bftsmart.tom.core.messages.TOMMessage;
+import bftsmart.tom.core.messages.TOMMessageType;
 import bftsmart.tom.server.defaultservices.DefaultSingleRecoverable;
 import tp2.bitdlp.api.Account;
 import tp2.bitdlp.api.AccountId;
@@ -32,6 +37,7 @@ import jakarta.ws.rs.WebApplicationException;
 public class AccountsResourceWithBFTSMaRt extends AccountsResource {
     private static BFTSMaRtServerReplica replica;
     private static ServiceProxy proxy;
+    private static AsynchServiceProxy asyncProxy;
 
     public static ServiceProxy getProxy() {
         return proxy;
@@ -39,6 +45,14 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource {
 
     public static void setProxy(ServiceProxy proxy) {
         AccountsResourceWithBFTSMaRt.proxy = proxy;
+    }
+
+    public static AsynchServiceProxy getAsyncProxy() {
+        return asyncProxy;
+    }
+
+    public static void setAsyncProxy(AsynchServiceProxy asyncProxy) {
+        AccountsResourceWithBFTSMaRt.asyncProxy = asyncProxy;
     }
 
     /**
@@ -100,6 +114,7 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource {
         return result;
     }
 
+    
     @Override
     public Account createAccount(CreateAccount clientParams, Account account) {
         byte[] request = writeObject(clientParams);
@@ -165,9 +180,20 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource {
     }
 
     @Override
-    public int getBalanceAsync(String accountId) {
-        // TODO Auto-generated method stub
-        throw new InternalServerErrorException();
+    public int getBalanceAsync(GetBalance clientParams, AccountId accountId) {
+        byte[] request = writeObject(clientParams);
+
+        AsyncReplyListener replyListener; //TODO: constructor
+
+        int opId = asyncProxy.invokeAsynchRequest(request, replyListener, TOMMessageType.UNORDERED_REQUEST);
+
+        //TODO: wait for 2f+1
+
+        asyncProxy.cleanAsynchRequest(opId);
+
+        //TODO: get response & 2f+1 signatures and return
+
+        //return this.<Integer>readResult(result).resultOrThrow();
     }
 
     @Override
