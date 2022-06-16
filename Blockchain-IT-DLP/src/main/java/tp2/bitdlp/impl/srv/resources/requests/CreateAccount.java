@@ -1,25 +1,50 @@
 package tp2.bitdlp.impl.srv.resources.requests;
 
-import tp2.bitdlp.api.Account;
+import tp2.bitdlp.util.Pair;
 
 public class CreateAccount extends Request {
 
-    private Account account;
+    private Pair<byte[],byte[]> accountUserPair;
+    
+    private String userSignature;
 
     private static final long serialVersionUID = 1L;
 
-    public CreateAccount(Account account){
+    public CreateAccount(Pair<byte[],byte[]> accountUserPair, String userSignature){
         super(Operation.CREATE_ACCOUNT);
-        this.account = account;
+        this.accountUserPair = accountUserPair;
+        this.userSignature = userSignature;
     }
 
-    public Account getAccount() {
-        return account;
+    /**
+     * @return the accountUserPair
+     */
+    public Pair<byte[], byte[]> getAccountUserPair() {
+        return accountUserPair;
     }
 
-    public void setAccount(Account account) {
-        this.account = account;
+    /**
+     * @param accountUserPair the accountUserPair to set
+     */
+    public void setAccountUserPair(Pair<byte[], byte[]> accountUserPair) {
+        this.accountUserPair = accountUserPair;
     }
+
+    /**
+     * @return the userSignature
+     */
+    public String getUserSignature() {
+        return userSignature;
+    }
+
+    /**
+     * @param userSignature the userSignature to set
+     */
+    public void setUserSignature(String userSignature) {
+        this.userSignature = userSignature;
+    }
+
+    
 }
 
 
