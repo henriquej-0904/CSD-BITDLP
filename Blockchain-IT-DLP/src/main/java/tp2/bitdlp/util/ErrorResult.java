@@ -54,6 +54,6 @@ class ErrorResult<T> implements Result<T> {
             ex = new WebApplicationException(cause, error);
 
         ex.setStackTrace(stackTrace);
-        throw ex;
+        return ex;
     }
 }

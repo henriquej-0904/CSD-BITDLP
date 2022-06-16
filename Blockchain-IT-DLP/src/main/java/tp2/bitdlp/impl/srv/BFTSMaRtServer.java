@@ -11,7 +11,6 @@ import org.glassfish.jersey.server.ResourceConfig;
 import bftsmart.tom.ServiceProxy;
 import tp2.bitdlp.impl.srv.config.ServerConfig;
 import tp2.bitdlp.impl.srv.resources.bft.AccountsResourceWithBFTSMaRt;
-import tp2.bitdlp.impl.srv.resources.bft.AccountsResourceWithBFTSMaRt.BFTSMaRtServerReplica;
 
 
 public class BFTSMaRtServer
@@ -37,13 +36,16 @@ public class BFTSMaRtServer
 			ServerConfig.setReplicaId(replicaId);
 
             AccountsResourceWithBFTSMaRt.setProxy(new ServiceProxy(proxyId));
-			AccountsResourceWithBFTSMaRt.setReplica(new BFTSMaRtServerReplica(replicaId));
+
+			AccountsResourceWithBFTSMaRt resource = new AccountsResourceWithBFTSMaRt();
+
+			AccountsResourceWithBFTSMaRt.setReplica(resource.new BFTSMaRtServerReplica(replicaId));
 			
             String ip = InetAddress.getLocalHost().getHostAddress();
 			URI uri = new URI(String.format("https://%s:%d/rest", ip, port));
 
 			ResourceConfig config = new ResourceConfig();
-			config.register(AccountsResourceWithBFTSMaRt.class);
+			config.register(resource);
             
 			SSLContext sslContext = ServerConfig.getSSLContext();
 			JdkHttpServerFactory.createHttpServer(uri, config, sslContext);

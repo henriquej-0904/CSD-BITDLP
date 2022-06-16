@@ -9,8 +9,6 @@ import tp2.bitdlp.api.AccountId;
 import tp2.bitdlp.api.operations.LedgerDeposit;
 import tp2.bitdlp.api.operations.LedgerOperation;
 import tp2.bitdlp.api.operations.LedgerTransaction;
-import tp2.bitdlp.data.LedgerDBlayer;
-import tp2.bitdlp.data.LedgerDBlayerException;
 import tp2.bitdlp.data.LedgerState;
 import tp2.bitdlp.impl.srv.resources.AccountsResource;
 import tp2.bitdlp.impl.srv.resources.requests.CreateAccount;
@@ -22,6 +20,7 @@ import tp2.bitdlp.impl.srv.resources.requests.GetTotalValue;
 import tp2.bitdlp.impl.srv.resources.requests.SendTransaction;
 import tp2.bitdlp.impl.srv.resources.requests.LoadMoney;
 import tp2.bitdlp.impl.srv.resources.requests.Request;
+import tp2.bitdlp.util.Pair;
 import tp2.bitdlp.util.Result;
 import tp2.bitdlp.util.Utils;
 import jakarta.ws.rs.InternalServerErrorException;
@@ -165,8 +164,20 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource {
         return this.<LedgerOperation[]>readResult(result).resultOrThrow();
     }
 
+    @Override
+    public int getBalanceAsync(String accountId) {
+        // TODO Auto-generated method stub
+        throw new InternalServerErrorException();
+    }
+
+    @Override
+    public LedgerTransaction sendTransactionAsync(Pair<byte[], byte[]> originDestPair, int value,
+            String accountSignature, int nonce) {
+        // TODO Auto-generated method stub
+        throw new InternalServerErrorException();
+    }
+
     public class BFTSMaRtServerReplica extends DefaultSingleRecoverable {
-        private LedgerDBlayer db;
 
         public BFTSMaRtServerReplica(int id) {
             new ServiceReplica(id, this, this);
@@ -202,7 +213,7 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource {
 
                 return writeObject(result);
             } catch (Exception e) {
-                LOG.severe(e.getMessage());
+                Utils.logError(e, LOG);
                 return null;
             }
         }
@@ -225,15 +236,29 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource {
                     case SEND_TRANSACTION:
                         result = sendTransaction((SendTransaction) request);
                         break;
+                        case GET_ACCOUNT:
+                        result = getAccount((GetAccount) request);
+                        break;
+                    case GET_BALANCE:
+                        result = getBalance((GetBalance) request);
+                        break;
+                    case GET_GLOBAL_LEDGER_VALUE:
+                        result = getGlobalLedgerValue();
+                        break;
+                    case GET_LEDGER:
+                        result = getLedger((GetFullLedger) request);
+                        break;
+                    case GET_TOTAL_VALUE:
+                        result = getTotalValue((GetTotalValue) request);
+                        break;
                     default:
-                        result = null;
                         break;
 
                 }
 
                 return writeObject(result);
             } catch (Exception e) {
-                LOG.severe(e.getMessage());
+                Utils.logError(e, LOG);
                 return null;
             }
         }
@@ -242,7 +267,7 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource {
         public byte[] getSnapshot() {
             try{
                 init();
-                return this.db.getState().resultOrThrow().getSerializedState();
+                return AccountsResourceWithBFTSMaRt.this.db.getState().resultOrThrow().getSerializedState();
             }catch(Exception e){
                 //Utils.logError(e, LOG);
                 return new byte[0];
@@ -254,7 +279,7 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource {
             try{
                 init();
 
-                this.db.loadState(new LedgerState(arg0)).resultOrThrow();
+                AccountsResourceWithBFTSMaRt.this.db.loadState(new LedgerState(arg0)).resultOrThrow();
 
             }catch(Exception e){
                 //Utils.logError(e, LOG);
@@ -265,7 +290,7 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource {
             // verify and execute
             Result<Account> result;
             try {
-                result = this.db.getAccount(verifyGetAccount(request));
+                result = AccountsResourceWithBFTSMaRt.this.db.getAccount(verifyGetAccount(request));
             } catch (WebApplicationException e) {
                 result = Result.error(e);
             }
@@ -282,13 +307,13 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource {
             // verify and execute
             Result<Integer> result;
             try {
-                result = this.db.getBalance(verifyGetBalance(request));
+                result = AccountsResourceWithBFTSMaRt.this.db.getBalance(verifyGetBalance(request));
             } catch (WebApplicationException e) {
                 result = Result.error(e);
             }
 
             if (result.isOK())
-                LOG.info(String.format("Balance - %d, %s\n", result.value(), request.getAccount()));
+                LOG.info(String.format("Balance - %d, %s\n", result.value(), request.getId()));
             else
                 LOG.info(result.errorException().getMessage());
 
@@ -296,7 +321,7 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource {
         }
 
         protected Result<Integer> getGlobalLedgerValue() {
-            Result<Integer> result = this.db.getGlobalLedgerValue();
+            Result<Integer> result = AccountsResourceWithBFTSMaRt.this.db.getGlobalLedgerValue();
 
             if (result.isOK())
                 LOG.info("Global Ledger Value: " + result.value());
@@ -307,7 +332,7 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource {
         }
 
         protected Result<LedgerOperation[]> getLedger(GetFullLedger request) {
-            Result<LedgerOperation[]> result = this.db.getLedger();
+            Result<LedgerOperation[]> result = AccountsResourceWithBFTSMaRt.this.db.getLedger();
 
             if (result.isOK())
                 LOG.info(String.format("Get Ledger with %d operations.", result.value().length));
@@ -321,7 +346,7 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource {
             // verify and execute
             Result<Integer> result;
             try {
-                result = this.db.getTotalValue(verifyGetTotalValue(request));
+                result = AccountsResourceWithBFTSMaRt.this.db.getTotalValue(verifyGetTotalValue(request));
             } catch (WebApplicationException e) {
                 result = Result.error(e);
             }
@@ -336,17 +361,19 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource {
 
         protected Result<Void> sendTransaction(SendTransaction request) {
             // verify and execute
+            LedgerTransaction transaction = null;
             Result<Void> result;
             try {
-                result = this.db.sendTransaction(verifySendTransaction(request));
+                transaction = verifySendTransaction(request);
+                result = AccountsResourceWithBFTSMaRt.this.db.sendTransaction(transaction);
             } catch (WebApplicationException e) {
                 result = Result.error(e);
             }
 
             if (result.isOK())
                 LOG.info(String.format("ORIGIN: %s, DEST: %s, TYPE: %s, VALUE: %d", 
-                    request.getTransaction().getOrigin(), request.getTransaction().getOrigin(),
-                    request.getTransaction().getType(), request.getTransaction().getValue()));
+                    transaction.getOrigin(), transaction.getOrigin(),
+                    transaction.getType(), transaction.getValue()));
             else
                 LOG.info(result.errorException().getMessage());
 
@@ -357,7 +384,7 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource {
             // verify and execute
             Result<Account> result;
             try {
-                result = this.db.createAccount(verifyCreateAccount(request));
+                result = AccountsResourceWithBFTSMaRt.this.db.createAccount(verifyCreateAccount(request));
             } catch (WebApplicationException e) {
                 result = Result.error(e);
             }
@@ -372,16 +399,18 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource {
 
         protected Result<Void> loadMoney(LoadMoney request) {
             // verify and execute
+            LedgerDeposit deposit = null;
             Result<Void> result;
             try {
-                result = this.db.loadMoney(verifyLoadMoney(request));
+                deposit = verifyLoadMoney(request);
+                result = AccountsResourceWithBFTSMaRt.this.db.loadMoney(deposit);
             } catch (WebApplicationException e) {
                 result = Result.error(e);
             }
 
             if (result.isOK())
                 LOG.info(String.format("ID: %s, TYPE: %s, VALUE: %s",
-                    request.getValue().getAccountId(), request.getValue().getType(), request.getValue().getValue()));
+                    deposit.getAccountId(), LedgerOperation.Type.DEPOSIT, request.getValue()));
             else
                 LOG.info(result.errorException().getMessage());
 
