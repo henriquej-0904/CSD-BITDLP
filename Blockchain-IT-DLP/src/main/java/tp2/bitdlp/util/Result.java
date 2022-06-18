@@ -1,10 +1,18 @@
 package tp2.bitdlp.util;
 
-import java.io.Serializable;
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 
 import jakarta.ws.rs.WebApplicationException;
 
-public interface Result<T> extends Serializable {
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY)
+@JsonSubTypes({
+    @JsonSubTypes.Type(value = OkResult.class, name = "OkResult"),
+
+    @JsonSubTypes.Type(value = ErrorResult.class, name = "ErrorResult") }
+)
+public interface Result<T>
+{
     boolean isOK();
 
     T resultOrThrow() throws WebApplicationException;

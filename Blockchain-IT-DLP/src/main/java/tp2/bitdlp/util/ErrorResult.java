@@ -1,28 +1,20 @@
 package tp2.bitdlp.util;
 
 import jakarta.ws.rs.WebApplicationException;
+import jakarta.ws.rs.core.Response.Status;
 
-class ErrorResult<T> implements Result<T> {
+public class ErrorResult<T> implements Result<T>
+{
+    private int error;
+    private WebApplicationException exception;
 
-    private static final long serialVersionUID = 12432404654L;
-
-    final int error;
-    final String msg;
-    final StackTraceElement[] stackTrace;
-    final Throwable cause;
-
-    ErrorResult(int error) {
+    public ErrorResult(int error) {
         this.error = error;
-        this.msg = null;
-        this.stackTrace = null;
-        this.cause = null;
     }
 
-    ErrorResult(WebApplicationException ex) {
+    public ErrorResult(WebApplicationException ex) {
         this.error = ex.getResponse().getStatus();
-        this.msg = ex.getMessage();
-        this.stackTrace = ex.getStackTrace();
-        this.cause = ex.getCause();
+        this.exception = ex;
     }
 
     public boolean isOK() {
@@ -47,13 +39,22 @@ class ErrorResult<T> implements Result<T> {
 
     @Override
     public WebApplicationException errorException() {
-        WebApplicationException ex;
-        if (msg != null)
-            ex = new WebApplicationException(msg, cause, error);
-        else
-            ex = new WebApplicationException(cause, error);
+        return this.exception == null ?
+            this.exception = new WebApplicationException(Status.fromStatusCode(this.error))
+            : this.exception;
+    }
 
-        ex.setStackTrace(stackTrace);
-        return ex;
+    /**
+     * @return the error
+     */
+    public int getError() {
+        return error;
+    }
+
+    /**
+     * @param error the error to set
+     */
+    public void setError(int error) {
+        this.error = error;
     }
 }

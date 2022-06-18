@@ -2,13 +2,16 @@ package tp2.bitdlp.util;
 
 import jakarta.ws.rs.WebApplicationException;
 
-class OkResult<T> implements Result<T> {
+public class OkResult<T> implements Result<T> {
 
-    private static final long serialVersionUID = 12432446L;
+    private T result;
 
-    final T result;
+    /**
+     * 
+     */
+    public OkResult() {}
 
-    OkResult(T result) {
+    public OkResult(T result) {
         this.result = result;
     }
 
@@ -18,6 +21,17 @@ class OkResult<T> implements Result<T> {
 
     public T value() {
         return this.result;
+    }
+
+    public T getResult() {
+        return this.result;
+    }
+
+    /**
+     * @param result the result to set
+     */
+    public void setResult(T result) {
+        this.result = result;
     }
 
     public int error() {
