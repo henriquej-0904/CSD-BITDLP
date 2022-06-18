@@ -8,6 +8,7 @@ import javax.net.ssl.SSLContext;
 import org.glassfish.jersey.jdkhttp.JdkHttpServerFactory;
 import org.glassfish.jersey.server.ResourceConfig;
 
+import bftsmart.tom.AsynchServiceProxy;
 import bftsmart.tom.ServiceProxy;
 import tp2.bitdlp.impl.srv.config.ServerConfig;
 import tp2.bitdlp.impl.srv.resources.bft.AccountsResourceWithBFTSMaRt;
@@ -31,11 +32,13 @@ public class BFTSMaRtServer
 
 			int replicaId = Integer.parseInt(args[0]);
 			int proxyId = replicaId + 10;
+			int asyncProxyId = replicaId + 11;
 			int port = Integer.parseInt(args[1]);
 
 			ServerConfig.setReplicaId(replicaId);
 
             AccountsResourceWithBFTSMaRt.setProxy(new ServiceProxy(proxyId));
+			AccountsResourceWithBFTSMaRt.setAsyncProxy(new AsynchServiceProxy(asyncProxyId));
 
 			AccountsResourceWithBFTSMaRt resource = new AccountsResourceWithBFTSMaRt();
 
