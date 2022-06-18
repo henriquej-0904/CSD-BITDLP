@@ -122,13 +122,13 @@ public class AccountsResourceCentralized extends AccountsResource
     }
 
     @Override
-    public int getBalanceAsync(String accountId) {
+    public LedgerTransaction sendTransactionAsync(Pair<byte[], byte[]> originDestPair, int value,
+            String accountSignature, int nonce) {
         throw new InternalServerErrorException();
     }
 
     @Override
-    public LedgerTransaction sendTransactionAsync(Pair<byte[], byte[]> originDestPair, int value,
-            String accountSignature, int nonce) {
+    public int getBalanceAsync(GetBalance clientParams, AccountId accountId) {
         throw new InternalServerErrorException();
     }
 }
