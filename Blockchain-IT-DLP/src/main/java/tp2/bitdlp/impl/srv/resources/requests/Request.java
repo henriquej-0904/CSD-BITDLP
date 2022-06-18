@@ -14,7 +14,11 @@ public abstract class Request implements Serializable
         GET_BALANCE,
         GET_TOTAL_VALUE,
         GET_GLOBAL_LEDGER_VALUE,
-        GET_LEDGER
+        GET_LEDGER,
+
+        // ASYNC
+        GET_BALANCE_ASYNC,
+        SEND_TRANSACTION_ASYNC;
     }
 
     private Operation operation;
