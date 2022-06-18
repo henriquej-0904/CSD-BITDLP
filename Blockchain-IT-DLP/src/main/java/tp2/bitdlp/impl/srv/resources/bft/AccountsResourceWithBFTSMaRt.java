@@ -1,5 +1,9 @@
 package tp2.bitdlp.impl.srv.resources.bft;
 
+import java.io.IOException;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+
 import bftsmart.communication.client.ReplyListener;
 import bftsmart.tom.AsynchServiceProxy;
 import bftsmart.tom.MessageContext;
@@ -15,6 +19,7 @@ import tp2.bitdlp.api.operations.LedgerDeposit;
 import tp2.bitdlp.api.operations.LedgerOperation;
 import tp2.bitdlp.api.operations.LedgerTransaction;
 import tp2.bitdlp.data.LedgerState;
+import tp2.bitdlp.impl.srv.config.ServerConfig;
 import tp2.bitdlp.impl.srv.resources.AccountsResource;
 import tp2.bitdlp.impl.srv.resources.requests.CreateAccount;
 import tp2.bitdlp.impl.srv.resources.requests.GetBalance;
@@ -25,6 +30,7 @@ import tp2.bitdlp.impl.srv.resources.requests.GetTotalValue;
 import tp2.bitdlp.impl.srv.resources.requests.SendTransaction;
 import tp2.bitdlp.impl.srv.resources.requests.LoadMoney;
 import tp2.bitdlp.impl.srv.resources.requests.Request;
+import tp2.bitdlp.util.Crypto;
 import tp2.bitdlp.util.Pair;
 import tp2.bitdlp.util.Result;
 import tp2.bitdlp.util.Utils;
@@ -34,7 +40,8 @@ import jakarta.ws.rs.WebApplicationException;
 /**
  * An implementation of the Accounts API with BFT SMaRt
  */
-public class AccountsResourceWithBFTSMaRt extends AccountsResource {
+public class AccountsResourceWithBFTSMaRt extends AccountsResource
+{
     private static BFTSMaRtServerReplica replica;
     private static ServiceProxy proxy;
     private static AsynchServiceProxy asyncProxy;
@@ -183,13 +190,28 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource {
     public int getBalanceAsync(GetBalance clientParams, AccountId accountId) {
         byte[] request = writeObject(clientParams);
 
-        AsyncReplyListener replyListener; //TODO: constructor
+        AsyncReplyListener replyListener = new AsyncReplyListener(2*1 + 1);
 
-        int opId = asyncProxy.invokeAsynchRequest(request, replyListener, TOMMessageType.UNORDERED_REQUEST);
+        try {
+            
+            int opId = asyncProxy.invokeAsynchRequest(request, replyListener, TOMMessageType.UNORDERED_REQUEST);
 
         //TODO: wait for 2f+1
+        try {
+            replyListener.wait();
+        } catch (InterruptedException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
 
         asyncProxy.cleanAsynchRequest(opId);
+
+        return -1;
+
+        } catch (Exception e) {
+            throw new InternalServerErrorException(e.getMessage(), e);
+        }
+        
 
         //TODO: get response & 2f+1 signatures and return
 
@@ -201,6 +223,25 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource {
             String accountSignature, int nonce) {
         // TODO Auto-generated method stub
         throw new InternalServerErrorException();
+    }
+
+
+    protected byte[] toJson(Object obj)
+    {
+        try {
+            return Utils.json.writeValueAsBytes(obj);
+        } catch (JsonProcessingException e) {
+            throw new InternalServerErrorException(e.getMessage(), e);
+        }
+    }
+
+    protected <T> T fromJson(byte[] json, Class<T> valueType)
+    {
+        try {
+            return Utils.json.readValue(json, valueType);
+        } catch (IOException e) {
+            throw new InternalServerErrorException(e.getMessage(), e);
+        }
     }
 
     public class BFTSMaRtServerReplica extends DefaultSingleRecoverable {
@@ -215,7 +256,7 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource {
                 init();
 
                 Request request = (Request) readObject(arg0);
-                Result<?> result = null;
+                Object result = null;
 
                 switch (request.getOperation()) {
                     case GET_ACCOUNT:
@@ -232,6 +273,11 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource {
                         break;
                     case GET_TOTAL_VALUE:
                         result = getTotalValue((GetTotalValue) request);
+                        break;
+                    
+                    // ASYNC
+                    case GET_BALANCE_ASYNC:
+                        result = encodeAndSignReply(getBalance((GetBalance) request));
                         break;
                     default:
                         break;
@@ -250,7 +296,7 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource {
                 init();
 
                 Request request = (Request) readObject(arg0);
-                Result<?> result = null;
+                Object result = null;
 
                 switch (request.getOperation()) {
                     case CREATE_ACCOUNT:
@@ -262,7 +308,7 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource {
                     case SEND_TRANSACTION:
                         result = sendTransaction((SendTransaction) request);
                         break;
-                        case GET_ACCOUNT:
+                    case GET_ACCOUNT:
                         result = getAccount((GetAccount) request);
                         break;
                     case GET_BALANCE:
@@ -276,6 +322,14 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource {
                         break;
                     case GET_TOTAL_VALUE:
                         result = getTotalValue((GetTotalValue) request);
+                        break;
+
+                    // ASYNC
+                    case GET_BALANCE_ASYNC:
+                        result = encodeAndSignReply(getBalance((GetBalance) request));
+                        break;
+                    case SEND_TRANSACTION_ASYNC:
+                        result = encodeAndSignReply(sendTransaction((SendTransaction) request));
                         break;
                     default:
                         break;
@@ -441,6 +495,15 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource {
                 LOG.info(result.errorException().getMessage());
 
             return result;
+        }
+
+        protected ReplyWithSignature<byte[]> encodeAndSignReply(Result<?> result)
+        {
+            ReplyWithSignature<byte[]> reply = new ReplyWithSignature<>();
+            reply.setReply(toJson(result));
+            reply.setSignature(Crypto.sign(ServerConfig.getKeyPair(), reply.getReply()));
+            
+            return reply;
         }
     }
 }
