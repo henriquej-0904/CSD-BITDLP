@@ -41,7 +41,8 @@ public class Crypto {
             signature.initSign(keys.getPrivate());
         
             for (byte[] buff : data) {
-                signature.update(buff);
+                if (buff != null)
+                    signature.update(buff);
             }
 
             return Utils.toHex(signature.sign());
@@ -55,8 +56,10 @@ public class Crypto {
             Signature verify = Crypto.createSignatureInstance();
             verify.initVerify(publicKey);
 
-            for (byte[] buff : data)
-                verify.update(buff);
+            for (byte[] buff : data) {
+                if (buff != null)
+                    verify.update(buff);
+            }
 
             return verify.verify(Utils.fromHex(signature));
         } catch (Exception e) {
