@@ -1,9 +1,7 @@
 package tp2.bitdlp.impl.srv.resources.bft;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 
 import bftsmart.tom.AsynchServiceProxy;
@@ -169,7 +167,8 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
     }
 
     @Override
-    public ReplyWithSignatures<byte[]> getBalanceAsync(GetBalance clientParams, AccountId accountId) {
+    public ReplyWithSignatures<byte[]> getBalanceAsync(GetBalance clientParams, AccountId accountId)
+    {
         byte[] request = toJson(clientParams);
 
         AsyncReplyListener replyListener = new AsyncReplyListener(2*1 + 1);
@@ -213,34 +212,6 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
         throw new InternalServerErrorException();
     }
 
-
-    protected byte[] toJson(Object obj)
-    {
-        try {
-            return Utils.json.writeValueAsBytes(obj);
-        } catch (JsonProcessingException e) {
-            throw new InternalServerErrorException(e.getMessage(), e);
-        }
-    }
-
-    protected <T> T fromJson(byte[] json, Class<T> valueType)
-    {
-        try {
-            return Utils.json.readValue(json, valueType);
-        } catch (IOException e) {
-            throw new InternalServerErrorException(e.getMessage(), e);
-        }
-    }
-
-    protected <T> T fromJson(byte[] json, TypeReference<T> valueTypeRef)
-    {
-        try {
-            return Utils.json.readValue(json, valueTypeRef);
-        } catch (IOException e) {
-            throw new InternalServerErrorException(e.getMessage(), e);
-        }
-    }
-
     public class BFTSMaRtServerReplica extends DefaultSingleRecoverable {
 
         public BFTSMaRtServerReplica(int id) {
@@ -280,7 +251,8 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
                         break;
                 }
 
-                return toJson(result);
+                byte[] res = toJson(result);
+                return res;
             } catch (Exception e) {
                 Utils.logError(e, LOG);
                 return null;
@@ -333,7 +305,8 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
 
                 }
 
-                return toJson(result);
+                byte[] res = toJson(result);
+                return res;
             } catch (Exception e) {
                 Utils.logError(e, LOG);
                 return null;

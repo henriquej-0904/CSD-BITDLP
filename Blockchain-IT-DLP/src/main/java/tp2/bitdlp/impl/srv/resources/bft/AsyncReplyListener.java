@@ -31,7 +31,7 @@ public class AsyncReplyListener implements ReplyListener {
 
     @Override
     public void replyReceived(RequestContext arg0, TOMMessage arg1) {
-        byte[] replyBytes = arg1.serializedMessage;
+        byte[] replyBytes = arg1.getContent();
 
         try {
             ReplyWithSignature<byte[]> reply = Utils.json.readValue(replyBytes,

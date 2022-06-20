@@ -1,5 +1,6 @@
 package tp2.bitdlp.impl.srv.resources;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.security.InvalidKeyException;
 import java.security.MessageDigest;
@@ -10,6 +11,9 @@ import java.security.spec.InvalidKeySpecException;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 
 import tp2.bitdlp.api.Account;
 import tp2.bitdlp.api.AccountId;
@@ -23,6 +27,7 @@ import tp2.bitdlp.api.service.Accounts;
 import tp2.bitdlp.data.LedgerDBlayer;
 import tp2.bitdlp.data.LedgerDBlayerException;
 import tp2.bitdlp.impl.srv.config.ServerConfig;
+import tp2.bitdlp.impl.srv.resources.bft.ReplyWithSignatures;
 import tp2.bitdlp.impl.srv.resources.requests.CreateAccount;
 import tp2.bitdlp.impl.srv.resources.requests.GetAccount;
 import tp2.bitdlp.impl.srv.resources.requests.GetBalance;
@@ -36,6 +41,7 @@ import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.InternalServerErrorException;
 import jakarta.ws.rs.WebApplicationException;
+import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
 
@@ -487,23 +493,24 @@ public abstract class AccountsResource implements Accounts
             init();
 
             clientParams = new GetBalance(accountId);
+            clientParams.async();
             id = verifyGetBalance(clientParams);
         } catch (WebApplicationException e) {
             LOG.info(e.getMessage());
             throw e;
         }
 
-        int result = getBalanceAsync(clientParams, id);
+        ReplyWithSignatures<byte[]> reply = getBalanceAsync(clientParams, id);
+
         // LOG.info(String.format("Balance - %d, %s\n", result, accountId));
 
-        // sign result
-        ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES);
-        buffer.putInt(result);
+        String signature = signReplyWithSignatures(reply);
 
         throw new WebApplicationException(
                 Response.status(Status.OK)
-                        .entity(result)
-                        .header(Accounts.SERVER_SIG, Crypto.sign(ServerConfig.getKeyPair(), buffer.array()))
+                        .type(MediaType.APPLICATION_JSON)
+                        .entity(new String(toJson(reply)))
+                        .header(Accounts.SERVER_SIG, signature)
                         .build());
     }
 
@@ -515,7 +522,7 @@ public abstract class AccountsResource implements Accounts
      * 
      * @return The balance of the account.
 	 */
-    public abstract int getBalanceAsync(GetBalance clientParams, AccountId accountId);
+    public abstract ReplyWithSignatures<byte[]> getBalanceAsync(GetBalance clientParams, AccountId accountId);
 
 
 
@@ -525,5 +532,53 @@ public abstract class AccountsResource implements Accounts
         // TODO Auto-generated method stub
         return null;
     }
-    
+
+    protected String signReplyWithSignatures(ReplyWithSignatures<byte[]> reply)
+    {
+        ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES);
+        buffer.putInt(reply.getStatusCode());
+
+        try {
+            Signature signature = Crypto.createSignatureInstance();
+            signature.initSign(ServerConfig.getKeyPair().getPrivate());
+        
+            signature.update(buffer.array());
+            signature.update(reply.getReply());
+
+            for (String sig : reply.getSignatures()) {
+                signature.update(sig.getBytes());
+            }
+
+            return Utils.toHex(signature.sign());
+        } catch (Exception e) {
+            throw new InternalServerErrorException(e.getMessage(), e);
+        }
+    }
+
+    protected byte[] toJson(Object obj)
+    {
+        try {
+            return Utils.json.writeValueAsBytes(obj);
+        } catch (JsonProcessingException e) {
+            throw new InternalServerErrorException(e.getMessage(), e);
+        }
+    }
+
+    protected <T> T fromJson(byte[] json, Class<T> valueType)
+    {
+        try {
+            return Utils.json.readValue(json, valueType);
+        } catch (IOException e) {
+            throw new InternalServerErrorException(e.getMessage(), e);
+        }
+    }
+
+    protected <T> T fromJson(byte[] json, TypeReference<T> valueTypeRef)
+    {
+        try {
+            return Utils.json.readValue(json, valueTypeRef);
+        } catch (IOException e) {
+            throw new InternalServerErrorException(e.getMessage(), e);
+        }
+    }
 }

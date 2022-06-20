@@ -12,6 +12,7 @@ import bftsmart.tom.AsynchServiceProxy;
 import bftsmart.tom.ServiceProxy;
 import tp2.bitdlp.impl.srv.config.ServerConfig;
 import tp2.bitdlp.impl.srv.resources.bft.AccountsResourceWithBFTSMaRt;
+import tp2.bitdlp.impl.srv.resources.bft.ReplyWithSignatureComparator;
 
 
 public class BFTSMaRtServer
@@ -38,7 +39,7 @@ public class BFTSMaRtServer
 			ServerConfig.setReplicaId(replicaId);
 
             AccountsResourceWithBFTSMaRt.setProxy(new ServiceProxy(proxyId));
-			AccountsResourceWithBFTSMaRt.setAsyncProxy(new AsynchServiceProxy(asyncProxyId));
+			AccountsResourceWithBFTSMaRt.setAsyncProxy(new AsynchServiceProxy(asyncProxyId, null, new ReplyWithSignatureComparator(), null, null));
 
 			AccountsResourceWithBFTSMaRt resource = new AccountsResourceWithBFTSMaRt();
 

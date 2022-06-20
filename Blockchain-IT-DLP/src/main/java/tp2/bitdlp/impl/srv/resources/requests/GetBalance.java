@@ -19,4 +19,9 @@ public class GetBalance extends Request {
     public void setId(String accountId) {
         this.id = accountId;
     }
+
+    public void async()
+    {
+        this.setOperation(Operation.GET_BALANCE_ASYNC);
+    }
 }

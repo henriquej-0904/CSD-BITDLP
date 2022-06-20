@@ -6,6 +6,7 @@ import tp2.bitdlp.api.AccountId;
 import tp2.bitdlp.api.operations.LedgerDeposit;
 import tp2.bitdlp.api.operations.LedgerOperation;
 import tp2.bitdlp.api.operations.LedgerTransaction;
+import tp2.bitdlp.impl.srv.resources.bft.ReplyWithSignatures;
 import tp2.bitdlp.impl.srv.resources.requests.CreateAccount;
 import tp2.bitdlp.impl.srv.resources.requests.GetAccount;
 import tp2.bitdlp.impl.srv.resources.requests.GetBalance;
@@ -128,7 +129,10 @@ public class AccountsResourceCentralized extends AccountsResource
     }
 
     @Override
-    public int getBalanceAsync(GetBalance clientParams, AccountId accountId) {
-        throw new InternalServerErrorException();
+    public ReplyWithSignatures<byte[]> getBalanceAsync(GetBalance clientParams, AccountId accountId) {
+        // TODO Auto-generated method stub
+        return null;
     }
+
+    
 }
