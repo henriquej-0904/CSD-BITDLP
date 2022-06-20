@@ -1,5 +1,7 @@
 package tp2.bitdlp.util;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.ws.rs.WebApplicationException;
 
 public class OkResult<T> implements Result<T> {
@@ -15,6 +17,7 @@ public class OkResult<T> implements Result<T> {
         this.result = result;
     }
 
+    @JsonIgnore
     public boolean isOK() {
         return true;
     }

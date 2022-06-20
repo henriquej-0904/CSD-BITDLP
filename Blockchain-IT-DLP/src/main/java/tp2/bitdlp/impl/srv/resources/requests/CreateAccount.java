@@ -8,7 +8,9 @@ public class CreateAccount extends Request {
     
     private String userSignature;
 
-    private static final long serialVersionUID = 1L;
+    public CreateAccount() {
+        super(Operation.CREATE_ACCOUNT);
+    }
 
     public CreateAccount(Pair<byte[],byte[]> accountUserPair, String userSignature){
         super(Operation.CREATE_ACCOUNT);

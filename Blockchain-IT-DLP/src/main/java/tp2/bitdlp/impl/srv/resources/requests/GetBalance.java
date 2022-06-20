@@ -1,20 +1,22 @@
 package tp2.bitdlp.impl.srv.resources.requests;
 
 public class GetBalance extends Request {
-    private String accountId;
+    private String id;
 
-    private static final long serialVersionUID = 1243244654L;
+    public GetBalance(){
+        super(Operation.GET_BALANCE);
+    }
 
     public GetBalance(String accountId){
         super(Operation.GET_BALANCE);
-        this.accountId = accountId;
+        this.id = accountId;
     }
 
     public String getId() {
-        return accountId;
+        return id;
     }
 
-    public void setAccount(String accountId) {
-        this.accountId = accountId;
+    public void setId(String accountId) {
+        this.id = accountId;
     }
 }

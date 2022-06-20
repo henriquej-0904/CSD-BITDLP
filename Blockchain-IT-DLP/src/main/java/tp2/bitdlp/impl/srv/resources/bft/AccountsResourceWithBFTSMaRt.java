@@ -3,14 +3,12 @@ package tp2.bitdlp.impl.srv.resources.bft;
 import java.io.IOException;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 
-import bftsmart.communication.client.ReplyListener;
 import bftsmart.tom.AsynchServiceProxy;
 import bftsmart.tom.MessageContext;
-import bftsmart.tom.RequestContext;
 import bftsmart.tom.ServiceProxy;
 import bftsmart.tom.ServiceReplica;
-import bftsmart.tom.core.messages.TOMMessage;
 import bftsmart.tom.core.messages.TOMMessageType;
 import bftsmart.tom.server.defaultservices.DefaultSingleRecoverable;
 import tp2.bitdlp.api.Account;
@@ -76,33 +74,6 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
         AccountsResourceWithBFTSMaRt.replica = replica;
     }
 
-    @SuppressWarnings("unchecked")
-    protected <T> Result<T> readResult(byte[] arr) {
-        Object result = readObject(arr);
-
-        try {
-            return (Result<T>) result;
-        } catch (Exception e) {
-            throw new InternalServerErrorException(e.getMessage(), e);
-        }
-    }
-
-    public static Object readObject(byte[] arr) {
-        try {
-            return Utils.readObject(arr);
-        } catch (Exception e) {
-            throw new InternalServerErrorException(e.getMessage(), e);
-        }
-    }
-
-    public static byte[] writeObject(Object req) {
-        try {
-            return Utils.writeObject(req);
-        } catch (Exception e) {
-            throw new InternalServerErrorException(e.getMessage(), e);
-        }
-    }
-
     protected byte[] invokeOrdered(byte[] request)
     {
         byte[] result = proxy.invokeOrdered(request);
@@ -124,71 +95,81 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
     
     @Override
     public Account createAccount(CreateAccount clientParams, Account account) {
-        byte[] request = writeObject(clientParams);
-        byte[] result = invokeOrdered(request);
+        byte[] request = toJson(clientParams);
+        byte[] resultBytes = invokeOrdered(request);
 
-        return this.<Account>readResult(result).resultOrThrow();
+        Result<Account> result = this.fromJson(resultBytes,
+            new TypeReference<Result<Account>>() { });
+
+        return result.resultOrThrow();
     }
 
     @Override
     public Account getAccount(GetAccount clientParams, AccountId accountId) {
-        byte[] request = writeObject(clientParams);
+        byte[] request = toJson(clientParams);
         byte[] result = invokeUnordered(request);
 
-        return this.<Account>readResult(result).resultOrThrow();
+        return this.fromJson(result,
+            new TypeReference<Result<Account>>() { }).resultOrThrow();
     }
 
     @Override
     public int getBalance(GetBalance clientParams, AccountId accountId) {
-        byte[] request = writeObject(clientParams);
+        byte[] request = toJson(clientParams);
         byte[] result = invokeUnordered(request);
 
-        return this.<Integer>readResult(result).resultOrThrow();
+        return this.fromJson(result,
+            new TypeReference<Result<Integer>>() { }).resultOrThrow();
     }
 
     @Override
     public int getTotalValue(GetTotalValue clientParams, AccountId[] accounts) {
-        byte[] request = writeObject(clientParams);
+        byte[] request = toJson(clientParams);
         byte[] result = invokeUnordered(request);
 
-        return this.<Integer>readResult(result).resultOrThrow();
+        return this.fromJson(result,
+            new TypeReference<Result<Integer>>() { }).resultOrThrow();
     }
 
     @Override
     public int getGlobalValue() {
-        byte[] request = writeObject(new GetGlobalValue());
+        byte[] request = toJson(new GetGlobalValue());
         byte[] result = invokeUnordered(request);
 
-        return this.<Integer>readResult(result).resultOrThrow();
+        return this.fromJson(result,
+            new TypeReference<Result<Integer>>() { }).resultOrThrow();
     }
 
     @Override
     public void loadMoney(LoadMoney clientParams, LedgerDeposit value) {
-        byte[] request = writeObject(clientParams);
+        byte[] request = toJson(clientParams);
         byte[] result = invokeOrdered(request);
 
-        this.<Void>readResult(result).resultOrThrow();
+        this.fromJson(result,
+            new TypeReference<Result<Void>>() { }).resultOrThrow();
     }
 
     @Override
     public void sendTransaction(SendTransaction clientParams, LedgerTransaction transaction) {
-        byte[] request = writeObject(clientParams);
+        byte[] request = toJson(clientParams);
         byte[] result = invokeOrdered(request);
 
-        this.<Void>readResult(result).resultOrThrow();
+        this.fromJson(result,
+            new TypeReference<Result<Void>>() { }).resultOrThrow();
     }
 
     @Override
     public LedgerOperation[] getFullLedger() {
-        byte[] request = writeObject(new GetFullLedger());
+        byte[] request = toJson(new GetFullLedger());
         byte[] result = invokeUnordered(request);
 
-        return this.<LedgerOperation[]>readResult(result).resultOrThrow();
+        return this.fromJson(result,
+            new TypeReference<Result<LedgerOperation[]>>() { }).resultOrThrow();
     }
 
     @Override
     public int getBalanceAsync(GetBalance clientParams, AccountId accountId) {
-        byte[] request = writeObject(clientParams);
+        byte[] request = toJson(clientParams);
 
         AsyncReplyListener replyListener = new AsyncReplyListener(2*1 + 1);
 
@@ -215,7 +196,7 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
 
         //TODO: get response & 2f+1 signatures and return
 
-        //return this.<Integer>readResult(result).resultOrThrow();
+        //return this.<Integer>fromJson(result).resultOrThrow();
     }
 
     @Override
@@ -244,6 +225,15 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
         }
     }
 
+    protected <T> T fromJson(byte[] json, TypeReference<T> valueTypeRef)
+    {
+        try {
+            return Utils.json.readValue(json, valueTypeRef);
+        } catch (IOException e) {
+            throw new InternalServerErrorException(e.getMessage(), e);
+        }
+    }
+
     public class BFTSMaRtServerReplica extends DefaultSingleRecoverable {
 
         public BFTSMaRtServerReplica(int id) {
@@ -255,7 +245,7 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
             try {
                 init();
 
-                Request request = (Request) readObject(arg0);
+                Request request = fromJson(arg0, Request.class);
                 Object result = null;
 
                 switch (request.getOperation()) {
@@ -283,7 +273,7 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
                         break;
                 }
 
-                return writeObject(result);
+                return toJson(result);
             } catch (Exception e) {
                 Utils.logError(e, LOG);
                 return null;
@@ -295,7 +285,7 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
             try {
                 init();
 
-                Request request = (Request) readObject(arg0);
+                Request request = fromJson(arg0, Request.class);
                 Object result = null;
 
                 switch (request.getOperation()) {
@@ -336,7 +326,7 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
 
                 }
 
-                return writeObject(result);
+                return toJson(result);
             } catch (Exception e) {
                 Utils.logError(e, LOG);
                 return null;

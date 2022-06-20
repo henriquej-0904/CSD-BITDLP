@@ -3,12 +3,15 @@ package tp2.bitdlp.impl.srv.resources.requests;
 import tp2.bitdlp.util.Pair;
 
 public class SendTransaction extends Request {
-    private static final long serialVersionUID = 9032490L;
 
     private Pair<byte[],byte[]> originDestPair;
     private int value;
     private String accountSignature;
     private int nonce;
+
+    public SendTransaction() {
+        super(Operation.SEND_TRANSACTION);
+    }
 
     /**
      * @param transaction

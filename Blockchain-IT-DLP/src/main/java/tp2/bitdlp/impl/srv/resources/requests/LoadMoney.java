@@ -2,11 +2,13 @@ package tp2.bitdlp.impl.srv.resources.requests;
 
 public class LoadMoney extends Request {
 
-    private static final long serialVersionUID = 4L;
-
     private byte[] accountId;
     private int value;
     private String accountSignature;
+
+    public LoadMoney(){
+        super(Operation.LOAD_MONEY);
+    }
 
     public LoadMoney(byte[] accountId, int value, String accountSignature){
         super(Operation.LOAD_MONEY);
@@ -36,5 +38,25 @@ public class LoadMoney extends Request {
         return accountSignature;
     }
 
+    /**
+     * @param accountId the accountId to set
+     */
+    public void setAccountId(byte[] accountId) {
+        this.accountId = accountId;
+    }
+
+    /**
+     * @param value the value to set
+     */
+    public void setValue(int value) {
+        this.value = value;
+    }
+
+    /**
+     * @param accountSignature the accountSignature to set
+     */
+    public void setAccountSignature(String accountSignature) {
+        this.accountSignature = accountSignature;
+    }
     
 }

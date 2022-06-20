@@ -1,8 +1,22 @@
 package tp2.bitdlp.impl.srv.resources.requests;
 
-import java.io.Serializable;
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 
-public abstract class Request implements Serializable
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY)
+@JsonSubTypes({
+    @JsonSubTypes.Type(value = CreateAccount.class, name = "CreateAccount"),
+
+    @JsonSubTypes.Type(value = GetAccount.class, name = "GetAccount"),
+    @JsonSubTypes.Type(value = GetBalance.class, name = "GetBalance"),
+    @JsonSubTypes.Type(value = GetFullLedger.class, name = "GetFullLedger"),
+    @JsonSubTypes.Type(value = GetGlobalValue.class, name = "GetGlobalValue"),
+    @JsonSubTypes.Type(value = GetTotalValue.class, name = "GetTotalValue"),
+    @JsonSubTypes.Type(value = LoadMoney.class, name = "LoadMoney"),
+    @JsonSubTypes.Type(value = SendTransaction.class, name = "SendTransaction"),
+ }
+)
+public abstract class Request
 {
     public static enum Operation
     {

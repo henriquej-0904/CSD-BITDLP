@@ -4,7 +4,9 @@ public class GetAccount extends Request {
 
     private String id;
 
-    private static final long serialVersionUID = 2L;
+    public GetAccount(){
+        super(Operation.GET_ACCOUNT);
+    }
 
     public GetAccount(String id){
         super(Operation.GET_ACCOUNT);
