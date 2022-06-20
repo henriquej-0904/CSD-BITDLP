@@ -1,6 +1,7 @@
 package tp2.bitdlp.impl.srv.resources.bft;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -168,7 +169,7 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
     }
 
     @Override
-    public int getBalanceAsync(GetBalance clientParams, AccountId accountId) {
+    public ReplyWithSignatures<byte[]> getBalanceAsync(GetBalance clientParams, AccountId accountId) {
         byte[] request = toJson(clientParams);
 
         AsyncReplyListener replyListener = new AsyncReplyListener(2*1 + 1);
@@ -178,16 +179,22 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
             int opId = asyncProxy.invokeAsynchRequest(request, replyListener, TOMMessageType.UNORDERED_REQUEST);
 
         //TODO: wait for 2f+1
-        try {
-            replyListener.wait();
-        } catch (InterruptedException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+
+        ReplyWithSignatures<byte[]> reply = null;
+
+        while ((reply = replyListener.getReply()) == null)
+        {
+            try {
+                Thread.sleep(2000);
+            } catch (InterruptedException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
         }
 
         asyncProxy.cleanAsynchRequest(opId);
 
-        return -1;
+        return reply;
 
         } catch (Exception e) {
             throw new InternalServerErrorException(e.getMessage(), e);
@@ -490,9 +497,21 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
         protected ReplyWithSignature<byte[]> encodeAndSignReply(Result<?> result)
         {
             ReplyWithSignature<byte[]> reply = new ReplyWithSignature<>();
-            reply.setReply(toJson(result));
-            reply.setSignature(Crypto.sign(ServerConfig.getKeyPair(), reply.getReply()));
-            
+            reply.setStatusCode(result.error());
+
+            if (result.isOK() && result.value() != null)
+                reply.setReply(toJson(result.value()));
+
+            return signReply(reply);
+        }
+
+        protected ReplyWithSignature<byte[]> signReply(ReplyWithSignature<byte[]> reply)
+        {
+            ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES);
+            buffer.putInt(reply.getStatusCode());
+
+            reply.setSignature(Crypto.sign(ServerConfig.getKeyPair(), buffer.array(), reply.getReply()));
+
             return reply;
         }
     }

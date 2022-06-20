@@ -1,39 +1,37 @@
 package tp2.bitdlp.impl.srv.resources.bft;
 
-import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.List;
 
-public class ReplyWithSignatures
+public class ReplyWithSignatures<T>
 {
-    private int maxReplies;
+    private int statusCode;
 
-    private byte[] reply;
+    private T reply;
 
-    private List<byte[]> signatures;
+    private List<String> signatures;
+
+    /**
+     * 
+     */
+    public ReplyWithSignatures() {
+    }
 
     /**
      * @param maxReplies
      */
-    public ReplyWithSignatures(int maxReplies, byte[] reply)
+    public ReplyWithSignatures(int statusCode, T reply)
     {
-        this.maxReplies = maxReplies;
+        this.statusCode = statusCode;
         this.reply = reply;
     }
 
-    public void addSignature(byte[] signature)
+    public void addSignature(String signature)
     {
         if (this.signatures == null)
-            this.signatures = new ArrayList<>(maxReplies);
+            this.signatures = new LinkedList<>();
         
         this.signatures.add(signature);
-    }
-
-    /**
-     * @return the maxReplies
-     */
-    public int getMaxReplies() {
-        return maxReplies;
     }
 
     /**
@@ -46,35 +44,44 @@ public class ReplyWithSignatures
     /**
      * @return the reply
      */
-    public byte[] getReply() {
+    public T getReply() {
         return reply;
     }
 
     /**
      * @return the signatures
      */
-    public List<byte[]> getSignatures() {
+    public List<String> getSignatures() {
         return signatures;
     }
 
-    public boolean hasConsensus()
-    {
-        return signatures.size() >= maxReplies;
+    /**
+     * @return the statusCode
+     */
+    public int getStatusCode() {
+        return statusCode;
     }
 
-    @Override
-    public boolean equals(Object obj) {
-        if (obj == null)
-            return false;
-
-        if (!(obj instanceof ReplyWithSignatures))
-            return false;
-
-        return Arrays.equals(reply, ((ReplyWithSignatures)obj).reply);
+    /**
+     * @param statusCode the statusCode to set
+     */
+    public void setStatusCode(int statusCode) {
+        this.statusCode = statusCode;
     }
 
-    @Override
-    public int hashCode() {
-        return Arrays.hashCode(reply);
-    }    
+    /**
+     * @param reply the reply to set
+     */
+    public void setReply(T reply) {
+        this.reply = reply;
+    }
+
+    /**
+     * @param signatures the signatures to set
+     */
+    public void setSignatures(List<String> signatures) {
+        this.signatures = signatures;
+    }
+
+    
 }

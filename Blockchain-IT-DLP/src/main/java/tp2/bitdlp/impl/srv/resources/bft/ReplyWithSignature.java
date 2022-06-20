@@ -4,6 +4,8 @@ package tp2.bitdlp.impl.srv.resources.bft;
 
 public class ReplyWithSignature<T>
 {
+    private int statusCode;
+
     private T reply;
 
     private String signature;
@@ -12,7 +14,8 @@ public class ReplyWithSignature<T>
      * @param reply
      * @param signature
      */
-    public ReplyWithSignature(T reply, String signature) {
+    public ReplyWithSignature(int statusCode, T reply, String signature) {
+        this.statusCode = statusCode;
         this.reply = reply;
         this.signature = signature;
     }
@@ -49,5 +52,19 @@ public class ReplyWithSignature<T>
      */
     public void setSignature(String signature) {
         this.signature = signature;
+    }
+
+    /**
+     * @return the statusCode
+     */
+    public int getStatusCode() {
+        return statusCode;
+    }
+
+    /**
+     * @param statusCode the statusCode to set
+     */
+    public void setStatusCode(int statusCode) {
+        this.statusCode = statusCode;
     }
 }

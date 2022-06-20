@@ -5,17 +5,20 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+
 import bftsmart.communication.client.ReplyListener;
 import bftsmart.tom.RequestContext;
 import bftsmart.tom.core.messages.TOMMessage;
+import tp2.bitdlp.util.Utils;
 
 public class AsyncReplyListener implements ReplyListener {
 
     private int maxReplies;
 
-    private List<ReplyWithSignatures> replies;
+    private List<ReplyWithSignatures<byte[]>> replies;
 
-    private ReplyWithSignatures reply;
+    private ReplyWithSignatures<byte[]> reply;
 
     /**
      * 
@@ -28,32 +31,48 @@ public class AsyncReplyListener implements ReplyListener {
 
     @Override
     public void replyReceived(RequestContext arg0, TOMMessage arg1) {
-        byte[] reply = arg1.serializedMessage;
-        byte[] signature = arg1.serializedMessageSignature;
+        byte[] replyBytes = arg1.serializedMessage;
 
-        ReplyWithSignatures replyWithSignatures = null;
+        try {
+            ReplyWithSignature<byte[]> reply = Utils.json.readValue(replyBytes,
+                    new TypeReference<ReplyWithSignature<byte[]>>() {
+                    });
 
-        Iterator<ReplyWithSignatures> it = replies.iterator();
-        while (it.hasNext() && replyWithSignatures == null)
-        {
-            ReplyWithSignatures tmp = it.next();
-            if (Arrays.equals(reply, tmp.getReply()))
-                replyWithSignatures = tmp;
+            if (reply.getSignature() == null || reply.getSignature().isEmpty())
+                return;
+
+            // TODO: verify signature!
+
+            ReplyWithSignatures<byte[]> replyWithSignatures = null;
+
+            Iterator<ReplyWithSignatures<byte[]>> it = replies.iterator();
+            while (it.hasNext() && replyWithSignatures == null) {
+                ReplyWithSignatures<byte[]> tmp = it.next();
+                if (reply.getStatusCode() == tmp.getStatusCode()
+                    && Arrays.equals(reply.getReply(), tmp.getReply()))
+                    replyWithSignatures = tmp;
+            }
+
+            if (replyWithSignatures == null) {
+                replyWithSignatures = new ReplyWithSignatures<byte[]>(reply.getStatusCode(), reply.getReply());
+                replies.add(replyWithSignatures);
+            }
+
+            replyWithSignatures.addSignature(reply.getSignature());
+
+            // reply processed!
+
+            if (hasConsensus(replyWithSignatures))
+                this.reply = replyWithSignatures;
+
+        } catch (Exception e) {
+            return;
         }
+    }
 
-        if (replyWithSignatures == null)
-        {
-            replyWithSignatures = new ReplyWithSignatures(maxReplies, reply);
-            replies.add(replyWithSignatures);
-        }
-
-        replyWithSignatures.addSignature(signature);
-
-        if (replyWithSignatures.hasConsensus())
-        {
-            this.reply = replyWithSignatures;
-            this.notifyAll();
-        }
+    protected boolean hasConsensus(ReplyWithSignatures<byte[]> reply)
+    {
+        return reply.getNumReplies() >= maxReplies;
     }
 
     @Override
@@ -65,7 +84,7 @@ public class AsyncReplyListener implements ReplyListener {
     /**
      * @return the reply
      */
-    public ReplyWithSignatures getReply() {
+    public ReplyWithSignatures<byte[]> getReply() {
         return reply;
     }
     
