@@ -1,10 +1,11 @@
-package tp2.bitdlp.impl.srv.resources.bft;
+package tp2.bitdlp.impl.srv.resources.bft.bftsmart;
 
 import java.util.Arrays;
 import java.util.Comparator;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 
+import tp2.bitdlp.impl.srv.resources.bft.ReplyWithSignature;
 import tp2.bitdlp.util.Utils;
 
 public class ReplyWithSignatureComparator implements Comparator<byte[]>

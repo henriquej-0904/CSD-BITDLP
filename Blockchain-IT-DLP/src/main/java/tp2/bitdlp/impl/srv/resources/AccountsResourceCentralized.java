@@ -1,19 +1,16 @@
 package tp2.bitdlp.impl.srv.resources;
 
-import jakarta.ws.rs.InternalServerErrorException;
 import tp2.bitdlp.api.Account;
 import tp2.bitdlp.api.AccountId;
 import tp2.bitdlp.api.operations.LedgerDeposit;
 import tp2.bitdlp.api.operations.LedgerOperation;
 import tp2.bitdlp.api.operations.LedgerTransaction;
-import tp2.bitdlp.impl.srv.resources.bft.ReplyWithSignatures;
 import tp2.bitdlp.impl.srv.resources.requests.CreateAccount;
 import tp2.bitdlp.impl.srv.resources.requests.GetAccount;
 import tp2.bitdlp.impl.srv.resources.requests.GetBalance;
 import tp2.bitdlp.impl.srv.resources.requests.GetTotalValue;
 import tp2.bitdlp.impl.srv.resources.requests.LoadMoney;
 import tp2.bitdlp.impl.srv.resources.requests.SendTransaction;
-import tp2.bitdlp.util.Pair;
 import tp2.bitdlp.util.Result;
 
 /**
@@ -120,19 +117,5 @@ public class AccountsResourceCentralized extends AccountsResource
                 LOG.info(result.errorException().getMessage());
 
             return result.resultOrThrow();
-    }
-
-    @Override
-    public LedgerTransaction sendTransactionAsync(Pair<byte[], byte[]> originDestPair, int value,
-            String accountSignature, int nonce) {
-        throw new InternalServerErrorException();
-    }
-
-    @Override
-    public ReplyWithSignatures<byte[]> getBalanceAsync(GetBalance clientParams, AccountId accountId) {
-        // TODO Auto-generated method stub
-        return null;
-    }
-
-    
+    }    
 }

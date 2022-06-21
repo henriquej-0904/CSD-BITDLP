@@ -27,7 +27,6 @@ import tp2.bitdlp.api.service.Accounts;
 import tp2.bitdlp.data.LedgerDBlayer;
 import tp2.bitdlp.data.LedgerDBlayerException;
 import tp2.bitdlp.impl.srv.config.ServerConfig;
-import tp2.bitdlp.impl.srv.resources.bft.ReplyWithSignatures;
 import tp2.bitdlp.impl.srv.resources.requests.CreateAccount;
 import tp2.bitdlp.impl.srv.resources.requests.GetAccount;
 import tp2.bitdlp.impl.srv.resources.requests.GetBalance;
@@ -41,7 +40,6 @@ import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.InternalServerErrorException;
 import jakarta.ws.rs.WebApplicationException;
-import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
 
@@ -480,80 +478,6 @@ public abstract class AccountsResource implements Accounts
      * @return The current Ledger.
      */
     public abstract LedgerOperation[] getFullLedger();
-
-
-
-
-    @Override
-    public int getBalanceAsync(String accountId) {
-        GetBalance clientParams;
-        AccountId id;
-
-        try {
-            init();
-
-            clientParams = new GetBalance(accountId);
-            clientParams.async();
-            id = verifyGetBalance(clientParams);
-        } catch (WebApplicationException e) {
-            LOG.info(e.getMessage());
-            throw e;
-        }
-
-        ReplyWithSignatures<byte[]> reply = getBalanceAsync(clientParams, id);
-
-        // LOG.info(String.format("Balance - %d, %s\n", result, accountId));
-
-        String signature = signReplyWithSignatures(reply);
-
-        throw new WebApplicationException(
-                Response.status(Status.OK)
-                        .type(MediaType.APPLICATION_JSON)
-                        .entity(new String(toJson(reply)))
-                        .header(Accounts.SERVER_SIG, signature)
-                        .build());
-    }
-
-    /**
-	 * Returns the balance of an account.
-	 *
-     * @param clientParams
-	 * @param accountId account id
-     * 
-     * @return The balance of the account.
-	 */
-    public abstract ReplyWithSignatures<byte[]> getBalanceAsync(GetBalance clientParams, AccountId accountId);
-
-
-
-    @Override
-    public LedgerTransaction sendTransactionAsync(Pair<byte[], byte[]> originDestPair, int value,
-            String accountSignature, int nonce) {
-        // TODO Auto-generated method stub
-        return null;
-    }
-
-    protected String signReplyWithSignatures(ReplyWithSignatures<byte[]> reply)
-    {
-        ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES);
-        buffer.putInt(reply.getStatusCode());
-
-        try {
-            Signature signature = Crypto.createSignatureInstance();
-            signature.initSign(ServerConfig.getKeyPair().getPrivate());
-        
-            signature.update(buffer.array());
-            signature.update(reply.getReply());
-
-            for (String sig : reply.getSignatures()) {
-                signature.update(sig.getBytes());
-            }
-
-            return Utils.toHex(signature.sign());
-        } catch (Exception e) {
-            throw new InternalServerErrorException(e.getMessage(), e);
-        }
-    }
 
     protected byte[] toJson(Object obj)
     {

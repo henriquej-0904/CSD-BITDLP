@@ -1,4 +1,4 @@
-package tp2.bitdlp.impl.srv.resources.bft;
+package tp2.bitdlp.impl.srv.resources.bft.bftsmart;
 
 import java.nio.ByteBuffer;
 
@@ -17,7 +17,9 @@ import tp2.bitdlp.api.operations.LedgerOperation;
 import tp2.bitdlp.api.operations.LedgerTransaction;
 import tp2.bitdlp.data.LedgerState;
 import tp2.bitdlp.impl.srv.config.ServerConfig;
-import tp2.bitdlp.impl.srv.resources.AccountsResource;
+import tp2.bitdlp.impl.srv.resources.bft.AccountsResourceBFT;
+import tp2.bitdlp.impl.srv.resources.bft.ReplyWithSignature;
+import tp2.bitdlp.impl.srv.resources.bft.ReplyWithSignatures;
 import tp2.bitdlp.impl.srv.resources.requests.CreateAccount;
 import tp2.bitdlp.impl.srv.resources.requests.GetBalance;
 import tp2.bitdlp.impl.srv.resources.requests.GetFullLedger;
@@ -28,16 +30,15 @@ import tp2.bitdlp.impl.srv.resources.requests.SendTransaction;
 import tp2.bitdlp.impl.srv.resources.requests.LoadMoney;
 import tp2.bitdlp.impl.srv.resources.requests.Request;
 import tp2.bitdlp.util.Crypto;
-import tp2.bitdlp.util.Pair;
 import tp2.bitdlp.util.Result;
 import tp2.bitdlp.util.Utils;
 import jakarta.ws.rs.InternalServerErrorException;
 import jakarta.ws.rs.WebApplicationException;
 
 /**
- * An implementation of the Accounts API with BFT SMaRt
+ * An implementation of the AccountsResourceBFT API with BFT SMaRt
  */
-public class AccountsResourceWithBFTSMaRt extends AccountsResource
+public class AccountsResourceWithBFTSMaRt extends AccountsResourceBFT
 {
     private static BFTSMaRtServerReplica replica;
     private static ServiceProxy proxy;
@@ -203,13 +204,6 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResource
         //TODO: get response & 2f+1 signatures and return
 
         //return this.<Integer>fromJson(result).resultOrThrow();
-    }
-
-    @Override
-    public LedgerTransaction sendTransactionAsync(Pair<byte[], byte[]> originDestPair, int value,
-            String accountSignature, int nonce) {
-        // TODO Auto-generated method stub
-        throw new InternalServerErrorException();
     }
 
     public class BFTSMaRtServerReplica extends DefaultSingleRecoverable {

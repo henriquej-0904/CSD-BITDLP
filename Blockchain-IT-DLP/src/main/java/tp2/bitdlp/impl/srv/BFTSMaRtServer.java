@@ -11,8 +11,8 @@ import org.glassfish.jersey.server.ResourceConfig;
 import bftsmart.tom.AsynchServiceProxy;
 import bftsmart.tom.ServiceProxy;
 import tp2.bitdlp.impl.srv.config.ServerConfig;
-import tp2.bitdlp.impl.srv.resources.bft.AccountsResourceWithBFTSMaRt;
-import tp2.bitdlp.impl.srv.resources.bft.ReplyWithSignatureComparator;
+import tp2.bitdlp.impl.srv.resources.bft.bftsmart.AccountsResourceWithBFTSMaRt;
+import tp2.bitdlp.impl.srv.resources.bft.bftsmart.ReplyWithSignatureComparator;
 
 
 public class BFTSMaRtServer

@@ -1,4 +1,4 @@
-package tp2.bitdlp.impl.srv.resources.bft;
+package tp2.bitdlp.impl.srv.resources.bft.bftsmart;
 
 import java.util.Arrays;
 import java.util.Iterator;
@@ -10,6 +10,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import bftsmart.communication.client.ReplyListener;
 import bftsmart.tom.RequestContext;
 import bftsmart.tom.core.messages.TOMMessage;
+import tp2.bitdlp.impl.srv.resources.bft.ReplyWithSignature;
+import tp2.bitdlp.impl.srv.resources.bft.ReplyWithSignatures;
 import tp2.bitdlp.util.Utils;
 
 public class AsyncReplyListener implements ReplyListener {
