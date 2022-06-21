@@ -43,8 +43,6 @@ public class AsyncReplyListener implements ReplyListener {
             if (reply.getSignature() == null || reply.getSignature().isEmpty())
                 return;
 
-            // TODO: verify signature!
-
             ReplyWithSignatures<byte[]> replyWithSignatures = null;
 
             Iterator<ReplyWithSignatures<byte[]>> it = replies.iterator();
@@ -79,8 +77,8 @@ public class AsyncReplyListener implements ReplyListener {
 
     @Override
     public void reset() {
-        // TODO Auto-generated method stub
-        
+        this.replies.clear();
+        this.reply = null;
     }
 
     /**

@@ -40,6 +40,9 @@ import jakarta.ws.rs.WebApplicationException;
  */
 public class AccountsResourceWithBFTSMaRt extends AccountsResourceBFT
 {
+    private static final long ASYNC_TIME_TO_WAIT_MILLIS = 20;
+    private static final long ASYNC_MAX_WAIT_ITER = 2000/ASYNC_TIME_TO_WAIT_MILLIS;
+
     private static BFTSMaRtServerReplica replica;
     private static ServiceProxy proxy;
     private static AsynchServiceProxy asyncProxy;
@@ -90,6 +93,40 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResourceBFT
             throw new InternalServerErrorException("Invoke unordered returned null");
 
         return result;
+    }
+
+    /**
+     * Invoke async.
+     * @param request
+     * @param type
+     * @return reply with signatures.
+     */
+    protected ReplyWithSignatures<byte[]> invokeAsync(byte[] request, TOMMessageType type)
+    {
+        int f = asyncProxy.getViewManager().getCurrentViewF(); // Verificar que corresponde a F replicas
+
+        AsyncReplyListener replyListener = new AsyncReplyListener(2 * f + 1);
+
+        int opId = asyncProxy.invokeAsynchRequest(request, replyListener, type);
+
+        ReplyWithSignatures<byte[]> reply = null;
+
+        long n = 0;
+        while ((reply = replyListener.getReply()) == null && n < ASYNC_MAX_WAIT_ITER) {
+            n++;
+            try {
+                Thread.sleep(ASYNC_TIME_TO_WAIT_MILLIS);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+
+        asyncProxy.cleanAsynchRequest(opId);
+
+        if (reply == null)
+            throw new InternalServerErrorException("Invoke async returned null");
+            
+        return reply;
     }
 
     
@@ -171,39 +208,7 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResourceBFT
     public ReplyWithSignatures<byte[]> getBalanceAsync(GetBalance clientParams, AccountId accountId)
     {
         byte[] request = toJson(clientParams);
-
-        AsyncReplyListener replyListener = new AsyncReplyListener(2*1 + 1);
-
-        try {
-            
-            int opId = asyncProxy.invokeAsynchRequest(request, replyListener, TOMMessageType.UNORDERED_REQUEST);
-
-        //TODO: wait for 2f+1
-
-        ReplyWithSignatures<byte[]> reply = null;
-
-        while ((reply = replyListener.getReply()) == null)
-        {
-            try {
-                Thread.sleep(2000);
-            } catch (InterruptedException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            }
-        }
-
-        asyncProxy.cleanAsynchRequest(opId);
-
-        return reply;
-
-        } catch (Exception e) {
-            throw new InternalServerErrorException(e.getMessage(), e);
-        }
-        
-
-        //TODO: get response & 2f+1 signatures and return
-
-        //return this.<Integer>fromJson(result).resultOrThrow();
+        return invokeAsync(request, TOMMessageType.UNORDERED_REQUEST);
     }
 
     public class BFTSMaRtServerReplica extends DefaultSingleRecoverable {
