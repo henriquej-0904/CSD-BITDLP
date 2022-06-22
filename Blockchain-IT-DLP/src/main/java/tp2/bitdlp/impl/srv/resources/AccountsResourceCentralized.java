@@ -11,7 +11,7 @@ import tp2.bitdlp.impl.srv.resources.requests.GetBalance;
 import tp2.bitdlp.impl.srv.resources.requests.GetTotalValue;
 import tp2.bitdlp.impl.srv.resources.requests.LoadMoney;
 import tp2.bitdlp.impl.srv.resources.requests.SendTransaction;
-import tp2.bitdlp.util.Result;
+import tp2.bitdlp.util.result.Result;
 
 /**
  * A centralized implementation of the Accounts API

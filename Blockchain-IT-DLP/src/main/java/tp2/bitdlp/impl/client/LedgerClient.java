@@ -6,6 +6,7 @@ import java.nio.ByteBuffer;
 import java.security.KeyPair;
 import java.security.KeyStoreException;
 import java.security.MessageDigest;
+import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.util.List;
@@ -25,7 +26,7 @@ import tp2.bitdlp.api.operations.LedgerTransaction;
 import tp2.bitdlp.api.service.Accounts;
 import tp2.bitdlp.util.Crypto;
 import tp2.bitdlp.util.Pair;
-import tp2.bitdlp.util.Result;
+import tp2.bitdlp.util.result.Result;
 import tp2.bitdlp.util.Utils;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
@@ -96,7 +97,7 @@ public class LedgerClient implements Closeable
     public Result<Account> createAccount(AccountId accountId, UserId userId, KeyPair userKeys)
         throws InvalidServerSignatureException
     {
-        String signature = Crypto.sign(userKeys, accountId.getObjectId(), userId.getObjectId());
+        String signature = sign(userKeys.getPrivate(), accountId.getObjectId(), userId.getObjectId());
 
         Pair<Result<Account>, Response> resultPair = request(this.client.target(this.endpoint).path(Accounts.PATH)
         .request().accept(MediaType.APPLICATION_JSON)
@@ -152,7 +153,7 @@ public class LedgerClient implements Closeable
         ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES);
         buffer.putInt(value);
 
-        String signature = Crypto.sign(accountKeys, accountId.getObjectId(), buffer.array());
+        String signature = sign(accountKeys.getPrivate(), accountId.getObjectId(), buffer.array());
 
         Pair<Result<LedgerDeposit>, Response> resultPair = request(this.client.target(this.endpoint).path(Accounts.PATH)
             .path("balance").path(Integer.toString(value))
@@ -176,7 +177,7 @@ public class LedgerClient implements Closeable
         buffer.putInt(value);
         buffer.putInt(nonce);
 
-        String signature = Crypto.sign(originAccountKeys, originId.getObjectId(), destId.getObjectId(), buffer.array());
+        String signature = sign(originAccountKeys.getPrivate(), originId.getObjectId(), destId.getObjectId(), buffer.array());
 
         Pair<Result<LedgerTransaction>, Response> resultPair = request(this.client.target(this.endpoint).path(Accounts.PATH)
             .path("transaction").path(Integer.toString(value))
@@ -210,6 +211,15 @@ public class LedgerClient implements Closeable
     @Override
     public void close() {
         this.client.close();
+    }
+
+    protected String sign(PrivateKey key, byte[]... data)
+    {
+        try {
+            return sign(key, data);
+        } catch (Exception e) {
+            throw new RuntimeException(e.getMessage(), e);
+        }
     }
 
     private byte[] getBytes(int value)

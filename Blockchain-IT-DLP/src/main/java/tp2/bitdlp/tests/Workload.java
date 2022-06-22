@@ -22,7 +22,7 @@ import tp2.bitdlp.api.UserId;
 import tp2.bitdlp.impl.client.InvalidServerSignatureException;
 import tp2.bitdlp.impl.client.LedgerClient;
 import tp2.bitdlp.util.Crypto;
-import tp2.bitdlp.util.Result;
+import tp2.bitdlp.util.result.Result;
 import jakarta.ws.rs.core.Response.Status;
 
 public class Workload implements Runnable

@@ -1,7 +1,5 @@
 package tp2.bitdlp.impl.srv.resources.bft.bftsmart;
 
-import java.nio.ByteBuffer;
-
 import com.fasterxml.jackson.core.type.TypeReference;
 
 import bftsmart.tom.AsynchServiceProxy;
@@ -18,8 +16,8 @@ import tp2.bitdlp.api.operations.LedgerTransaction;
 import tp2.bitdlp.data.LedgerState;
 import tp2.bitdlp.impl.srv.config.ServerConfig;
 import tp2.bitdlp.impl.srv.resources.bft.AccountsResourceBFT;
-import tp2.bitdlp.impl.srv.resources.bft.ReplyWithSignature;
-import tp2.bitdlp.impl.srv.resources.bft.ReplyWithSignatures;
+import tp2.bitdlp.util.reply.ReplyWithSignature;
+import tp2.bitdlp.util.reply.ReplyWithSignatures;
 import tp2.bitdlp.impl.srv.resources.requests.CreateAccount;
 import tp2.bitdlp.impl.srv.resources.requests.GetBalance;
 import tp2.bitdlp.impl.srv.resources.requests.GetFullLedger;
@@ -29,8 +27,7 @@ import tp2.bitdlp.impl.srv.resources.requests.GetTotalValue;
 import tp2.bitdlp.impl.srv.resources.requests.SendTransaction;
 import tp2.bitdlp.impl.srv.resources.requests.LoadMoney;
 import tp2.bitdlp.impl.srv.resources.requests.Request;
-import tp2.bitdlp.util.Crypto;
-import tp2.bitdlp.util.Result;
+import tp2.bitdlp.util.result.Result;
 import tp2.bitdlp.util.Utils;
 import jakarta.ws.rs.InternalServerErrorException;
 import jakarta.ws.rs.WebApplicationException;
@@ -101,7 +98,7 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResourceBFT
      * @param type
      * @return reply with signatures.
      */
-    protected ReplyWithSignatures<byte[]> invokeAsync(byte[] request, TOMMessageType type)
+    protected ReplyWithSignatures invokeAsync(byte[] request, TOMMessageType type)
     {
         int f = asyncProxy.getViewManager().getCurrentViewF(); // Verificar que corresponde a F replicas
 
@@ -109,7 +106,7 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResourceBFT
 
         int opId = asyncProxy.invokeAsynchRequest(request, replyListener, type);
 
-        ReplyWithSignatures<byte[]> reply = null;
+        ReplyWithSignatures reply = null;
 
         long n = 0;
         while ((reply = replyListener.getReply()) == null && n < ASYNC_MAX_WAIT_ITER) {
@@ -205,10 +202,17 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResourceBFT
     }
 
     @Override
-    public ReplyWithSignatures<byte[]> getBalanceAsync(GetBalance clientParams, AccountId accountId)
+    public ReplyWithSignatures getBalanceAsync(GetBalance clientParams)
     {
         byte[] request = toJson(clientParams);
         return invokeAsync(request, TOMMessageType.UNORDERED_REQUEST);
+    }
+
+    @Override
+    public ReplyWithSignatures sendTransactionAsync(SendTransaction clientParams)
+    {
+        byte[] request = toJson(clientParams);
+        return invokeAsync(request, TOMMessageType.ORDERED_REQUEST);
     }
 
     public class BFTSMaRtServerReplica extends DefaultSingleRecoverable {
@@ -466,25 +470,20 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResourceBFT
             return result;
         }
 
-        protected ReplyWithSignature<byte[]> encodeAndSignReply(Result<?> result)
+        protected ReplyWithSignature encodeAndSignReply(Result<?> result)
         {
-            ReplyWithSignature<byte[]> reply = new ReplyWithSignature<>();
+            ReplyWithSignature reply = new ReplyWithSignature();
             reply.setStatusCode(result.error());
 
             if (result.isOK() && result.value() != null)
                 reply.setReply(toJson(result.value()));
 
-            return signReply(reply);
-        }
-
-        protected ReplyWithSignature<byte[]> signReply(ReplyWithSignature<byte[]> reply)
-        {
-            ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES);
-            buffer.putInt(reply.getStatusCode());
-
-            reply.setSignature(Crypto.sign(ServerConfig.getKeyPair(), buffer.array(), reply.getReply()));
-
-            return reply;
+            try {
+                reply.sign(ServerConfig.getKeyPair().getPrivate());
+                return reply;
+            } catch (Exception e) {
+                throw new InternalServerErrorException(e.getMessage(), e);
+            }
         }
     }
 }

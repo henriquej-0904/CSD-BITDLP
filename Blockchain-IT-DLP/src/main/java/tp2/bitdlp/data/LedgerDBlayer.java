@@ -10,7 +10,7 @@ import tp2.bitdlp.api.operations.LedgerDeposit;
 import tp2.bitdlp.api.operations.LedgerOperation;
 import tp2.bitdlp.api.operations.LedgerTransaction;
 import tp2.bitdlp.data.mongo.LedgerDBWithMongo;
-import tp2.bitdlp.util.Result;
+import tp2.bitdlp.util.result.Result;
 import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response.Status;

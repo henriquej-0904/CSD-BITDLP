@@ -2,6 +2,7 @@ package tp2.bitdlp.util;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.security.InvalidKeyException;
 import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -9,9 +10,11 @@ import java.security.KeyStore;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
+import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.security.Signature;
+import java.security.SignatureException;
 import java.security.spec.AlgorithmParameterSpec;
 import java.security.spec.ECGenParameterSpec;
 import java.security.spec.InvalidKeySpecException;
@@ -34,21 +37,17 @@ public class Crypto {
 
     public static final String KEYSTORE_PWD = "keystorepwd";
 
-    public static String sign(KeyPair keys, byte[]... data)
+    public static String sign(PrivateKey key, byte[]... data) throws InvalidKeyException, SignatureException
     {
-        try {
-            Signature signature = Crypto.createSignatureInstance();
-            signature.initSign(keys.getPrivate());
+        Signature signature = Crypto.createSignatureInstance();
+        signature.initSign(key);
         
-            for (byte[] buff : data) {
-                if (buff != null)
-                    signature.update(buff);
-            }
-
-            return Utils.toHex(signature.sign());
-        } catch (Exception e) {
-            throw new RuntimeException(e.getMessage(), e);
+        for (byte[] buff : data) {
+            if (buff != null)
+                signature.update(buff);
         }
+
+        return Utils.toHex(signature.sign());
     }
 
     public static boolean verifySignature(PublicKey publicKey, String signature, byte[]... data){

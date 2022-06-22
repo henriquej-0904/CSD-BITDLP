@@ -1,4 +1,4 @@
-package tp2.bitdlp.util;
+package tp2.bitdlp.util.result;
 
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;

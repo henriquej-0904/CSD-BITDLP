@@ -81,5 +81,8 @@ public class SendTransaction extends Request {
         this.nonce = nonce;
     }
 
-    
+    public void async()
+    {
+        this.setOperation(Operation.SEND_TRANSACTION_ASYNC);
+    }
 }

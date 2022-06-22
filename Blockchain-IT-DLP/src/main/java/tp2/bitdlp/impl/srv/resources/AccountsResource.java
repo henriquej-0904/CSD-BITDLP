@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.security.InvalidKeyException;
 import java.security.MessageDigest;
+import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.Signature;
 import java.security.SignatureException;
@@ -114,6 +115,15 @@ public abstract class AccountsResource implements Accounts
         }
     }
 
+    public String sign(PrivateKey key, byte[]... data)
+    {
+        try {
+            return Crypto.sign(key, data);
+        } catch (InvalidKeyException | SignatureException e) {
+            throw new InternalServerErrorException(e.getMessage(), e);
+        }
+    }
+
 
     @Override
     public final Account createAccount(Pair<byte[],byte[]> accountUserPair, String userSignature) {
@@ -137,7 +147,7 @@ public abstract class AccountsResource implements Accounts
         throw new WebApplicationException(
             Response.status(Status.OK)
             .entity(account)
-            .header(Accounts.SERVER_SIG, Crypto.sign(ServerConfig.getKeyPair(), account.digest()))
+            .header(Accounts.SERVER_SIG, sign(ServerConfig.getKeyPair().getPrivate(), account.digest()))
             .build()
         );
     }
@@ -189,7 +199,7 @@ public abstract class AccountsResource implements Accounts
         throw new WebApplicationException(
                 Response.status(Status.OK)
                         .entity(account)
-                        .header(Accounts.SERVER_SIG, Crypto.sign(ServerConfig.getKeyPair(), account.digest()))
+                        .header(Accounts.SERVER_SIG, sign(ServerConfig.getKeyPair().getPrivate(), account.digest()))
                         .build());
     }
 
@@ -235,7 +245,7 @@ public abstract class AccountsResource implements Accounts
         throw new WebApplicationException(
                 Response.status(Status.OK)
                         .entity(result)
-                        .header(Accounts.SERVER_SIG, Crypto.sign(ServerConfig.getKeyPair(), buffer.array()))
+                        .header(Accounts.SERVER_SIG, sign(ServerConfig.getKeyPair().getPrivate(), buffer.array()))
                         .build());
     }
 
@@ -283,7 +293,7 @@ public abstract class AccountsResource implements Accounts
         throw new WebApplicationException(
                 Response.status(Status.OK)
                         .entity(result)
-                        .header(Accounts.SERVER_SIG, Crypto.sign(ServerConfig.getKeyPair(), buffer.array()))
+                        .header(Accounts.SERVER_SIG, sign(ServerConfig.getKeyPair().getPrivate(), buffer.array()))
                         .build());
     }
 
@@ -323,7 +333,7 @@ public abstract class AccountsResource implements Accounts
         throw new WebApplicationException(
                 Response.status(Status.OK)
                         .entity(result)
-                        .header(Accounts.SERVER_SIG, Crypto.sign(ServerConfig.getKeyPair(), buffer.array()))
+                        .header(Accounts.SERVER_SIG, sign(ServerConfig.getKeyPair().getPrivate(), buffer.array()))
                         .build());
     }
 
@@ -356,7 +366,7 @@ public abstract class AccountsResource implements Accounts
         throw new WebApplicationException(
                 Response.status(Status.OK)
                         .entity(deposit)
-                        .header(Accounts.SERVER_SIG, Crypto.sign(ServerConfig.getKeyPair(), deposit.digest()))
+                        .header(Accounts.SERVER_SIG, sign(ServerConfig.getKeyPair().getPrivate(), deposit.digest()))
                         .build());
     }
 
@@ -415,7 +425,7 @@ public abstract class AccountsResource implements Accounts
         throw new WebApplicationException(
                 Response.status(Status.OK)
                         .entity(transaction)
-                        .header(Accounts.SERVER_SIG, Crypto.sign(ServerConfig.getKeyPair(), transaction.digest()))
+                        .header(Accounts.SERVER_SIG, sign(ServerConfig.getKeyPair().getPrivate(), transaction.digest()))
                         .build());
     }
 
@@ -469,7 +479,7 @@ public abstract class AccountsResource implements Accounts
         throw new WebApplicationException(
                 Response.status(Status.OK)
                         .entity(result)
-                        .header(Accounts.SERVER_SIG, Crypto.sign(ServerConfig.getKeyPair(), digest.digest()))
+                        .header(Accounts.SERVER_SIG, sign(ServerConfig.getKeyPair().getPrivate(), digest.digest()))
                         .build());
     }
 
