@@ -38,19 +38,19 @@ import jakarta.ws.rs.core.Response.Status;
 
 public class LedgerClient implements Closeable
 {
-    private static final int MAX_TRIES = 1;
-    private static final int TIMEOUT_MILLIS = 3 * 1000;
+    protected static final int MAX_TRIES = 1;
+    protected static final int TIMEOUT_MILLIS = 3 * 1000;
 
     private static final int CONNECT_TIMEOUT = 60 * 3;
     private static final int READ_TIMEOUT = 60 * 3;
 
-    private Client client;
+    protected Client client;
 
-    private PublicKey serverPublicKey;
+    protected PublicKey serverPublicKey;
 
-    private URI endpoint;
+    protected URI endpoint;
 
-    private SecureRandom random;
+    protected SecureRandom random;
 
     
     public LedgerClient(URI endpoint, SecureRandom random)
@@ -222,14 +222,14 @@ public class LedgerClient implements Closeable
         }
     }
 
-    private byte[] getBytes(int value)
+    protected byte[] getBytes(int value)
     {
         ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES);
         buffer.putInt(value);
         return buffer.array();
     }
 
-    private <T> Pair<Result<T>, Response> request(Invocation invocation, Class<T> responseType)
+    protected <T> Pair<Result<T>, Response> request(Invocation invocation, Class<T> responseType)
     {
         int numberTries = MAX_TRIES;
         RuntimeException error = null;
@@ -259,7 +259,7 @@ public class LedgerClient implements Closeable
     }
 
     
-    private <T> Result<T> parseResponse(Response response, Class<T> responseType)
+    protected <T> Result<T> parseResponse(Response response, Class<T> responseType)
     {
         Status status = response.getStatusInfo().toEnum();
         if (status == Status.OK)
