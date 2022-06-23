@@ -44,7 +44,7 @@ public abstract class AccountsResourceBFT extends AccountsResource implements Ac
         throw new WebApplicationException(
                 Response.status(Status.fromStatusCode(reply.getStatusCode()))
                         .type(MediaType.APPLICATION_JSON)
-                        .entity(new String(toJson(reply)))
+                        .entity(reply)
                         .header(Accounts.SERVER_SIG, signature)
                         .build());
     }
@@ -71,7 +71,6 @@ public abstract class AccountsResourceBFT extends AccountsResource implements Ac
 
             clientParams = new SendTransaction(originDestPair, value, accountSignature, nonce);
             clientParams.async();
-            verifySendTransaction(clientParams);
         } catch (WebApplicationException e) {
             LOG.info(e.getMessage());
             throw e;
@@ -84,11 +83,13 @@ public abstract class AccountsResourceBFT extends AccountsResource implements Ac
         // LOG.info(String.format("ORIGIN: %s, DEST: %s, TYPE: %s, VALUE: %d",
         // originId, destId, transaction.getType(), value));
 
+        Status replyStatus = Status.fromStatusCode(reply.getStatusCode());
         throw new WebApplicationException(
-                Response.status(Status.fromStatusCode(reply.getStatusCode()))
-                        .entity(reply)
-                        .header(Accounts.SERVER_SIG, signature)
-                        .build());
+                Response.status(replyStatus == Status.NO_CONTENT ? Status.OK : replyStatus)
+                .type(MediaType.APPLICATION_JSON)
+                .entity(reply)
+                .header(Accounts.SERVER_SIG, signature)
+                .build());
     }
 
     /**

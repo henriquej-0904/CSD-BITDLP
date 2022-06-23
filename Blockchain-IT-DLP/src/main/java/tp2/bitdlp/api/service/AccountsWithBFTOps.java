@@ -14,10 +14,10 @@ import jakarta.ws.rs.core.MediaType;
 /**
  * An extension of Accounts API with support for bft operations with confirmation from multiple replicas.
  */
-@Path(AccountsWithBFTOps.PATH)
 public interface AccountsWithBFTOps extends Accounts
 {
-    static final String PATH=Accounts.PATH + "/bft";
+    static final String BFT_PATH = "/bft";
+    static final String PATH=Accounts.PATH + BFT_PATH;
 
     /**
 	 * Returns the balance of an account.
@@ -27,7 +27,7 @@ public interface AccountsWithBFTOps extends Accounts
      * @return The balance of the account and a set of
      * 2f + 1 signatures of the replicas, all signed by the replica that responds to the client.
 	 */
-    @Path("/balance/{accountId}")
+    @Path(BFT_PATH + "/balance/{accountId}")
     @GET
     ReplyWithSignatures getBalanceBFT(@PathParam("accountId") String accountId);
 
@@ -43,7 +43,7 @@ public interface AccountsWithBFTOps extends Accounts
      * @return the transaction and a set of
      * 2f + 1 signatures of the replicas, all signed by the replica that responds to the client.
 	 */
-    @Path("/transaction/{value}")
+    @Path(BFT_PATH + "/transaction/{value}")
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)

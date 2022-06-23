@@ -11,6 +11,8 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.Map.Entry;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import tp2.bitdlp.util.Crypto;
 import tp2.bitdlp.util.Utils;
 
@@ -48,6 +50,7 @@ public class ReplyWithSignatures
     /**
      * @return the numReplies
      */
+    @JsonIgnore
     public int getNumReplies() {
         return signatures.size();
     }

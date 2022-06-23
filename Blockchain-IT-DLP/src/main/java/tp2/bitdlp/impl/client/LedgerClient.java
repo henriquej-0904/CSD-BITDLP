@@ -216,7 +216,7 @@ public class LedgerClient implements Closeable
     protected String sign(PrivateKey key, byte[]... data)
     {
         try {
-            return sign(key, data);
+            return Crypto.sign(key, data);
         } catch (Exception e) {
             throw new RuntimeException(e.getMessage(), e);
         }

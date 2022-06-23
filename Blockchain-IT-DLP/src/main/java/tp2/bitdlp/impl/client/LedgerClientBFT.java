@@ -2,16 +2,19 @@ package tp2.bitdlp.impl.client;
 
 import java.net.URI;
 import java.nio.ByteBuffer;
+import java.security.InvalidKeyException;
 import java.security.KeyPair;
 import java.security.KeyStoreException;
 import java.security.PublicKey;
 import java.security.SecureRandom;
+import java.security.SignatureException;
 import java.security.cert.Certificate;
 import java.util.HashMap;
 import java.util.Map;
 
 import javax.net.ssl.SSLContext;
 
+import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.core.Response;
@@ -67,13 +70,12 @@ public class LedgerClientBFT extends LedgerClient
     public Pair<Result<Integer>, ReplyWithSignatures> getBalanceBFT(AccountId accountId)
         throws InvalidServerSignatureException, InvalidReplyWithSignaturesException
     {
-        Response response = requestBFTOp(this.client.target(this.endpoint)
+        return requestBFTOp(this.client.target(this.endpoint)
             .path(AccountsWithBFTOps.PATH).path("balance")
             .path(Utils.toHex(accountId.getObjectId()))
             .request()
-            .buildGet());
-
-        return processReply(response, Integer.class);
+            .buildGet(),
+            Integer.class);
     }
 
     public Pair<Result<LedgerTransaction>, ReplyWithSignatures> sendTransactionBFT(AccountId originId,
@@ -92,18 +94,16 @@ public class LedgerClientBFT extends LedgerClient
 
         String signature = sign(originAccountKeys.getPrivate(), originId.getObjectId(), destId.getObjectId(), buffer.array());
 
-        Response response =
-            requestBFTOp(this.client.target(this.endpoint).path(AccountsWithBFTOps.PATH)
+        return requestBFTOp(this.client.target(this.endpoint).path(AccountsWithBFTOps.PATH)
             .path("transaction").path(Integer.toString(value))
             .request()
             .header(Accounts.ACC_SIG, signature)
             .header(Accounts.NONCE, nonce)
-            .buildPost(Entity.json(new Pair<>(originId.getObjectId(), destId.getObjectId()))));
-
-        return processReply(response, LedgerTransaction.class);
+            .buildPost(Entity.json(new Pair<>(originId.getObjectId(), destId.getObjectId()))),
+            LedgerTransaction.class);
     }
 
-    private Response requestBFTOp(Invocation invocation)
+    private <T> Pair<Result<T>, ReplyWithSignatures> requestBFTOp(Invocation invocation, Class<T> classType)
     {
         int numberTries = MAX_TRIES;
         RuntimeException error = null;
@@ -112,9 +112,10 @@ public class LedgerClientBFT extends LedgerClient
         {
             try (Response response = invocation.invoke();)
             {
-                return response;
+                var reply = processReply(response, classType);
+                return reply;
             }
-            catch (Exception e) {
+            catch (ProcessingException e) {
                 error = new RuntimeException(e.getMessage(), e);
             }
 
@@ -139,12 +140,14 @@ public class LedgerClientBFT extends LedgerClient
 
         Result<T> result;
 
-        if (status == Status.NO_CONTENT)
-            result = Result.ok();
-        else if (status != Status.OK)
+        if (status != Status.OK)
             result = Result.error(status.getStatusCode());
         else
         {
+            if (reply == null)
+                throw new InvalidReplyWithSignaturesException(
+                    "Status code is OK but reply is not signed");
+            
             // 200 -OK
             T replyValue;
 
@@ -171,6 +174,7 @@ public class LedgerClientBFT extends LedgerClient
             reply = response.readEntity(ReplyWithSignatures.class);
 
         } catch (Exception e) {
+            System.err.println(e.getMessage());
             return null;
         }
         // verify server signature
@@ -182,8 +186,8 @@ public class LedgerClientBFT extends LedgerClient
         try {
             if (!reply.verifySignature(this.serverPublicKey, serverSig))
                 throw new InvalidServerSignatureException("Invalid server signature.");
-        } catch (Exception e) {
-            return null;
+        } catch (InvalidKeyException | SignatureException e) {
+            throw new InvalidServerSignatureException("Invalid server signature.");
         }
 
         // verify signatures from replicas
