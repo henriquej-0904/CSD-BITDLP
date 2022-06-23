@@ -6,7 +6,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
 import tp2.bitdlp.api.service.Accounts;
-import tp2.bitdlp.api.service.AccountsWithAsyncOps;
+import tp2.bitdlp.api.service.AccountsWithBFTOps;
 import tp2.bitdlp.impl.srv.config.ServerConfig;
 import tp2.bitdlp.impl.srv.resources.AccountsResource;
 import tp2.bitdlp.impl.srv.resources.requests.GetBalance;
@@ -18,10 +18,10 @@ import tp2.bitdlp.util.reply.ReplyWithSignatures;
  * An abstract class that defines methods and operations for implementing a BFT service.
  * This service also supports asynchronous operations.
  */
-public abstract class AccountsResourceBFT extends AccountsResource implements AccountsWithAsyncOps
+public abstract class AccountsResourceBFT extends AccountsResource implements AccountsWithBFTOps
 {
     @Override
-    public ReplyWithSignatures getBalanceAsync(String accountId) {
+    public ReplyWithSignatures getBalanceBFT(String accountId) {
         GetBalance clientParams;
 
         try {
@@ -61,7 +61,7 @@ public abstract class AccountsResourceBFT extends AccountsResource implements Ac
 
 
     @Override
-    public ReplyWithSignatures sendTransactionAsync(Pair<byte[], byte[]> originDestPair,
+    public ReplyWithSignatures sendTransactionBFT(Pair<byte[], byte[]> originDestPair,
         int value, String accountSignature, int nonce)
     {
         SendTransaction clientParams;

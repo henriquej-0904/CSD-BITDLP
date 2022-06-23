@@ -19,7 +19,7 @@ import jakarta.ws.rs.core.Response.Status;
 import tp2.bitdlp.api.AccountId;
 import tp2.bitdlp.api.operations.LedgerTransaction;
 import tp2.bitdlp.api.service.Accounts;
-import tp2.bitdlp.api.service.AccountsWithAsyncOps;
+import tp2.bitdlp.api.service.AccountsWithBFTOps;
 import tp2.bitdlp.util.Crypto;
 import tp2.bitdlp.util.Pair;
 import tp2.bitdlp.util.Utils;
@@ -68,7 +68,7 @@ public class LedgerClientBFT extends LedgerClient
         throws InvalidServerSignatureException, InvalidReplyWithSignaturesException
     {
         Response response = requestBFTOp(this.client.target(this.endpoint)
-            .path(AccountsWithAsyncOps.PATH).path("balance")
+            .path(AccountsWithBFTOps.PATH).path("balance")
             .path(Utils.toHex(accountId.getObjectId()))
             .request()
             .buildGet());
@@ -93,7 +93,7 @@ public class LedgerClientBFT extends LedgerClient
         String signature = sign(originAccountKeys.getPrivate(), originId.getObjectId(), destId.getObjectId(), buffer.array());
 
         Response response =
-            requestBFTOp(this.client.target(this.endpoint).path(AccountsWithAsyncOps.PATH)
+            requestBFTOp(this.client.target(this.endpoint).path(AccountsWithBFTOps.PATH)
             .path("transaction").path(Integer.toString(value))
             .request()
             .header(Accounts.ACC_SIG, signature)

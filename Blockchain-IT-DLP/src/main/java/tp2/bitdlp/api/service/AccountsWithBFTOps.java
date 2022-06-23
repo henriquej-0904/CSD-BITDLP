@@ -12,12 +12,12 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 
 /**
- * An extension of Accounts API with support for asynchronous operations.
+ * An extension of Accounts API with support for bft operations with confirmation from multiple replicas.
  */
-@Path(AccountsWithAsyncOps.PATH)
-public interface AccountsWithAsyncOps extends Accounts
+@Path(AccountsWithBFTOps.PATH)
+public interface AccountsWithBFTOps extends Accounts
 {
-    static final String PATH=Accounts.PATH + "/async";
+    static final String PATH=Accounts.PATH + "/bft";
 
     /**
 	 * Returns the balance of an account.
@@ -29,7 +29,7 @@ public interface AccountsWithAsyncOps extends Accounts
 	 */
     @Path("/balance/{accountId}")
     @GET
-    ReplyWithSignatures getBalanceAsync(@PathParam("accountId") String accountId);
+    ReplyWithSignatures getBalanceBFT(@PathParam("accountId") String accountId);
 
 
     /**
@@ -47,6 +47,6 @@ public interface AccountsWithAsyncOps extends Accounts
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    ReplyWithSignatures sendTransactionAsync(Pair<byte[],byte[]> originDestPair, @PathParam("value") int value,
+    ReplyWithSignatures sendTransactionBFT(Pair<byte[],byte[]> originDestPair, @PathParam("value") int value,
         @HeaderParam(ACC_SIG) String accountSignature, @HeaderParam(NONCE) int nonce);
 }
