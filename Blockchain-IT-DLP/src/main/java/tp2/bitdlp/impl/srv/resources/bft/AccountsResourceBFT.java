@@ -20,7 +20,6 @@ import tp2.bitdlp.util.reply.ReplyWithSignatures;
  */
 public abstract class AccountsResourceBFT extends AccountsResource implements AccountsWithAsyncOps
 {
-    
     @Override
     public ReplyWithSignatures getBalanceAsync(String accountId) {
         GetBalance clientParams;
@@ -43,7 +42,7 @@ public abstract class AccountsResourceBFT extends AccountsResource implements Ac
         String signature = signReplyWithSignatures(reply);
 
         throw new WebApplicationException(
-                Response.status(Status.OK)
+                Response.status(Status.fromStatusCode(reply.getStatusCode()))
                         .type(MediaType.APPLICATION_JSON)
                         .entity(new String(toJson(reply)))
                         .header(Accounts.SERVER_SIG, signature)
@@ -86,7 +85,7 @@ public abstract class AccountsResourceBFT extends AccountsResource implements Ac
         // originId, destId, transaction.getType(), value));
 
         throw new WebApplicationException(
-                Response.status(Status.OK)
+                Response.status(Status.fromStatusCode(reply.getStatusCode()))
                         .entity(reply)
                         .header(Accounts.SERVER_SIG, signature)
                         .build());

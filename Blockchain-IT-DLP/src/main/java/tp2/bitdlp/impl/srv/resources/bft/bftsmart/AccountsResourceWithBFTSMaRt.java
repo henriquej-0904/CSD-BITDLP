@@ -473,6 +473,7 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResourceBFT
         protected ReplyWithSignature encodeAndSignReply(Result<?> result)
         {
             ReplyWithSignature reply = new ReplyWithSignature();
+            reply.setReplicaId(ServerConfig.getReplicaId());
             reply.setStatusCode(result.error());
 
             if (result.isOK() && result.value() != null)

@@ -20,7 +20,7 @@ public class ReplyWithSignatures
 
     private byte[] reply;
 
-    private SortedMap<Integer, String> signatures;
+    private SortedMap<String, String> signatures;
 
     /**
      * 
@@ -37,7 +37,7 @@ public class ReplyWithSignatures
         this.reply = reply;
     }
 
-    public void addSignature(int replicaId, String signature)
+    public void addSignature(String replicaId, String signature)
     {
         if (this.signatures == null)
             this.signatures = new TreeMap<>();
@@ -62,7 +62,7 @@ public class ReplyWithSignatures
     /**
      * @return the signatures
      */
-    public SortedMap<Integer, String> getSignatures() {
+    public SortedMap<String, String> getSignatures() {
         return signatures;
     }
 
@@ -90,7 +90,7 @@ public class ReplyWithSignatures
     /**
      * @param signatures the signatures to set
      */
-    public void setSignatures(SortedMap<Integer, String> signatures) {
+    public void setSignatures(SortedMap<String, String> signatures) {
         this.signatures = signatures;
     }
 
@@ -115,9 +115,9 @@ public class ReplyWithSignatures
         if (getReply() != null)
             signature.update(getReply());
 
-        for (Entry<Integer, String> replicaSig : getSignatures().entrySet())
+        for (Entry<String, String> replicaSig : getSignatures().entrySet())
         {
-            signature.update(String.valueOf(replicaSig.getKey()).getBytes());
+            signature.update(replicaSig.getKey().getBytes());
             signature.update(replicaSig.getValue().getBytes());
         }
 
@@ -146,9 +146,9 @@ public class ReplyWithSignatures
         if (getReply() != null)
             sig.update(getReply());
 
-        for (Entry<Integer, String> replicaSig : getSignatures().entrySet())
+        for (Entry<String, String> replicaSig : getSignatures().entrySet())
         {
-            sig.update(String.valueOf(replicaSig.getKey()).getBytes());
+            sig.update(replicaSig.getKey().getBytes());
             sig.update(replicaSig.getValue().getBytes());
         }
 
@@ -161,15 +161,15 @@ public class ReplyWithSignatures
      * @param key
      * @return
      */
-    public int getNumValidSignatures(Map<Integer, PublicKey> publicKeys)
+    public int getNumValidSignatures(Map<String, PublicKey> publicKeys)
     {
         int validSigs = 0;
 
-        Integer replicaId;
+        String replicaId;
         PublicKey replicaKey;
         ReplyWithSignature replyWithSignature;
 
-        for (Entry<Integer, String> replicaSignature : getSignatures().entrySet())
+        for (Entry<String, String> replicaSignature : getSignatures().entrySet())
         {
             replicaId = replicaSignature.getKey();
             replicaKey = publicKeys.get(replicaId);

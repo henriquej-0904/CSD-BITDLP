@@ -10,7 +10,9 @@ import tp2.bitdlp.util.Crypto;
 
 public class ReplyWithSignature
 {
-    private int statusCode, replicaId;
+    private int statusCode;
+
+    private String replicaId;
 
     private byte[] reply;
 
@@ -20,7 +22,7 @@ public class ReplyWithSignature
      * @param reply
      * @param signature
      */
-    public ReplyWithSignature(int replicaId, int statusCode, byte[] reply, String signature) {
+    public ReplyWithSignature(String replicaId, int statusCode, byte[] reply, String signature) {
         this.replicaId = replicaId;
         this.statusCode = statusCode;
         this.reply = reply;
@@ -78,14 +80,14 @@ public class ReplyWithSignature
     /**
      * @return the replicaId
      */
-    public int getReplicaId() {
+    public String getReplicaId() {
         return replicaId;
     }
 
     /**
      * @param replicaId the replicaId to set
      */
-    public void setReplicaId(int replicaId) {
+    public void setReplicaId(String replicaId) {
         this.replicaId = replicaId;
     }
 
@@ -93,16 +95,17 @@ public class ReplyWithSignature
     public void sign(PrivateKey key) throws InvalidKeyException, SignatureException
     {
         ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES * 2);
-        buffer.putInt(getReplicaId());
         buffer.putInt(getStatusCode());
-        setSignature(Crypto.sign(key, buffer.array(), getReply()));
+
+        setSignature(Crypto.sign(key, getReplicaId().getBytes(), buffer.array(), getReply()));
     }
 
     public boolean verifySignature(PublicKey key) throws InvalidKeyException, SignatureException
     {
         ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES * 2);
-        buffer.putInt(getReplicaId());
         buffer.putInt(getStatusCode());
-        return Crypto.verifySignature(key, getSignature(), buffer.array(), getReply());
+
+        return Crypto.verifySignature(key, getSignature(),
+            getReplicaId().getBytes(), buffer.array(), getReply());
     }
 }
