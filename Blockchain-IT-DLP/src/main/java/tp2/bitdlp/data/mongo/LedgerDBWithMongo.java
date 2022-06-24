@@ -62,7 +62,7 @@ import tp2.bitdlp.data.mongo.operations.LedgerDepositDAO;
 import tp2.bitdlp.data.mongo.operations.LedgerOperationDAO;
 import tp2.bitdlp.data.mongo.operations.LedgerTransactionDAO;
 import tp2.bitdlp.util.Pair;
-import tp2.bitdlp.util.Result;
+import tp2.bitdlp.util.result.Result;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.InternalServerErrorException;
 import jakarta.ws.rs.NotFoundException;

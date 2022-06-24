@@ -24,8 +24,8 @@ public class ServerConfig {
     public static KeyPair getKeyPair() {
         if(keyPair == null){
             try {
-                keyPair = new KeyPair(keyStore.getCertificate(replicaId).getPublicKey(), 
-                                     (PrivateKey) keyStore.getKey(replicaId, Crypto.KEYSTORE_PWD.toCharArray()));
+                keyPair = new KeyPair(getKeyStore().getCertificate(replicaId).getPublicKey(), 
+                                     (PrivateKey) getKeyStore().getKey(replicaId, Crypto.KEYSTORE_PWD.toCharArray()));
 
             } catch (UnrecoverableKeyException | KeyStoreException | NoSuchAlgorithmException e) {
                 throw new Error(e.getMessage(), e);

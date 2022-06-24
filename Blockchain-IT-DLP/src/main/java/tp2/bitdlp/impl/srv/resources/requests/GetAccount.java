@@ -1,23 +1,23 @@
 package tp2.bitdlp.impl.srv.resources.requests;
 
-import tp2.bitdlp.api.AccountId;
-
 public class GetAccount extends Request {
 
-    private AccountId id;
+    private String id;
 
-    private static final long serialVersionUID = 2L;
+    public GetAccount(){
+        super(Operation.GET_ACCOUNT);
+    }
 
-    public GetAccount(AccountId id){
+    public GetAccount(String id){
         super(Operation.GET_ACCOUNT);
         this.id = id;
     }
 
-    public AccountId getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(AccountId id) {
+    public void setId(String id) {
         this.id = id;
     }   
 }

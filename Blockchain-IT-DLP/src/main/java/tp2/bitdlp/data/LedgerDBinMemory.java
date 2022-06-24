@@ -18,7 +18,7 @@ import tp2.bitdlp.api.operations.LedgerDeposit;
 import tp2.bitdlp.api.operations.LedgerOperation;
 import tp2.bitdlp.api.operations.LedgerTransaction;
 import tp2.bitdlp.util.Pair;
-import tp2.bitdlp.util.Result;
+import tp2.bitdlp.util.result.Result;
 import tp2.bitdlp.util.Utils;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.InternalServerErrorException;
