@@ -173,8 +173,10 @@ public class LedgerClientBFT extends LedgerClient
         try {
             reply = response.readEntity(ReplyWithSignatures.class);
 
+            if (reply == null)
+                return null;
+                
         } catch (Exception e) {
-            System.err.println(e.getMessage());
             return null;
         }
         // verify server signature

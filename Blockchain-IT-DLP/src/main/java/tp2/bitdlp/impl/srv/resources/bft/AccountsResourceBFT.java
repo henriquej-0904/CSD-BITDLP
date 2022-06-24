@@ -12,6 +12,7 @@ import tp2.bitdlp.impl.srv.resources.AccountsResource;
 import tp2.bitdlp.impl.srv.resources.requests.GetBalance;
 import tp2.bitdlp.impl.srv.resources.requests.SendTransaction;
 import tp2.bitdlp.util.Pair;
+import tp2.bitdlp.util.Utils;
 import tp2.bitdlp.util.reply.ReplyWithSignatures;
 
 /**
@@ -35,11 +36,23 @@ public abstract class AccountsResourceBFT extends AccountsResource implements Ac
             throw e;
         }
 
-        ReplyWithSignatures reply = getBalanceAsync(clientParams);
+        ReplyWithSignatures reply;
+        String signature;
 
-        // LOG.info(String.format("Balance - %d, %s\n", result, accountId));
+        try {
+            reply = getBalanceAsync(clientParams);
 
-        String signature = signReplyWithSignatures(reply);
+            // LOG.info(String.format("Balance - %d, %s\n", result, accountId));
+
+            signature = signReplyWithSignatures(reply);
+
+        } catch (WebApplicationException e) {
+            if (e.getResponse().getStatus() == 500)
+                Utils.logError(e, LOG);
+
+            throw e;
+        }
+        
 
         throw new WebApplicationException(
                 Response.status(Status.fromStatusCode(reply.getStatusCode()))
@@ -76,8 +89,19 @@ public abstract class AccountsResourceBFT extends AccountsResource implements Ac
             throw e;
         }
 
-        ReplyWithSignatures reply = sendTransactionAsync(clientParams);
-        String signature = signReplyWithSignatures(reply);
+        ReplyWithSignatures reply;
+        String signature;
+
+        try {
+            reply = sendTransactionAsync(clientParams);
+            signature = signReplyWithSignatures(reply);
+        } catch (WebApplicationException e) {
+            if (e.getResponse().getStatus() == 500)
+                Utils.logError(e, LOG);
+
+            throw e;
+        }
+        
 
         // log operation if successful
         // LOG.info(String.format("ORIGIN: %s, DEST: %s, TYPE: %s, VALUE: %d",

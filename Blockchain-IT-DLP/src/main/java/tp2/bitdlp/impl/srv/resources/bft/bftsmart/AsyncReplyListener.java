@@ -30,7 +30,11 @@ public class AsyncReplyListener implements ReplyListener {
     }
 
     @Override
-    public void replyReceived(RequestContext arg0, TOMMessage arg1) {
+    public void replyReceived(RequestContext arg0, TOMMessage arg1)
+    {
+        if (this.reply != null)
+            return;
+
         byte[] replyBytes = arg1.getContent();
 
         try {
