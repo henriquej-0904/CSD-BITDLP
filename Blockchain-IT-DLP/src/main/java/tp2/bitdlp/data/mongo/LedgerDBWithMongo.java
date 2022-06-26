@@ -52,15 +52,11 @@ import org.bson.types.ObjectId;
 import tp2.bitdlp.api.Account;
 import tp2.bitdlp.api.AccountId;
 import tp2.bitdlp.api.UserId;
-import tp2.bitdlp.api.operations.InvalidOperationException;
-import tp2.bitdlp.api.operations.LedgerDeposit;
-import tp2.bitdlp.api.operations.LedgerOperation;
-import tp2.bitdlp.api.operations.LedgerTransaction;
 import tp2.bitdlp.data.LedgerDBlayer;
 import tp2.bitdlp.data.LedgerState;
-import tp2.bitdlp.data.mongo.operations.LedgerDepositDAO;
-import tp2.bitdlp.data.mongo.operations.LedgerOperationDAO;
 import tp2.bitdlp.data.mongo.operations.LedgerTransactionDAO;
+import tp2.bitdlp.pow.transaction.InvalidTransactionException;
+import tp2.bitdlp.pow.transaction.LedgerTransaction;
 import tp2.bitdlp.util.Pair;
 import tp2.bitdlp.util.result.Result;
 import jakarta.ws.rs.ForbiddenException;
@@ -100,7 +96,7 @@ public class LedgerDBWithMongo extends LedgerDBlayer
 	private MongoDatabase db;
 
     private MongoCollection<AccountDAO> accounts;
-    private MongoCollection<LedgerOperationDAO> ledger;
+    private MongoCollection<LedgerTransactionDAO> ledger;
     private MongoCollection<Nonce> nonces;
 
 
@@ -133,7 +129,7 @@ public class LedgerDBWithMongo extends LedgerDBlayer
 
     protected void createCollections() {
         this.accounts = this.db.getCollection("Accounts", AccountDAO.class);
-        this.ledger = this.db.getCollection("Ledger", LedgerOperationDAO.class);
+        this.ledger = this.db.getCollection("Ledger", LedgerTransactionDAO.class);
         this.nonces = this.db.getCollection("Nonce", Nonce.class);
 
         // Create indexes for id field
@@ -171,14 +167,14 @@ public class LedgerDBWithMongo extends LedgerDBlayer
             if (accountDAO == null)
                 return accountNotFound(accountId);
             
-            FindIterable<LedgerOperationDAO> operations =
+            FindIterable<LedgerTransactionDAO> operations =
                 this.ledger.find(in("id", accountDAO.getOperations()));
 
             Account account = accountDAO.toAccount();
-            List<LedgerOperation> accountOps = account.getOperations();
+            List<LedgerTransaction> accountOps = account.getTransactions();
 
-            for (LedgerOperationDAO ledgerOperationDAO : operations) {
-                accountOps.add(ledgerOperationDAO.toLedgerOperation());
+            for (LedgerTransactionDAO LedgerTransactionDAO : operations) {
+                accountOps.add(LedgerTransactionDAO.toLedgerTransaction());
             }
 
             return Result.ok(account);
@@ -236,33 +232,6 @@ public class LedgerDBWithMongo extends LedgerDBlayer
     }
 
     @Override
-    public Result<Void> loadMoney(LedgerDeposit deposit) {
-        init();
-
-        UpdateOptions op = new UpdateOptions();
-        op.upsert(false);
-
-        try {
-            UpdateResult result = this.accounts.updateOne(eq("accountId", deposit.getAccountId()),
-                    Updates.inc("balance", deposit.getValue()), op);
-
-            if (result.getMatchedCount() == 0)
-                return accountNotFound(deposit.getAccountId());
-
-            ObjectId operationId = this.ledger.insertOne(toDAO(deposit))
-                    .getInsertedId().asObjectId().getValue();
-
-            this.accounts.updateOne(eq("accountId", deposit.getAccountId()),
-                    Updates.push("operations", operationId), op);
-        }
-        catch (Exception e) {
-            return Result.error(new InternalServerErrorException(e.getMessage(), e));
-        }
-
-        return Result.ok();
-    }
-
-    @Override
     public Result<Void> sendTransaction(LedgerTransaction transaction) {
         init();
 
@@ -317,23 +286,23 @@ public class LedgerDBWithMongo extends LedgerDBlayer
     }
 
     @Override
-    public Result<LedgerOperation[]> getLedger() {
+    public Result<LedgerTransaction[]> getLedger() {
         init();
 
-        AggregateIterable<LedgerOperationDAO> result = this.ledger.aggregate(Arrays.asList(
+        AggregateIterable<LedgerTransactionDAO> result = this.ledger.aggregate(Arrays.asList(
 			Aggregates.sort(Sorts.ascending("ts"))
 			));
 
         if (result.first() == null)
             return Result.error(new NotFoundException("The ledger is empty."));
 
-        List<LedgerOperation> list = new LinkedList<>();
+        List<LedgerTransaction> list = new LinkedList<>();
 
-        for (LedgerOperationDAO lO : result) {
-            list.add(lO.toLedgerOperation());
+        for (LedgerTransactionDAO lO : result) {
+            list.add(lO.toLedgerTransaction());
         }
 
-        return Result.ok(list.toArray(new LedgerOperation[0]));
+        return Result.ok(list.toArray(new LedgerTransaction[0]));
     }
 
     @Override
@@ -344,47 +313,33 @@ public class LedgerDBWithMongo extends LedgerDBlayer
             dropCollections();
             createCollections();
 
-            List<LedgerOperation> operations = state.getOperations();
-            List<LedgerOperationDAO> operationsDAO = loadOperations(state);
+            List<LedgerTransaction> operations = state.getTransactions();
+            List<LedgerTransactionDAO> operationsDAO = loadOperations(state);
 
             Map<AccountId, Pair<Account, List<ObjectId>>> accounts = state.getAccounts().stream()
                 .map((pairAccountUser) -> new Account(pairAccountUser.getLeft(), pairAccountUser.getRight()))
                 .collect(Collectors.toUnmodifiableMap(Account::getId, (acc) -> new Pair<>(acc, new LinkedList<>())));  
 
-            Iterator<LedgerOperation> operationsIt = operations.iterator();
-            Iterator<LedgerOperationDAO> operationsDAOIt = operationsDAO.iterator();
+            Iterator<LedgerTransaction> operationsIt = operations.iterator();
+            Iterator<LedgerTransactionDAO> operationsDAOIt = operationsDAO.iterator();
 
             List<WriteModel<Nonce>> nonceOps = new LinkedList<>();
 
-            for (int i = 0; i < operationsDAO.size(); i++)
-            {
-                LedgerOperation operation = operationsIt.next();
-                LedgerOperationDAO operationDAO = operationsDAOIt.next();
+            for (int i = 0; i < operationsDAO.size(); i++) {
+                LedgerTransaction transaction = operationsIt.next();
+                LedgerTransactionDAO operationDAO = operationsDAOIt.next();
 
                 Pair<Account, List<ObjectId>> pairAccountOpsList;
 
-                switch (operation.getType()) {
-                    case DEPOSIT:
-                        LedgerDeposit deposit = (LedgerDeposit) operation;
-                        pairAccountOpsList = accounts.get(deposit.getAccountId());
-                        pairAccountOpsList.getLeft().processOperation(deposit);
-                        pairAccountOpsList.getRight().add(operationDAO.getId());
-                        break;
+                pairAccountOpsList = accounts.get(transaction.getOrigin());
+                pairAccountOpsList.getLeft().processOperation(transaction);
+                pairAccountOpsList.getRight().add(operationDAO.getId());
 
-                    case TRANSACTION:
-                        LedgerTransaction transaction = (LedgerTransaction) operation;
-                    
-                        pairAccountOpsList = accounts.get(transaction.getOrigin());
-                        pairAccountOpsList.getLeft().processOperation(transaction);
-                        pairAccountOpsList.getRight().add(operationDAO.getId());
+                pairAccountOpsList = accounts.get(transaction.getDest());
+                pairAccountOpsList.getLeft().processOperation(transaction);
+                pairAccountOpsList.getRight().add(operationDAO.getId());
 
-                        pairAccountOpsList = accounts.get(transaction.getDest());
-                        pairAccountOpsList.getLeft().processOperation(transaction);
-                        pairAccountOpsList.getRight().add(operationDAO.getId());
-
-                        nonceOps.add(new InsertOneModel<>(new Nonce(transaction.digest(), transaction.getNonce())));
-                    break;
-                }
+                nonceOps.add(new InsertOneModel<>(new Nonce(transaction.digest(), transaction.getNonce())));
             }
 
             List<WriteModel<AccountDAO>> accountsDAOmodel = accounts.values().stream()
@@ -405,17 +360,17 @@ public class LedgerDBWithMongo extends LedgerDBlayer
         }
     }
 
-    protected List<LedgerOperationDAO> loadOperations(LedgerState state)
+    protected List<LedgerTransactionDAO> loadOperations(LedgerState state)
     {
-        List<LedgerOperationDAO> insertOperations = state.getOperations().stream()
-                .<LedgerOperationDAO>map(this::toDAO).toList();
+        List<LedgerTransactionDAO> insertOperations = state.getTransactions().stream()
+                .<LedgerTransactionDAO>map(this::toDAO).toList();
 
         InsertManyResult insertManyResult = this.ledger
                 .insertMany(insertOperations, new InsertManyOptions().ordered(true));
 
         Map<Integer, BsonValue> insertedIds = insertManyResult.getInsertedIds();
 
-        Iterator<LedgerOperationDAO> operationsIt = insertOperations.iterator();
+        Iterator<LedgerTransactionDAO> operationsIt = insertOperations.iterator();
         for (int i = 0; i < insertOperations.size(); i++)
             operationsIt.next().setId(insertedIds.get(i).asObjectId().getValue());
 
@@ -428,7 +383,7 @@ public class LedgerDBWithMongo extends LedgerDBlayer
         init();
         
         SortedMap<AccountId, UserId> sortedAccounts = new TreeMap<>();
-        List<LedgerOperation> resOperations = new LinkedList<>();
+        List<LedgerTransaction> resOperations = new LinkedList<>();
 
         for (AccountDAO account : this.accounts.find()) {
             sortedAccounts.put(account.getAccountId(), account.getOwner());
@@ -438,14 +393,14 @@ public class LedgerDBWithMongo extends LedgerDBlayer
             .map((entry) -> new Pair<>(entry.getKey(), entry.getValue()))
             .toList();
         
-        AggregateIterable<LedgerOperationDAO> ledgerIt = this.ledger.aggregate(Arrays.asList(
+        AggregateIterable<LedgerTransactionDAO> ledgerIt = this.ledger.aggregate(Arrays.asList(
 		    Aggregates.sort(Sorts.ascending("ts"))
 			));
 
         if (ledgerIt.first() != null)
         {
-            for (LedgerOperationDAO operation : ledgerIt) {
-                resOperations.add(operation.toLedgerOperation());
+            for (LedgerTransactionDAO operation : ledgerIt) {
+                resOperations.add(operation.toLedgerTransaction());
             }
         }
 
@@ -461,33 +416,12 @@ public class LedgerDBWithMongo extends LedgerDBlayer
 
         return result.first() != null;
     }
-    
-    protected LedgerOperationDAO toDAO(LedgerOperation operation)
-    {
-        switch (operation.getType()) {
-            case DEPOSIT:
-                return toDAO((LedgerDeposit)operation);
-            case TRANSACTION:
-                return toDAO((LedgerTransaction)operation);
-            default:
-                return null;
-        }
-    }
-
-    protected LedgerDepositDAO toDAO(LedgerDeposit deposit)
-    {
-        try {
-            return new LedgerDepositDAO(deposit);
-        } catch (InvalidOperationException e) {
-            throw new InternalServerErrorException(e.getMessage(), e);
-        }
-    }
 
     protected LedgerTransactionDAO toDAO(LedgerTransaction transaction)
     {
         try {
             return new LedgerTransactionDAO(transaction);
-        } catch (InvalidOperationException e) {
+        } catch (InvalidTransactionException e) {
             throw new InternalServerErrorException(e.getMessage(), e);
         }
     }

@@ -1,48 +1,109 @@
 package tp2.bitdlp.data.mongo.operations;
 
-import java.nio.ByteBuffer;
-import java.security.MessageDigest;
-
-import org.bson.codecs.pojo.annotations.BsonDiscriminator;
+import org.bson.types.ObjectId;
 
 import tp2.bitdlp.api.AccountId;
-import tp2.bitdlp.api.operations.InvalidOperationException;
-import tp2.bitdlp.api.operations.LedgerOperation;
-import tp2.bitdlp.api.operations.LedgerTransaction;
-import tp2.bitdlp.util.Crypto;
+import tp2.bitdlp.pow.transaction.LedgerTransaction;
 
-@BsonDiscriminator(value = "LedgerTransactionDAO", key = "_cls")
-public class LedgerTransactionDAO extends LedgerOperationDAO {
+public class LedgerTransactionDAO
+{
+    private ObjectId id;
 
-    private AccountId origin, dest;
+    protected int value;
+    protected LedgerTransaction.Type type;
+    protected String date;
+
+    protected String clientSignature;
+
+    protected AccountId origin, dest;
     
-    private int nonce;
+    protected int nonce;
 
-    public LedgerTransactionDAO(AccountId origin, AccountId dest, int value, int nonce, byte[] clientSignature) throws InvalidOperationException {
-        super(value, Type.TRANSACTION);
-        this.origin = origin;
-        this.dest = dest;
-        this.nonce = nonce;
-        this.clientSignature = clientSignature;
-    }
-
-    public LedgerTransactionDAO(AccountId origin, AccountId dest, int value, String date, int nonce, byte[] clientSignature) throws InvalidOperationException {
-        super(value, Type.TRANSACTION, date);
-        this.origin = origin;
-        this.dest = dest;
-        this.nonce = nonce;
-        this.clientSignature = clientSignature;
-    }
-
-    public LedgerTransactionDAO(LedgerTransaction transaction) throws InvalidOperationException
+    public LedgerTransactionDAO(LedgerTransaction transaction)
     {
-        this(transaction.getOrigin(), transaction.getDest(), transaction.getValue(), transaction.getDate(), transaction.getNonce(), transaction.getClientSignature());
+        this.value = transaction.getValue();
+        this.type = transaction.getType();
+        this.date = transaction.getDate();
+        this.clientSignature = transaction.getClientSignature();
+        this.origin = transaction.getOrigin();
+        this.dest = transaction.getDest();
+        this.nonce = transaction.getNonce();
     }
 
     /**
      * 
      */
     public LedgerTransactionDAO() {
+    }
+
+    /**
+     * @return the id
+     */
+    public ObjectId getId() {
+        return id;
+    }
+
+    /**
+     * @param id the id to set
+     */
+    public void setId(ObjectId id) {
+        this.id = id;
+    }
+
+    /**
+     * @return the value
+     */
+    public int getValue() {
+        return value;
+    }
+
+    /**
+     * @param value the value to set
+     */
+    public void setValue(int value) {
+        this.value = value;
+    }
+
+    /**
+     * @return the type
+     */
+    public LedgerTransaction.Type getType() {
+        return type;
+    }
+
+    /**
+     * @param type the type to set
+     */
+    public void setType(LedgerTransaction.Type type) {
+        this.type = type;
+    }
+
+    /**
+     * @return the date
+     */
+    public String getDate() {
+        return date;
+    }
+
+    /**
+     * @param date the date to set
+     */
+    public void setDate(String date) {
+        this.date = date;
+    }
+
+    /**
+     * @return the clientSignature
+     */
+    public String getClientSignature() {
+        return clientSignature;
+    }
+
+    /**
+     * @param clientSignature the clientSignature to set
+     */
+    public void setClientSignature(String clientSignature) {
+        this.clientSignature = clientSignature;
     }
 
     /**
@@ -73,40 +134,37 @@ public class LedgerTransactionDAO extends LedgerOperationDAO {
         this.dest = dest;
     }
 
-    
+    /**
+     * @return the nonce
+     */
     public int getNonce() {
         return nonce;
     }
 
+    /**
+     * @param nonce the nonce to set
+     */
     public void setNonce(int nonce) {
         this.nonce = nonce;
     }
 
     @Override
     public String toString() {
-        return super.toString() + String.format("%s -> %s, value = %d", origin, dest, getValue());
+        return toLedgerTransaction().toString();
     }
 
-    public byte[] digest() {
+    public LedgerTransaction toLedgerTransaction()
+    {
+        LedgerTransaction t = new LedgerTransaction();
+        
+        t.setValue(this.value);
+        t.setType(this.type);
+        t.setDate(this.date);
+        t.setClientSignature(this.clientSignature);
+        t.setOrigin(this.origin);
+        t.setDest(this.dest);
+        t.setNonce(this.nonce);
 
-        MessageDigest digest = Crypto.getSha256Digest();
-
-        ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES);
-        buffer.putInt(getValue());
-
-        digest.update(origin.getObjectId());
-        digest.update(dest.getObjectId());
-        digest.update(buffer.array());
-
-        return digest.digest();
-    }
-
-    public LedgerOperation toLedgerTransaction() {
-        try {
-            LedgerTransaction transaction = new LedgerTransaction(origin, dest, getValue(), getDate(), nonce, getClientSignature());
-            return transaction;
-        } catch (Exception e) {
-            throw new Error(e.getMessage(), e);
-        }
+        return t;
     }
 }

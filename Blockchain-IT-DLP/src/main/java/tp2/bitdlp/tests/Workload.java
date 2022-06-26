@@ -98,7 +98,6 @@ public class Workload implements Runnable
         )
         {
             createAccounts(client);
-            loadMoney(client);
             getAccounts(client);
             sendTransaction(client);
             getBalance(client);
@@ -193,19 +192,6 @@ public class Workload implements Runnable
         request(() -> client.getGlobalLedgerValue(),
         tp2.bitdlp.impl.srv.resources.requests.Request.Operation.GET_GLOBAL_LEDGER_VALUE);
         
-    }
-
-    protected void loadMoney(LedgerClient client) throws InvalidServerSignatureException
-    {
-        // send loadMoney requests
-        for (Map<AccountId, KeyPair> accounts : this.accounts.values())
-        {
-            for (Entry<AccountId, KeyPair> account : accounts.entrySet())
-            {
-                request(() -> client.loadMoney(account.getKey(), 100, account.getValue()),
-                tp2.bitdlp.impl.srv.resources.requests.Request.Operation.LOAD_MONEY);
-            }
-        }
     }
 
     protected void sendTransaction(LedgerClient client) throws InvalidServerSignatureException

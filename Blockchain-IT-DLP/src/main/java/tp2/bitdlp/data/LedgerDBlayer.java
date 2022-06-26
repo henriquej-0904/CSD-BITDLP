@@ -6,10 +6,8 @@ import java.util.Properties;
 
 import tp2.bitdlp.api.Account;
 import tp2.bitdlp.api.AccountId;
-import tp2.bitdlp.api.operations.LedgerDeposit;
-import tp2.bitdlp.api.operations.LedgerOperation;
-import tp2.bitdlp.api.operations.LedgerTransaction;
 import tp2.bitdlp.data.mongo.LedgerDBWithMongo;
+import tp2.bitdlp.pow.transaction.LedgerTransaction;
 import tp2.bitdlp.util.result.Result;
 import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.WebApplicationException;
@@ -123,13 +121,6 @@ public abstract class LedgerDBlayer
     public abstract Result<Integer> getGlobalLedgerValue();
 
     /**
-	 * Loads money into an account.
-	 *
-     * @param deposit The value to load into the account.
-	 */
-    public abstract Result<Void> loadMoney(LedgerDeposit deposit);
-
-    /**
 	 * Transfers money from an origin to a destination.
 	 *
 	 * @param transaction The transaction to perform.
@@ -140,7 +131,7 @@ public abstract class LedgerDBlayer
      * Obtains the current Ledger.
      * @return The current Ledger.
      */
-    public abstract Result<LedgerOperation[]> getLedger();
+    public abstract Result<LedgerTransaction[]> getLedger();
 
     /**
      * Load a ledger state

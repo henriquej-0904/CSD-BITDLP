@@ -6,7 +6,6 @@ import java.security.InvalidKeyException;
 import java.security.MessageDigest;
 import java.security.PrivateKey;
 import java.security.PublicKey;
-import java.security.Signature;
 import java.security.SignatureException;
 import java.security.spec.InvalidKeySpecException;
 import java.util.logging.Logger;
@@ -20,10 +19,6 @@ import tp2.bitdlp.api.Account;
 import tp2.bitdlp.api.AccountId;
 import tp2.bitdlp.api.ObjectId;
 import tp2.bitdlp.api.UserId;
-import tp2.bitdlp.api.operations.InvalidOperationException;
-import tp2.bitdlp.api.operations.LedgerDeposit;
-import tp2.bitdlp.api.operations.LedgerOperation;
-import tp2.bitdlp.api.operations.LedgerTransaction;
 import tp2.bitdlp.api.service.Accounts;
 import tp2.bitdlp.data.LedgerDBlayer;
 import tp2.bitdlp.data.LedgerDBlayerException;
@@ -32,8 +27,9 @@ import tp2.bitdlp.impl.srv.resources.requests.CreateAccount;
 import tp2.bitdlp.impl.srv.resources.requests.GetAccount;
 import tp2.bitdlp.impl.srv.resources.requests.GetBalance;
 import tp2.bitdlp.impl.srv.resources.requests.GetTotalValue;
-import tp2.bitdlp.impl.srv.resources.requests.LoadMoney;
 import tp2.bitdlp.impl.srv.resources.requests.SendTransaction;
+import tp2.bitdlp.pow.transaction.InvalidTransactionException;
+import tp2.bitdlp.pow.transaction.LedgerTransaction;
 import tp2.bitdlp.util.Crypto;
 import tp2.bitdlp.util.Pair;
 import tp2.bitdlp.util.Utils;
@@ -101,18 +97,8 @@ public abstract class AccountsResource implements Accounts
         }
     }
 
-    protected boolean verifySignature(ObjectId id, byte[] signature, byte[]... data){
-        try {
-            Signature verify = Crypto.createSignatureInstance();
-            verify.initVerify(getPublicKey(id));
-
-            for (byte[] buff : data)
-                verify.update(buff);
-
-            return verify.verify(signature);
-        } catch (InvalidKeyException | SignatureException e) {
-            throw new InternalServerErrorException(e.getMessage(), e);
-        }
+    protected boolean verifySignature(ObjectId id, String signature, byte[]... data){
+        return Crypto.verifySignature(getPublicKey(id), signature, data);
     }
 
     public String sign(PrivateKey key, byte[]... data)
@@ -158,7 +144,7 @@ public abstract class AccountsResource implements Accounts
         UserId owner = getUserId(params.getAccountUserPair().getRight());
 
         // verify signature
-        if (!verifySignature(owner, Utils.fromHex(params.getUserSignature()),
+        if (!verifySignature(owner, params.getUserSignature(),
             params.getAccountUserPair().getLeft(),
             params.getAccountUserPair().getRight()))
                 throw new ForbiddenException("Invalid User Signature.");
@@ -343,61 +329,6 @@ public abstract class AccountsResource implements Accounts
      */
     public abstract int getGlobalValue();
 
-    @Override
-    public final LedgerDeposit loadMoney(byte[] accountId, int value, String accountSignature) {
-        LoadMoney clientParams;
-        LedgerDeposit deposit;
-
-        try {
-            init();
-
-            clientParams = new LoadMoney(accountId, value, accountSignature);
-            deposit = verifyLoadMoney(clientParams);
-        } catch (WebApplicationException e) {
-            LOG.info(e.getMessage());
-            throw e;
-        }
-
-        loadMoney(clientParams, deposit);
-
-        // LOG.info(String.format("ID: %s, TYPE: %s, VALUE: %s", id, deposit.getType(),
-        // value));
-
-        throw new WebApplicationException(
-                Response.status(Status.OK)
-                        .entity(deposit)
-                        .header(Accounts.SERVER_SIG, sign(ServerConfig.getKeyPair().getPrivate(), deposit.digest()))
-                        .build());
-    }
-
-    protected LedgerDeposit verifyLoadMoney(LoadMoney clientParams) {
-        // verify signature
-        ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES);
-        buffer.putInt(clientParams.getValue());
-
-        byte[] clientSignature = Utils.fromHex(clientParams.getAccountSignature());
-        AccountId accountId = getAccountId(clientParams.getAccountId());
-
-        if (!verifySignature(accountId, clientSignature,
-            clientParams.getAccountId(), buffer.array()))
-            throw new ForbiddenException("Invalid Account Signature.");
-
-        // execute operation
-        try {
-            return new LedgerDeposit(clientParams.getValue(), accountId, clientSignature);
-        } catch (InvalidOperationException e) {
-            throw new BadRequestException(e.getMessage(), e);
-        }
-    }
-
-    /**
-	 * Loads money into an account.
-	 *
-     * @param value value to be loaded
-	 */
-    public abstract void loadMoney(LoadMoney clientParams, LedgerDeposit deposit);
-
-
 
     @Override
     public final LedgerTransaction sendTransaction(Pair<byte[], byte[]> originDestPair, int value,
@@ -438,14 +369,15 @@ public abstract class AccountsResource implements Accounts
             buffer.putInt(clientParams.getValue());
             buffer.putInt(clientParams.getNonce());
 
-            byte[] clientSignature = Utils.fromHex(clientParams.getAccountSignature());
-            if (!verifySignature(originId, clientSignature, clientParams.getOriginDestPair().getLeft(),
+            if (!verifySignature(originId, clientParams.getAccountSignature(), clientParams.getOriginDestPair().getLeft(),
                 clientParams.getOriginDestPair().getRight(), buffer.array()))
                 throw new ForbiddenException("Invalid Account Signature.");    
         
             try {
-                return new LedgerTransaction(originId, destId, clientParams.getValue(), clientParams.getNonce(), clientSignature);
-            } catch (InvalidOperationException e) {
+                LedgerTransaction t = LedgerTransaction.newTransaction(originId, destId, clientParams.getValue(), clientParams.getNonce());
+                t.setClientSignature(clientParams.getAccountSignature());
+                return t;
+            } catch (InvalidTransactionException e) {
                 throw new BadRequestException(e.getMessage(), e);
             }
     }
@@ -458,7 +390,7 @@ public abstract class AccountsResource implements Accounts
     public abstract void sendTransaction(SendTransaction clientParams, LedgerTransaction transaction);
 
     @Override
-    public final LedgerOperation[] getLedger() {
+    public final LedgerTransaction[] getLedger() {
         try {
             init();
         } catch (WebApplicationException e) {
@@ -466,7 +398,7 @@ public abstract class AccountsResource implements Accounts
             throw e;
         }
 
-        LedgerOperation[] result = getFullLedger();
+        LedgerTransaction[] result = getFullLedger();
 
         //LOG.info(String.format("Get Ledger with %d operations.", result.length));
 
@@ -487,7 +419,7 @@ public abstract class AccountsResource implements Accounts
      * Obtains the current Ledger.
      * @return The current Ledger.
      */
-    public abstract LedgerOperation[] getFullLedger();
+    public abstract LedgerTransaction[] getFullLedger();
 
     protected byte[] toJson(Object obj)
     {

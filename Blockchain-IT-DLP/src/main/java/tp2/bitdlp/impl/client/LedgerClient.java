@@ -20,10 +20,8 @@ import javax.net.ssl.SSLContext;
 import tp2.bitdlp.api.Account;
 import tp2.bitdlp.api.AccountId;
 import tp2.bitdlp.api.UserId;
-import tp2.bitdlp.api.operations.LedgerDeposit;
-import tp2.bitdlp.api.operations.LedgerOperation;
-import tp2.bitdlp.api.operations.LedgerTransaction;
 import tp2.bitdlp.api.service.Accounts;
+import tp2.bitdlp.pow.transaction.LedgerTransaction;
 import tp2.bitdlp.util.Crypto;
 import tp2.bitdlp.util.Pair;
 import tp2.bitdlp.util.result.Result;
@@ -148,23 +146,6 @@ public class LedgerClient implements Closeable
         return verifyResponseSignature(resultPair, this::getBytes);
     }
 
-    public Result<LedgerDeposit> loadMoney(AccountId accountId, int value, KeyPair accountKeys) throws InvalidServerSignatureException
-    {
-        ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES);
-        buffer.putInt(value);
-
-        String signature = sign(accountKeys.getPrivate(), accountId.getObjectId(), buffer.array());
-
-        Pair<Result<LedgerDeposit>, Response> resultPair = request(this.client.target(this.endpoint).path(Accounts.PATH)
-            .path("balance").path(Integer.toString(value))
-            .request()
-            .header(Accounts.ACC_SIG, signature)
-            .buildPost(Entity.entity(accountId.getObjectId(), MediaType.APPLICATION_OCTET_STREAM)),
-                LedgerDeposit.class);
-
-        return verifyResponseSignature(resultPair, LedgerDeposit::digest);
-    }
-
     public Result<LedgerTransaction> sendTransaction(AccountId originId, AccountId destId, int value, KeyPair originAccountKeys) throws InvalidServerSignatureException
     {
         return sendTransaction(originId, destId, value, originAccountKeys, this.random.nextInt());
@@ -190,11 +171,11 @@ public class LedgerClient implements Closeable
         return verifyResponseSignature(resultPair, LedgerTransaction::digest); 
     }
 
-    public Result<LedgerOperation[]> getLedger() throws InvalidServerSignatureException {
-        Pair<Result<LedgerOperation[]>, Response> resultPair = request(this.client.target(this.endpoint)
+    public Result<LedgerTransaction[]> getLedger() throws InvalidServerSignatureException {
+        Pair<Result<LedgerTransaction[]>, Response> resultPair = request(this.client.target(this.endpoint)
         .path(Accounts.PATH).path("ledger")
         .request()
-        .buildGet(), LedgerOperation[].class);
+        .buildGet(), LedgerTransaction[].class);
 
         return verifyResponseSignature(resultPair, (ledgerOps) -> 
         {

@@ -73,7 +73,6 @@ public class WorkloadBFT extends Workload
         )
         {
             createAccounts(client);
-            loadMoney(client);
             getAccounts(client);
 
             //sendTransaction(client);

@@ -4,25 +4,25 @@ import java.util.List;
 
 import tp2.bitdlp.api.AccountId;
 import tp2.bitdlp.api.UserId;
-import tp2.bitdlp.api.operations.LedgerOperation;
+import tp2.bitdlp.pow.transaction.LedgerTransaction;
 import tp2.bitdlp.util.Pair;
 import tp2.bitdlp.util.Utils;
 
 public class LedgerState {
 
     private List<Pair<AccountId, UserId>> accounts;
-    private List<LedgerOperation> operations;
+    private List<LedgerTransaction> transactions;
 
     private byte[] serializedState;
 
     
     /**
      * @param accounts
-     * @param operations
+     * @param transactions
      */
-    public LedgerState(List<Pair<AccountId, UserId>> accounts, List<LedgerOperation> operations) {
+    public LedgerState(List<Pair<AccountId, UserId>> accounts, List<LedgerTransaction> transactions) {
         this.accounts = accounts;
-        this.operations = operations;
+        this.transactions = transactions;
         toSerializedState();
     }
 
@@ -47,8 +47,8 @@ public class LedgerState {
     /**
      * @return the operations
      */
-    public List<LedgerOperation> getOperations() {
-        return operations;
+    public List<LedgerTransaction> getTransactions() {
+        return transactions;
     }
 
 
@@ -65,14 +65,14 @@ public class LedgerState {
     {
         Object[] state = (Object[]) Utils.readObject(this.serializedState);
         this.accounts = (List<Pair<AccountId, UserId>>) state[0];
-        this.operations = (List<LedgerOperation>) state[1];
+        this.transactions = (List<LedgerTransaction>) state[1];
     }
 
     private void toSerializedState()
     {
         Object[] state = new Object[2];
         state[0] = this.accounts;
-        state[1] = this.operations;
+        state[1] = this.transactions;
 
         this.serializedState = Utils.writeObject(state);
     }

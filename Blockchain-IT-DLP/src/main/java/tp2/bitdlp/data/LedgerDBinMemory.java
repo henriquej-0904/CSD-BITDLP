@@ -13,10 +13,8 @@ import java.util.stream.Collectors;
 import tp2.bitdlp.api.Account;
 import tp2.bitdlp.api.AccountId;
 import tp2.bitdlp.api.UserId;
-import tp2.bitdlp.api.operations.InvalidOperationException;
-import tp2.bitdlp.api.operations.LedgerDeposit;
-import tp2.bitdlp.api.operations.LedgerOperation;
-import tp2.bitdlp.api.operations.LedgerTransaction;
+import tp2.bitdlp.pow.transaction.InvalidTransactionException;
+import tp2.bitdlp.pow.transaction.LedgerTransaction;
 import tp2.bitdlp.util.Pair;
 import tp2.bitdlp.util.result.Result;
 import tp2.bitdlp.util.Utils;
@@ -33,7 +31,7 @@ public class LedgerDBinMemory extends LedgerDBlayer
     private static LedgerDBinMemory instance;
 
     private Map<AccountId, Account> accounts;
-    private List<LedgerOperation> ledger;
+    private List<LedgerTransaction> ledger;
     private ReadWriteLock lock;
 
     private Map<String, List<Integer>> nonceMap;
@@ -162,32 +160,8 @@ public class LedgerDBinMemory extends LedgerDBlayer
     }
 
     @Override
-    public Result<Void> loadMoney(LedgerDeposit deposit)
+    public Result<Void> sendTransaction(LedgerTransaction transaction)
     {
-        Result<Account> accountRes = getAccount(deposit.getAccountId());
-        if (!accountRes.isOK())
-            return Result.error(accountRes.errorException());
-
-        try
-        {
-            getWriteLock().lock();
-
-            accountRes.value().processOperation(deposit);
-
-            ledger.add(deposit);
-
-            return Result.ok();
-        } catch (InvalidOperationException e){
-            return Result.error(new InternalServerErrorException(e.getMessage(), e));
-        } finally
-        {
-            getWriteLock().unlock();
-        }
-    }
-
-    @Override
-    public Result<Void> sendTransaction(LedgerTransaction transaction) {
-        
         Result<Account> accountOr = getAccount(transaction.getOrigin());
         Result<Account> accountDest = getAccount(transaction.getDest());
 
@@ -208,7 +182,7 @@ public class LedgerDBinMemory extends LedgerDBlayer
             ledger.add(transaction);
 
             return Result.ok();
-        } catch (InvalidOperationException e){
+        } catch (InvalidTransactionException e){
             return Result.error(new WebApplicationException(e.getMessage(), e, Status.CONFLICT));
         }catch (WebApplicationException e){
             return Result.error(e);
@@ -220,12 +194,12 @@ public class LedgerDBinMemory extends LedgerDBlayer
     }
 
     @Override
-    public Result<LedgerOperation[]> getLedger() {
+    public Result<LedgerTransaction[]> getLedger() {
         try
         {
             getReadLock().lock();
             
-            return Result.ok(ledger.toArray(new LedgerOperation[0]));
+            return Result.ok(ledger.toArray(new LedgerTransaction[0]));
         } finally
         {
             getReadLock().unlock();
@@ -239,34 +213,23 @@ public class LedgerDBinMemory extends LedgerDBlayer
         {
             getWriteLock().lock();
 
-            this.ledger = state.getOperations();
+            this.ledger = state.getTransactions();
 
             this.accounts = state.getAccounts().stream()
                 .map((pairAccountUser) -> new Account(pairAccountUser.getLeft(), pairAccountUser.getRight()))
                 .collect(Collectors.toMap(Account::getId, (acc) -> acc, (acc1, acc2) -> acc1, () -> new TreeMap<>()));
 
-            for (LedgerOperation lOp : this.ledger) {
-                if(lOp instanceof LedgerDeposit){
-
-                    LedgerDeposit deposit = (LedgerDeposit) lOp;
-                    Account acc = this.accounts.get(deposit.getAccountId());
-                    acc.processOperation(deposit);
-
-                }else if(lOp instanceof LedgerTransaction){
-                    
-                    LedgerTransaction transaction = (LedgerTransaction) lOp;
-                   
+            for (LedgerTransaction transaction : this.ledger) {
                     Account origin = this.accounts.get(transaction.getOrigin());
                     Account dest = this.accounts.get(transaction.getDest());
 
                     addNonce(transaction.digest(), transaction.getNonce());
                     origin.processOperation(transaction);
                     dest.processOperation(transaction);
-                }  
             }
 
             return Result.ok();
-        } catch (InvalidOperationException e) {
+        } catch (InvalidTransactionException e) {
             return Result.error(new InternalServerErrorException(e.getMessage(), e));
         }finally{
             getWriteLock().unlock();
