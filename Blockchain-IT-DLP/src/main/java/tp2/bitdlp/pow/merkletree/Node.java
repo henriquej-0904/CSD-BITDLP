@@ -1,9 +1,11 @@
 package tp2.bitdlp.pow.merkletree;
 
+import java.util.Arrays;
+
 public class Node {
 
     // double SHA256
-    protected String hash;
+    protected byte[] hash;
 
     protected Node left, right;
 
@@ -18,7 +20,7 @@ public class Node {
      * @param left
      * @param right
      */
-    public Node(String hash, Node left, Node right) {
+    public Node(byte[] hash, Node left, Node right) {
         this.hash = hash;
         this.left = left;
         this.right = right;
@@ -27,14 +29,14 @@ public class Node {
     /**
      * @return the hash
      */
-    public String getHash() {
+    public byte[] getHash() {
         return hash;
     }
 
     /**
      * @param hash the hash to set
      */
-    public void setHash(String hash) {
+    public void setHash(byte[] hash) {
         this.hash = hash;
     }
 
@@ -64,5 +66,17 @@ public class Node {
      */
     public void setRight(Node right) {
         this.right = right;
+    }
+    
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (!(obj instanceof Node))
+            return false;
+        Node other = (Node) obj;
+        return Arrays.equals(hash, other.hash);
     }
 }

@@ -16,7 +16,7 @@ public class LeafNode extends Node
     /**
      * @param transaction
      */
-    public LeafNode(String hash, LedgerTransaction transaction)
+    public LeafNode(byte[] hash, LedgerTransaction transaction)
     {
         super(hash, null, null);
         this.transaction = transaction;
