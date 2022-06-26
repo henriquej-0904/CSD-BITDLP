@@ -52,14 +52,15 @@ public class MerkleTree
     public List<LedgerTransaction> getTransactions(Node node, List<LedgerTransaction> list){
 
         if(node == null)
-            return null;
+            return list;
         
         if(node instanceof LeafNode){
             list.add(((LeafNode) node).getTransaction());
+            return list;
         }
 
-        list.addAll(getTransactions(node.right, list));
-        list.addAll(getTransactions(node.left, list));
+        getTransactions(node.left, list);
+        getTransactions(node.right, list);
 
         return list;
     }
