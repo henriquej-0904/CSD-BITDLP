@@ -14,7 +14,6 @@ public class MerkleTree
 {
     protected Node merkleRoot;
 
-    // sempre par
     protected int size;
 
     /**
@@ -25,11 +24,19 @@ public class MerkleTree
 
     public MerkleTree(List<LedgerTransaction> transactions)
     {
-        if (transactions.size() % 2 != 0)
-            throw new IllegalArgumentException("Invalid number of transactions, must be even");
+        this.size = transactions.size();
+
+        if (this.size % 2 != 0)
+        {
+            // Create list of transactions with even number -> repeat last transaction.
+            List<LedgerTransaction> tmp = new ArrayList<>(this.size + 1);
+            tmp.addAll(transactions);
+            tmp.add(transactions.get(this.size - 1));
+
+            transactions = tmp;
+        }
         
         this.merkleRoot = createTree(transactions);
-        this.size = transactions.size();
     }
 
     /**
@@ -63,7 +70,13 @@ public class MerkleTree
     @JsonIgnore
     public List<LedgerTransaction> getTransactions()
     {
-        return getTransactions(this.merkleRoot, new ArrayList<>(this.size));
+        List<LedgerTransaction> transactions =
+            transactions(this.merkleRoot, new ArrayList<>(this.size));
+
+        if (this.size % 2 != 0)
+            transactions.remove(this.size);
+        
+        return transactions;
     }
 
     @JsonIgnore
@@ -154,7 +167,7 @@ public class MerkleTree
         return Utils.toBase64(digest.digest());
     } */
 
-    protected List<LedgerTransaction> getTransactions(Node node, List<LedgerTransaction> list){
+    protected List<LedgerTransaction> transactions(Node node, List<LedgerTransaction> list){
 
         if(node == null)
             return list;
@@ -164,8 +177,8 @@ public class MerkleTree
             return list;
         }
 
-        getTransactions(node.left, list);
-        getTransactions(node.right, list);
+        transactions(node.left, list);
+        transactions(node.right, list);
 
         return list;
     }
