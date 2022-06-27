@@ -1,6 +1,7 @@
 package tp2.bitdlp.api.service;
 
 import tp2.bitdlp.api.Account;
+import tp2.bitdlp.pow.block.BCBlock;
 import tp2.bitdlp.pow.transaction.LedgerTransaction;
 import tp2.bitdlp.util.Pair;
 import jakarta.ws.rs.Consumes;
@@ -103,5 +104,23 @@ public interface Accounts {
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     LedgerTransaction[] getLedger();
+
+    /**
+     * Get a block with transactions to mine.
+     * 
+     * @param minerAccountId The account id of the miner.
+     * 
+     * @return A block with transactions to mine.
+     */
+    @Path("/block")
+    @GET
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    BCBlock getBlockToMine(String minerAccountId);
+
+    @Path("/block")
+    @POST
+    @Consumes(MediaType.APPLICATION_JSON)
+    void proposeMinedBlock(BCBlock block);
 
 }
