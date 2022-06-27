@@ -2,12 +2,13 @@ package tp2.bitdlp.pow.transaction;
 
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
+import java.util.Arrays;
 import java.util.Objects;
 
 import tp2.bitdlp.api.AccountId;
 import tp2.bitdlp.util.Crypto;
 
-public class LedgerTransaction
+public class LedgerTransaction implements Comparable<LedgerTransaction>
 {
     public static enum Type
     {
@@ -32,6 +33,8 @@ public class LedgerTransaction
     protected AccountId origin, dest;
     
     protected int nonce;
+
+    protected byte[] hash;
 
     /**
      * 
@@ -187,6 +190,20 @@ public class LedgerTransaction
         this.nonce = nonce;
     }
 
+    /**
+     * @return the hash
+     */
+    public byte[] getHash() {
+        return hash;
+    }
+
+    /**
+     * @param hash the hash to set
+     */
+    public void setHash(byte[] hash) {
+        this.hash = hash;
+    }
+
     @Override
     public String toString()
     {
@@ -202,6 +219,23 @@ public class LedgerTransaction
 
     public byte[] digest() {
         return computeDigest(true).digest();
+    }
+    
+    @Override
+    public int hashCode() {
+        return Arrays.hashCode(hash);
+    }
+    
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (!(obj instanceof LedgerTransaction))
+            return false;
+        LedgerTransaction other = (LedgerTransaction) obj;
+        return Arrays.equals(hash, other.hash);
     }
 
     protected MessageDigest computeDigest(boolean includeClientSig)
@@ -225,5 +259,15 @@ public class LedgerTransaction
             digest.update(clientSignature.getBytes());
 
         return digest;
+    }
+
+    @Override
+    public int compareTo(LedgerTransaction o) {
+        int t = (int)(this.timeStamp - o.timeStamp);
+
+        if (t == 0)
+            return Arrays.compare(this.hash, o.hash);
+        else
+            return t;
     }
 }
