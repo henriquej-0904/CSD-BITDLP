@@ -11,7 +11,7 @@ public class LedgerTransactionDAO
 
     protected int value;
     protected LedgerTransaction.Type type;
-    protected String date;
+    protected long timeStamp;
 
     protected String clientSignature;
 
@@ -23,7 +23,7 @@ public class LedgerTransactionDAO
     {
         this.value = transaction.getValue();
         this.type = transaction.getType();
-        this.date = transaction.getDate();
+        this.timeStamp = transaction.getTimeStamp();
         this.clientSignature = transaction.getClientSignature();
         this.origin = transaction.getOrigin();
         this.dest = transaction.getDest();
@@ -79,17 +79,17 @@ public class LedgerTransactionDAO
     }
 
     /**
-     * @return the date
+     * @return the timeStamp
      */
-    public String getDate() {
-        return date;
+    public long getTimeStamp() {
+        return timeStamp;
     }
 
     /**
-     * @param date the date to set
+     * @param timeStamp the timeStamp to set
      */
-    public void setDate(String date) {
-        this.date = date;
+    public void setTimeStamp(long timeStamp) {
+        this.timeStamp = timeStamp;
     }
 
     /**
@@ -159,7 +159,7 @@ public class LedgerTransactionDAO
         
         t.setValue(this.value);
         t.setType(this.type);
-        t.setDate(this.date);
+        t.setTimeStamp(this.timeStamp);
         t.setClientSignature(this.clientSignature);
         t.setOrigin(this.origin);
         t.setDest(this.dest);

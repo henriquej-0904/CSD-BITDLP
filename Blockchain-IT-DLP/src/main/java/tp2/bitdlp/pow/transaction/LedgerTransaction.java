@@ -2,13 +2,10 @@ package tp2.bitdlp.pow.transaction;
 
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
 import java.util.Objects;
 
 import tp2.bitdlp.api.AccountId;
 import tp2.bitdlp.util.Crypto;
-import tp2.bitdlp.util.Utils;
 
 public class LedgerTransaction
 {
@@ -25,11 +22,10 @@ public class LedgerTransaction
         GENERATION_TRANSACTION;
     }
 
-    public static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd 'at' HH:mm:ss z");
-
     protected int value;
     protected Type type;
-    protected String date;
+
+    protected long timeStamp;
 
     protected String clientSignature;
 
@@ -44,12 +40,12 @@ public class LedgerTransaction
     }
 
     public static LedgerTransaction newTransaction(AccountId origin,
-        AccountId dest, int value, int nonce, String date, String clientSignature)
+        AccountId dest, int value, int nonce, long timeStamp, String clientSignature)
     {
         Objects.requireNonNull(origin);
 
         LedgerTransaction t =
-            newTransaction(Type.TRANSACTION, dest, value, nonce, date, clientSignature);
+            newTransaction(Type.TRANSACTION, dest, value, nonce, timeStamp, clientSignature);
 
         t.origin = origin;
 
@@ -59,24 +55,23 @@ public class LedgerTransaction
     public static LedgerTransaction newTransaction(AccountId origin,
         AccountId dest, int value, int nonce)
     {
-        return newTransaction(origin, dest, value, nonce, currentDate(), null);
+        return newTransaction(origin, dest, value, nonce, currentTime(), null);
     }
 
-    public static LedgerTransaction newGenerationTransaction(AccountId dest, int value, String date)
+    public static LedgerTransaction newGenerationTransaction(AccountId dest, int value, long timeStamp)
     {
-        return newTransaction(Type.GENERATION_TRANSACTION, dest, value, 0, date, null);
+        return newTransaction(Type.GENERATION_TRANSACTION, dest, value, 0, timeStamp, null);
     }
 
     public static LedgerTransaction newGenerationTransaction(AccountId dest, int value)
     {
-        return newGenerationTransaction(dest, value, currentDate());
+        return newGenerationTransaction(dest, value, currentTime());
     }
 
     protected static LedgerTransaction newTransaction(Type type, AccountId dest,
-        int value, int nonce, String date, String clientSignature)
+        int value, int nonce, long timeStamp, String clientSignature)
     {
         Objects.requireNonNull(dest);
-        Objects.requireNonNull(date);
 
         if(value <= 0)
             throw new InvalidTransactionException("Transaction value must be positive.");
@@ -86,15 +81,15 @@ public class LedgerTransaction
         t.dest = dest;
         t.value = value;
         t.nonce = nonce;
-        t.date = date;
+        t.timeStamp = timeStamp;
         t.clientSignature = clientSignature;
 
         return t;
     }
 
-    protected static String currentDate()
+    protected static long currentTime()
     {
-        return Utils.printDate(DATE_FORMAT, Calendar.getInstance());
+        return System.currentTimeMillis();
     }
 
     /**
@@ -128,17 +123,17 @@ public class LedgerTransaction
     }
 
     /**
-     * @return the date
+     * @return the timeStamp
      */
-    public String getDate() {
-        return date;
+    public long getTimeStamp() {
+        return timeStamp;
     }
 
     /**
-     * @param date the date to set
+     * @param timeStamp the timeStamp to set
      */
-    public void setDate(String date) {
-        this.date = date;
+    public void setTimeStamp(long timeStamp) {
+        this.timeStamp = timeStamp;
     }
 
     /**
@@ -195,7 +190,7 @@ public class LedgerTransaction
     @Override
     public String toString()
     {
-        String res = date + " " + type.toString() + ": ";
+        String res = "Time (ms): " + timeStamp + ", " + type.toString() + ": ";
 
         if (type == Type.GENERATION_TRANSACTION)
             res += String.format("%s, value = %d", dest, value);
@@ -213,13 +208,13 @@ public class LedgerTransaction
     {
         MessageDigest digest = Crypto.getSha256Digest();
 
-        ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES);
+        ByteBuffer buffer = ByteBuffer.allocate(2*Integer.BYTES + Long.BYTES);
         buffer.putInt(getValue());
         buffer.putInt(getNonce());
+        buffer.putLong(getTimeStamp());
 
         digest.update(buffer.array());
         digest.update(type.name().getBytes());
-        digest.update(date.getBytes());
 
         if (origin != null)
             digest.update(origin.getObjectId());
