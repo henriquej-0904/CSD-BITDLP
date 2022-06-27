@@ -55,11 +55,6 @@ public abstract class AccountsResource implements Accounts
     protected TransactionsToMine transactionsToMine;
 
     /**
-     * The hash of the last block in the blockchain.
-     */
-    protected static String previousBlockHash;
-
-    /**
      * Init the db layer instance.
      */
     protected void init()
@@ -481,9 +476,18 @@ public abstract class AccountsResource implements Accounts
     protected Result<BCBlock> createBlock(GetBlock clientParams)
     {
         Result<BCBlock> result;
+
         try
         {
             AccountId minerId = verifyGetBlock(clientParams);
+
+            // If blockchain is empty -> return genesis block
+            if (this.db.emptyBlockchain().resultOrThrow())
+            {
+                result = Result.ok(BCBlock.createGenesisBlock(createGenerationTransaction(minerId)));
+                LOG.info("Created genesis block to mine.");
+                return result;
+            }
 
             // get transactions from pool
             List<LedgerTransaction> transactions =
@@ -501,7 +505,7 @@ public abstract class AccountsResource implements Accounts
             BCBlock block = BCBlock.createBlock(transactions);
 
             // link block to previous
-            block.getHeader().setPreviousHash(AccountsResource.previousBlockHash);
+            block.getHeader().setPreviousHash(this.db.getPreviousBlockHash().resultOrThrow());
 
             result = Result.ok(block);
 
