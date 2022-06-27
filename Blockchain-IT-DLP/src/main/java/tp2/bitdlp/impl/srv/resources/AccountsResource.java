@@ -8,6 +8,7 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.SignatureException;
 import java.security.spec.InvalidKeySpecException;
+import java.util.List;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -29,6 +30,7 @@ import tp2.bitdlp.impl.srv.resources.requests.GetBalance;
 import tp2.bitdlp.impl.srv.resources.requests.GetBlock;
 import tp2.bitdlp.impl.srv.resources.requests.GetTotalValue;
 import tp2.bitdlp.impl.srv.resources.requests.SendTransaction;
+import tp2.bitdlp.pow.Settings;
 import tp2.bitdlp.pow.block.BCBlock;
 import tp2.bitdlp.pow.transaction.InvalidTransactionException;
 import tp2.bitdlp.pow.transaction.LedgerTransaction;
@@ -51,6 +53,11 @@ public abstract class AccountsResource implements Accounts
     protected LedgerDBlayer db;
 
     protected TransactionsToMine transactionsToMine;
+
+    /**
+     * The hash of the last block in the blockchain.
+     */
+    protected static String previousBlockHash;
 
     /**
      * Init the db layer instance.
@@ -459,16 +466,60 @@ public abstract class AccountsResource implements Accounts
         return getAccountId(Utils.fromHex(clientParams.getMinerAccountId()));
     }
 
+    /**
+     * Get a block to mine.
+     * @param clientParams
+     * @return A block to mine.
+     */
     protected abstract BCBlock getBlockToMine(GetBlock clientParams);
 
+    /**
+     * Create a block with transactions to mine.
+     * @param clientParams
+     * @return A new block with transactions to mine.
+     */
     protected Result<BCBlock> createBlock(GetBlock clientParams)
     {
-        /* TODO: get n transactions from pool.
-            create generation transaction
-            create block with transactions
-            set previousHash in block
-            return block
-        */
+        Result<BCBlock> result;
+        try
+        {
+            AccountId minerId = verifyGetBlock(clientParams);
+
+            // get transactions from pool
+            List<LedgerTransaction> transactions =
+                this.transactionsToMine
+                .getTransactions(Settings.getValidNumberTransactionsInBlock() - 1);
+
+            if (transactions == null)
+                throw new WebApplicationException(
+                    "There are not enough transactions to create a block.", Status.CONFLICT);
+
+            // add generation transaction with dest -> minerId
+            transactions.add(createGenerationTransaction(minerId));
+
+            // create block
+            BCBlock block = BCBlock.createBlock(transactions);
+
+            // link block to previous
+            block.getHeader().setPreviousHash(AccountsResource.previousBlockHash);
+
+            result = Result.ok(block);
+
+        } catch (WebApplicationException e) {
+            result = Result.error(e);
+        }
+
+        if (result.isOK())
+            LOG.info("Created block to mine.");
+        else
+            LOG.info(result.errorException().getMessage());
+
+        return result;
+    }
+
+    private LedgerTransaction createGenerationTransaction(AccountId minerId)
+    {
+        return LedgerTransaction.newGenerationTransaction(minerId, Settings.getGenerationTransactionValue());
     }
 
     @Override

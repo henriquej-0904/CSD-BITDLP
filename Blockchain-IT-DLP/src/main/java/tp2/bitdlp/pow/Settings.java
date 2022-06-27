@@ -8,6 +8,8 @@ public class Settings
 
     public static final int DEFAULT_NUM_TRANSACTIONS_IN_BLOCK = 8;
 
+    public static final int DEFAULT_GENERATION_TRANSACTION_VALUE = 100;
+
     /**
      * Get the current version of BC blocks.
      * @return the current version of BC blocks.
@@ -37,6 +39,11 @@ public class Settings
     public static int getValidNumberTransactionsInBlock()
     {
         return DEFAULT_NUM_TRANSACTIONS_IN_BLOCK;
+    }
+
+    public static int getGenerationTransactionValue()
+    {
+        return DEFAULT_GENERATION_TRANSACTION_VALUE;
     }
 
 }
