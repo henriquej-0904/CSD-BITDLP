@@ -42,6 +42,22 @@ public class BCBlock {
             transactionsTree);
     }
 
+    /**
+     * Create a genesis bloc,
+     * 
+     * @param transaction The transaction for the first miner.
+     * 
+     * @return A new Block without the previousHash field.
+     */
+    public static BCBlock createGenesisBlock(LedgerTransaction transaction)
+    {
+        MerkleTree transactionsTree = new MerkleTree(List.of(transaction));
+        return new BCBlock(
+            new BCBlockHeader("GENESYS BLOCK!!! HERE WE GO!!!!!",
+            Utils.toHex(transactionsTree.getMerkleRootHash())),
+            transactionsTree);
+    }
+
     public BCBlockHeader getHeader() {
         return header;
     }
