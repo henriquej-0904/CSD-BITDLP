@@ -1,9 +1,11 @@
 package tp2.bitdlp.pow.block;
 
+import java.security.MessageDigest;
 import java.util.List;
 
 import tp2.bitdlp.pow.merkletree.MerkleTree;
 import tp2.bitdlp.pow.transaction.LedgerTransaction;
+import tp2.bitdlp.util.Crypto;
 import tp2.bitdlp.util.Utils;
 
 public class BCBlock {
@@ -54,5 +56,12 @@ public class BCBlock {
 
     public void setTransactions(MerkleTree transactions) {
         this.transactions = transactions;
+    }
+
+    public byte[] digest()
+    {
+        MessageDigest md = Crypto.getSha256Digest();
+        this.header.digest(md);
+        return md.digest();
     }
 }

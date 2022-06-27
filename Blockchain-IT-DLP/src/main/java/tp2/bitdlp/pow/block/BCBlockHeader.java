@@ -1,5 +1,8 @@
 package tp2.bitdlp.pow.block;
 
+import java.nio.ByteBuffer;
+import java.security.MessageDigest;
+
 import tp2.bitdlp.pow.Settings;
 
 public class BCBlockHeader
@@ -95,6 +98,21 @@ public class BCBlockHeader
 
     public void setDiffTarget(int diffTarget) {
         this.diffTarget = diffTarget;
+    }
+
+    public MessageDigest digest(MessageDigest digest)
+    {
+        ByteBuffer buffer = ByteBuffer.allocate(4*Integer.BYTES);
+        buffer.putInt(version);
+        buffer.putInt(nonce);
+        buffer.putInt(timeStamp);
+        buffer.putInt(diffTarget);
+
+        digest.update(buffer.array());
+        digest.update(previousHash.getBytes());
+        digest.update(merkleRoot.getBytes());
+        
+        return digest;
     }
 
 }
