@@ -2,6 +2,15 @@ package tp2.bitdlp.pow.merkletree;
 
 import java.util.Arrays;
 
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY)
+@JsonSubTypes({
+    @JsonSubTypes.Type(value = Node.class, name = "Node"),
+
+    @JsonSubTypes.Type(value = LeafNode.class, name = "LeafNode") }
+)
 public class Node {
 
     // double SHA256
