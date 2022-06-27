@@ -36,6 +36,7 @@ import tp2.bitdlp.pow.transaction.pool.TransactionsToMine;
 import tp2.bitdlp.util.Crypto;
 import tp2.bitdlp.util.Pair;
 import tp2.bitdlp.util.Utils;
+import tp2.bitdlp.util.result.Result;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.InternalServerErrorException;
@@ -459,6 +460,16 @@ public abstract class AccountsResource implements Accounts
     }
 
     protected abstract BCBlock getBlockToMine(GetBlock clientParams);
+
+    protected Result<BCBlock> createBlock(GetBlock clientParams)
+    {
+        /* TODO: get n transactions from pool.
+            create generation transaction
+            create block with transactions
+            set previousHash in block
+            return block
+        */
+    }
 
     @Override
     public void proposeMinedBlock(BCBlock block) {
