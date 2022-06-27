@@ -26,10 +26,13 @@ import tp2.bitdlp.impl.srv.config.ServerConfig;
 import tp2.bitdlp.impl.srv.resources.requests.CreateAccount;
 import tp2.bitdlp.impl.srv.resources.requests.GetAccount;
 import tp2.bitdlp.impl.srv.resources.requests.GetBalance;
+import tp2.bitdlp.impl.srv.resources.requests.GetBlock;
 import tp2.bitdlp.impl.srv.resources.requests.GetTotalValue;
 import tp2.bitdlp.impl.srv.resources.requests.SendTransaction;
+import tp2.bitdlp.pow.block.BCBlock;
 import tp2.bitdlp.pow.transaction.InvalidTransactionException;
 import tp2.bitdlp.pow.transaction.LedgerTransaction;
+import tp2.bitdlp.pow.transaction.pool.TransactionsToMine;
 import tp2.bitdlp.util.Crypto;
 import tp2.bitdlp.util.Pair;
 import tp2.bitdlp.util.Utils;
@@ -46,6 +49,8 @@ public abstract class AccountsResource implements Accounts
 
     protected LedgerDBlayer db;
 
+    protected TransactionsToMine transactionsToMine;
+
     /**
      * Init the db layer instance.
      */
@@ -53,6 +58,7 @@ public abstract class AccountsResource implements Accounts
     {
         try {
             this.db = LedgerDBlayer.getInstance();
+            this.transactionsToMine = TransactionsToMine.getInstance();
         } catch (LedgerDBlayerException e) {
             throw new InternalServerErrorException(e.getMessage(), e);
         }
@@ -420,6 +426,45 @@ public abstract class AccountsResource implements Accounts
      * @return The current Ledger.
      */
     public abstract LedgerTransaction[] getFullLedger();
+
+
+    @Override
+    public final BCBlock getBlockToMine(String minerAccountId)
+    {
+        GetBlock clientParams;
+
+        try {
+            init();
+
+            clientParams = new GetBlock(minerAccountId);
+            verifyGetBlock(clientParams);
+        } catch (WebApplicationException e) {
+            LOG.info(e.getMessage());
+            throw e;
+        }
+
+        BCBlock block = getBlockToMine(clientParams);
+        // LOG.info(id.toString());
+
+        throw new WebApplicationException(
+                Response.status(Status.OK)
+                        .entity(block)
+                        .header(Accounts.SERVER_SIG, sign(ServerConfig.getKeyPair().getPrivate(), block.digest()))
+                        .build());
+    }
+
+    protected AccountId verifyGetBlock(GetBlock clientParams)
+    {
+        return getAccountId(Utils.fromHex(clientParams.getMinerAccountId()));
+    }
+
+    protected abstract BCBlock getBlockToMine(GetBlock clientParams);
+
+    @Override
+    public void proposeMinedBlock(BCBlock block) {
+        // TODO Auto-generated method stub
+        
+    }
 
     protected byte[] toJson(Object obj)
     {

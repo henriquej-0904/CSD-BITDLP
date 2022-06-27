@@ -30,6 +30,9 @@ public abstract class Request
         GET_GLOBAL_LEDGER_VALUE,
         GET_LEDGER,
 
+        GET_BLOCK,
+        PROPOSE_BLOCK,
+
         // ASYNC
         GET_BALANCE_ASYNC,
         SEND_TRANSACTION_ASYNC;
