@@ -26,7 +26,7 @@ public class MerkleTree
     {
         this.size = transactions.size();
 
-        if (this.size % 2 != 0)
+        if (this.size >= 2 && this.size % 2 != 0)
         {
             // Create list of transactions with even number -> repeat last transaction.
             List<LedgerTransaction> tmp = new ArrayList<>(this.size + 1);
