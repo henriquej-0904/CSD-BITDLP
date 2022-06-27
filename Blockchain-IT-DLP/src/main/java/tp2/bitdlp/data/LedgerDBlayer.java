@@ -144,6 +144,18 @@ public abstract class LedgerDBlayer
      * @return ledger state
      */
     public abstract Result<LedgerState> getState();
+
+    /**
+     * Check if the blockchain is empty.
+     * @return true if the blockchain is empty.
+     */
+    public abstract Result<Boolean> emptyBlockchain();
+
+    /**
+     * Get the hash of the last block in the blockchain.
+     * @return The hash of the last block in the blockchain.
+     */
+    public abstract Result<String> getPreviousBlockHash();
     
 
     protected <T> Result<T> accountAlreadyExistsConflict(AccountId id)
