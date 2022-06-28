@@ -17,13 +17,11 @@ import tp2.bitdlp.util.reply.ReplyWithSignature;
 import tp2.bitdlp.util.reply.ReplyWithSignatures;
 import tp2.bitdlp.impl.srv.resources.requests.CreateAccount;
 import tp2.bitdlp.impl.srv.resources.requests.GetBalance;
-import tp2.bitdlp.impl.srv.resources.requests.GetBlock;
 import tp2.bitdlp.impl.srv.resources.requests.GetFullLedger;
 import tp2.bitdlp.impl.srv.resources.requests.GetGlobalValue;
 import tp2.bitdlp.impl.srv.resources.requests.GetAccount;
 import tp2.bitdlp.impl.srv.resources.requests.GetTotalValue;
 import tp2.bitdlp.impl.srv.resources.requests.SendTransaction;
-import tp2.bitdlp.pow.block.BCBlock;
 import tp2.bitdlp.pow.transaction.LedgerTransaction;
 import tp2.bitdlp.impl.srv.resources.requests.Request;
 import tp2.bitdlp.util.result.Result;
@@ -192,15 +190,6 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResourceBFT
     }
 
     @Override
-    protected BCBlock getBlockToMine(GetBlock clientParams) {
-        byte[] request = toJson(clientParams);
-        byte[] result = invokeUnordered(request);
-
-        return this.fromJson(result,
-            new TypeReference<Result<BCBlock>>() { }).resultOrThrow();
-    }
-
-    @Override
     public ReplyWithSignatures getBalanceAsync(GetBalance clientParams)
     {
         byte[] request = toJson(clientParams);
@@ -243,10 +232,6 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResourceBFT
                         break;
                     case GET_TOTAL_VALUE:
                         result = getTotalValue((GetTotalValue) request);
-                        break;
-
-                    case GET_BLOCK:
-                        result = createBlock((GetBlock) request);
                         break;
                     
                     // ASYNC
@@ -294,10 +279,6 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResourceBFT
                         break;
                     case GET_TOTAL_VALUE:
                         result = getTotalValue((GetTotalValue) request);
-                        break;
-                    
-                    case GET_BLOCK:
-                        result = createBlock((GetBlock) request);
                         break;
 
                     // ASYNC

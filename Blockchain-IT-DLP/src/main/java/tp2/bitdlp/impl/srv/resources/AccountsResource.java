@@ -27,7 +27,6 @@ import tp2.bitdlp.impl.srv.config.ServerConfig;
 import tp2.bitdlp.impl.srv.resources.requests.CreateAccount;
 import tp2.bitdlp.impl.srv.resources.requests.GetAccount;
 import tp2.bitdlp.impl.srv.resources.requests.GetBalance;
-import tp2.bitdlp.impl.srv.resources.requests.GetBlock;
 import tp2.bitdlp.impl.srv.resources.requests.GetTotalValue;
 import tp2.bitdlp.impl.srv.resources.requests.SendTransaction;
 import tp2.bitdlp.pow.Settings;
@@ -38,7 +37,6 @@ import tp2.bitdlp.pow.transaction.pool.TransactionsToMine;
 import tp2.bitdlp.util.Crypto;
 import tp2.bitdlp.util.Pair;
 import tp2.bitdlp.util.Utils;
-import tp2.bitdlp.util.result.Result;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.InternalServerErrorException;
@@ -434,20 +432,17 @@ public abstract class AccountsResource implements Accounts
     @Override
     public final BCBlock getBlockToMine(String minerAccountId)
     {
-        GetBlock clientParams;
-
+        BCBlock block;
         try {
             init();
 
-            clientParams = new GetBlock(minerAccountId);
-            verifyGetBlock(clientParams);
+            AccountId minerId = getAccountId(Utils.fromHex(minerAccountId));
+            block = createBlock(minerId);
+            
         } catch (WebApplicationException e) {
             LOG.info(e.getMessage());
             throw e;
         }
-
-        BCBlock block = getBlockToMine(clientParams);
-        // LOG.info(id.toString());
 
         throw new WebApplicationException(
                 Response.status(Status.OK)
@@ -456,68 +451,42 @@ public abstract class AccountsResource implements Accounts
                         .build());
     }
 
-    protected AccountId verifyGetBlock(GetBlock clientParams)
-    {
-        return getAccountId(Utils.fromHex(clientParams.getMinerAccountId()));
-    }
-
-    /**
-     * Get a block to mine.
-     * @param clientParams
-     * @return A block to mine.
-     */
-    protected abstract BCBlock getBlockToMine(GetBlock clientParams);
-
     /**
      * Create a block with transactions to mine.
      * @param clientParams
      * @return A new block with transactions to mine.
      */
-    protected Result<BCBlock> createBlock(GetBlock clientParams)
+    private BCBlock createBlock(AccountId minerId)
     {
-        Result<BCBlock> result;
+        BCBlock result;
 
-        try
+        // If blockchain is empty -> return genesis block
+        if (this.db.emptyBlockchain().resultOrThrow())
         {
-            AccountId minerId = verifyGetBlock(clientParams);
-
-            // If blockchain is empty -> return genesis block
-            if (this.db.emptyBlockchain().resultOrThrow())
-            {
-                result = Result.ok(BCBlock.createGenesisBlock(createGenerationTransaction(minerId)));
-                LOG.info("Created genesis block to mine.");
-                return result;
-            }
-
-            // get transactions from pool
-            List<LedgerTransaction> transactions =
-                this.transactionsToMine
-                .getTransactions(Settings.getValidNumberTransactionsInBlock() - 1);
-
-            if (transactions == null)
-                throw new WebApplicationException(
-                    "There are not enough transactions to create a block.", Status.CONFLICT);
-
-            // add generation transaction with dest -> minerId
-            transactions.add(createGenerationTransaction(minerId));
-
-            // create block
-            BCBlock block = BCBlock.createBlock(transactions);
-
-            // link block to previous
-            block.getHeader().setPreviousHash(this.db.getPreviousBlockHash().resultOrThrow());
-
-            result = Result.ok(block);
-
-        } catch (WebApplicationException e) {
-            result = Result.error(e);
+            result = BCBlock.createGenesisBlock(createGenerationTransaction(minerId));
+            LOG.info("Created genesis block to mine.");
+            return result;
         }
 
-        if (result.isOK())
-            LOG.info("Created block to mine.");
-        else
-            LOG.info(result.errorException().getMessage());
+        // get transactions from pool
+        List<LedgerTransaction> transactions =
+            this.transactionsToMine
+            .getTransactions(Settings.getValidNumberTransactionsInBlock() - 1);
 
+        if (transactions == null)
+            throw new WebApplicationException(
+                "There are not enough transactions to create a block.", Status.CONFLICT);
+
+        // add generation transaction with dest -> minerId
+        transactions.add(createGenerationTransaction(minerId));
+
+        // create block
+        result = BCBlock.createBlock(transactions);
+
+        // link block to previous
+        result.getHeader().setPreviousHash(this.db.getPreviousBlockHash().resultOrThrow());
+
+        LOG.info("Created block to mine.");
         return result;
     }
 
