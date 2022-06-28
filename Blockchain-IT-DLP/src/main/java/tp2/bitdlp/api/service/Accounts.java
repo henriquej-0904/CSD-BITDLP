@@ -118,9 +118,4 @@ public interface Accounts {
     @Produces(MediaType.APPLICATION_JSON)
     BCBlock getBlockToMine(String minerAccountId);
 
-    @Path("/block")
-    @POST
-    @Consumes(MediaType.APPLICATION_JSON)
-    void proposeMinedBlock(BCBlock block);
-
 }

@@ -5,12 +5,16 @@ import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
+import tp2.bitdlp.api.AccountId;
 import tp2.bitdlp.api.service.Accounts;
 import tp2.bitdlp.api.service.AccountsWithBFTOps;
 import tp2.bitdlp.impl.srv.config.ServerConfig;
 import tp2.bitdlp.impl.srv.resources.AccountsResource;
 import tp2.bitdlp.impl.srv.resources.requests.GetBalance;
+import tp2.bitdlp.impl.srv.resources.requests.GetTotalValue;
 import tp2.bitdlp.impl.srv.resources.requests.SendTransaction;
+import tp2.bitdlp.pow.block.BCBlock;
+import tp2.bitdlp.pow.transaction.LedgerTransaction;
 import tp2.bitdlp.util.Pair;
 import tp2.bitdlp.util.Utils;
 import tp2.bitdlp.util.reply.ReplyWithSignatures;
@@ -125,6 +129,13 @@ public abstract class AccountsResourceBFT extends AccountsResource implements Ac
      * all signed by the replica that responds to the client.
 	 */
     public abstract ReplyWithSignatures sendTransactionAsync(SendTransaction clientParams);
+
+
+    @Override
+    public ReplyWithSignatures proposeMinedBlock(BCBlock block) {
+        // TODO Auto-generated method stub
+        return null;
+    }
 
     /**
      * Sign a reply with signatures.

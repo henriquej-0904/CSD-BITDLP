@@ -28,6 +28,7 @@ import tp2.bitdlp.impl.srv.resources.requests.CreateAccount;
 import tp2.bitdlp.impl.srv.resources.requests.GetAccount;
 import tp2.bitdlp.impl.srv.resources.requests.GetBalance;
 import tp2.bitdlp.impl.srv.resources.requests.GetTotalValue;
+import tp2.bitdlp.impl.srv.resources.requests.ProposeMinedBlock;
 import tp2.bitdlp.impl.srv.resources.requests.SendTransaction;
 import tp2.bitdlp.pow.Settings;
 import tp2.bitdlp.pow.block.BCBlock;
@@ -37,6 +38,7 @@ import tp2.bitdlp.pow.transaction.pool.TransactionsToMine;
 import tp2.bitdlp.util.Crypto;
 import tp2.bitdlp.util.Pair;
 import tp2.bitdlp.util.Utils;
+import tp2.bitdlp.util.reply.ReplyWithSignatures;
 import tp2.bitdlp.util.result.Result;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.ForbiddenException;
@@ -514,11 +516,18 @@ public abstract class AccountsResource implements Accounts
         return LedgerTransaction.newGenerationTransaction(minerId, Settings.getGenerationTransactionValue());
     }
 
-    @Override
-    public void proposeMinedBlock(BCBlock block) {
-        // TODO Auto-generated method stub
+    protected Result<byte[]> proposeMinedBlock(ProposeMinedBlock clientParams)
+    {
+
+        // verify client signature
+        // verify block integrity
+        // verify first transaction -> generation transaction
+        // verify exists n transactions
         
+        // verify if transactions are not mined.
+        // add block to ledger.
     }
+
 
     protected byte[] toJson(Object obj)
     {
