@@ -146,6 +146,13 @@ public abstract class LedgerDBlayer
     public abstract Result<LedgerState> getState();
 
     /**
+	 * Verifies if the transaction is valid.
+	 *
+	 * @param transaction The transaction to perform.
+	 */
+    public abstract Result<Void> verifySendTransaction(LedgerTransaction transaction);
+
+    /**
      * Check if the blockchain is empty.
      * @return true if the blockchain is empty.
      */

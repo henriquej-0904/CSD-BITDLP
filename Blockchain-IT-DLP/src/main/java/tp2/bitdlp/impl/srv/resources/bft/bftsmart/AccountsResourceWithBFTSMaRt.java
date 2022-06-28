@@ -399,20 +399,15 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResourceBFT
 
         protected Result<Void> sendTransaction(SendTransaction request) {
             // verify and execute
-            LedgerTransaction transaction = null;
             Result<Void> result;
             try {
-                transaction = verifySendTransaction(request);
-                result = AccountsResourceWithBFTSMaRt.this.db.sendTransaction(transaction);
+                verifyAndAddTransactionToPool(request);
+                result = Result.ok();
             } catch (WebApplicationException e) {
                 result = Result.error(e);
             }
 
-            if (result.isOK())
-                LOG.info(String.format("ORIGIN: %s, DEST: %s, TYPE: %s, VALUE: %d", 
-                    transaction.getOrigin(), transaction.getOrigin(),
-                    transaction.getType(), transaction.getValue()));
-            else
+            if (!result.isOK())
                 LOG.info(result.errorException().getMessage());
 
             return result;

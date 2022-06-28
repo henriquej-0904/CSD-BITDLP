@@ -37,6 +37,7 @@ import tp2.bitdlp.pow.transaction.pool.TransactionsToMine;
 import tp2.bitdlp.util.Crypto;
 import tp2.bitdlp.util.Pair;
 import tp2.bitdlp.util.Utils;
+import tp2.bitdlp.util.result.Result;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.InternalServerErrorException;
@@ -348,7 +349,7 @@ public abstract class AccountsResource implements Accounts
             init();
 
             clientParams = new SendTransaction(originDestPair, value, accountSignature, nonce);
-            transaction = verifySendTransaction(clientParams);
+            transaction = verifySendTransactionParams(clientParams);
         } catch (WebApplicationException e) {
             LOG.info(e.getMessage());
             throw e;
@@ -367,7 +368,7 @@ public abstract class AccountsResource implements Accounts
                         .build());
     }
 
-    protected LedgerTransaction verifySendTransaction(SendTransaction clientParams) {
+    private LedgerTransaction verifySendTransactionParams(SendTransaction clientParams) {
         AccountId originId = getAccountId(clientParams.getOriginDestPair().getLeft());
             AccountId destId = getAccountId(clientParams.getOriginDestPair().getRight());
 
@@ -387,6 +388,24 @@ public abstract class AccountsResource implements Accounts
             } catch (InvalidTransactionException e) {
                 throw new BadRequestException(e.getMessage(), e);
             }
+    }
+
+    /**
+     * Verifies if a transaction is valid and is added to the pool.
+     * @param clientParams
+     */
+    protected void verifyAndAddTransactionToPool(SendTransaction clientParams)
+    {
+        LedgerTransaction t = verifySendTransactionParams(clientParams);
+
+        // verify transaction in db
+        this.db.verifySendTransaction(t).resultOrThrow();
+        
+        // add transaction to pool.
+        this.transactionsToMine.addTransaction(t, this.db.getBalance(t.getOrigin()).resultOrThrow());
+
+        LOG.info(String.format("Validated transaction to mine - ORIGIN: %s, DEST: %s, VALUE: %d", 
+                    t.getOrigin(), t.getOrigin(), t.getValue()));
     }
 
     /**
