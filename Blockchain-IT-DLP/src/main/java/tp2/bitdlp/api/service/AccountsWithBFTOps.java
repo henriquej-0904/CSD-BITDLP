@@ -55,5 +55,5 @@ public interface AccountsWithBFTOps extends Accounts
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    ReplyWithSignatures proposeMinedBlock(BCBlock block);
+    ReplyWithSignatures proposeMinedBlock(Pair<String, BCBlock> pairMinerIdBlock, @HeaderParam(ACC_SIG) String signature);
 }

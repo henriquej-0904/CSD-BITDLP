@@ -52,20 +52,16 @@ public class TransactionsToMine
         try
         {
             // verify origin account balance
-            Integer originPoolValue = this.accountPoolValue.get(transaction.getOrigin());
-            if (originPoolValue == null || originBalance + originPoolValue >= 0)
+            int originPoolValue = getPoolValue(transaction.getOrigin());
+            if (originBalance + originPoolValue >= 0)
             {
                 boolean result = this.transactions.add(transaction);
                 if (!result)
                     return Result.error(new WebApplicationException("The transaction already exists in the pool.", Status.CONFLICT));
 
                 // update pool value
-                originPoolValue = originPoolValue == null ? -transaction.getValue() : originPoolValue - transaction.getValue();
-                this.accountPoolValue.put(transaction.getOrigin(), originPoolValue);
-
-                Integer destPoolValue = this.accountPoolValue.get(transaction.getDest());
-                destPoolValue = destPoolValue == null ? transaction.getValue() : destPoolValue + transaction.getValue();
-                this.accountPoolValue.put(transaction.getDest(), destPoolValue);
+                incPoolValue(transaction.getOrigin(), -transaction.getValue());
+                incPoolValue(transaction.getDest(), transaction.getValue());
 
                 return Result.ok();
             }
@@ -92,15 +88,47 @@ public class TransactionsToMine
         }
     }
 
-    public void removeTransactions(List<LedgerTransaction> transactions)
+    public boolean removeTransactionsIfexist(List<LedgerTransaction> transactions)
     {
         lock.writeLock().lock();
         try
         {
-            this.transactions.removeAll(transactions);
+            if (this.transactions.containsAll(transactions))
+            {
+                this.transactions.removeAll(transactions);
+
+                for (LedgerTransaction transaction : transactions)
+                {
+                    // update pool Values
+                    incPoolValue(transaction.getOrigin(), transaction.getValue());
+                    incPoolValue(transaction.getDest(), -transaction.getValue());
+                }
+
+                return true;
+            }
+            else
+                return false;
         } finally
         {
             lock.writeLock().unlock();
         }
     }
+
+    private void incPoolValue(AccountId id, int value)
+    {
+        Integer poolValue = this.accountPoolValue.get(id);
+        poolValue = poolValue == null ? value : poolValue + value;
+
+        if (poolValue != 0)
+            this.accountPoolValue.put(id, poolValue);
+        else
+            this.accountPoolValue.remove(id);
+    }
+
+    private int getPoolValue(AccountId id)
+    {
+        Integer poolValue = this.accountPoolValue.get(id);
+        return poolValue == null ? 0 : poolValue;
+    }
+
 }

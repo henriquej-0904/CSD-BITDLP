@@ -5,16 +5,14 @@ import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
-import tp2.bitdlp.api.AccountId;
 import tp2.bitdlp.api.service.Accounts;
 import tp2.bitdlp.api.service.AccountsWithBFTOps;
 import tp2.bitdlp.impl.srv.config.ServerConfig;
 import tp2.bitdlp.impl.srv.resources.AccountsResource;
 import tp2.bitdlp.impl.srv.resources.requests.GetBalance;
-import tp2.bitdlp.impl.srv.resources.requests.GetTotalValue;
+import tp2.bitdlp.impl.srv.resources.requests.ProposeMinedBlock;
 import tp2.bitdlp.impl.srv.resources.requests.SendTransaction;
 import tp2.bitdlp.pow.block.BCBlock;
-import tp2.bitdlp.pow.transaction.LedgerTransaction;
 import tp2.bitdlp.util.Pair;
 import tp2.bitdlp.util.Utils;
 import tp2.bitdlp.util.reply.ReplyWithSignatures;
@@ -132,10 +130,50 @@ public abstract class AccountsResourceBFT extends AccountsResource implements Ac
 
 
     @Override
-    public ReplyWithSignatures proposeMinedBlock(BCBlock block) {
-        // TODO Auto-generated method stub
-        return null;
+    public ReplyWithSignatures proposeMinedBlock(Pair<String, BCBlock> pairMinerIdBlock, String signature) {
+        ProposeMinedBlock clientParams;
+
+        try {
+            init();
+
+            clientParams = new ProposeMinedBlock(pairMinerIdBlock.getLeft(), signature, pairMinerIdBlock.getRight());
+            verifyMinedBlockIntegrity(clientParams);
+        } catch (WebApplicationException e) {
+            LOG.info(e.getMessage());
+            throw e;
+        }
+
+        ReplyWithSignatures reply;
+        String serverSig;
+
+        try {
+            reply = proposeMinedBlockAsync(clientParams);
+            serverSig = signReplyWithSignatures(reply);
+        } catch (WebApplicationException e) {
+            if (e.getResponse().getStatus() == 500)
+                Utils.logError(e, LOG);
+
+            throw e;
+        }
+
+        Status replyStatus = Status.fromStatusCode(reply.getStatusCode());
+        throw new WebApplicationException(
+                Response.status(replyStatus)
+                .type(MediaType.APPLICATION_JSON)
+                .entity(reply)
+                .header(Accounts.SERVER_SIG, serverSig)
+                .build());
     }
+
+    /**
+	 * Propose a mined block
+	 *
+     * @param clientParams
+     * 
+     * @return the hash of the block if success and a set of 2f + 1 signatures of the replicas,
+     * all signed by the replica that responds to the client.
+	 */
+    public abstract ReplyWithSignatures proposeMinedBlockAsync(ProposeMinedBlock clientParams);
 
     /**
      * Sign a reply with signatures.

@@ -34,6 +34,7 @@ import tp2.bitdlp.pow.Settings;
 import tp2.bitdlp.pow.block.BCBlock;
 import tp2.bitdlp.pow.transaction.InvalidTransactionException;
 import tp2.bitdlp.pow.transaction.LedgerTransaction;
+import tp2.bitdlp.pow.transaction.LedgerTransaction.Type;
 import tp2.bitdlp.pow.transaction.pool.TransactionsToMine;
 import tp2.bitdlp.util.Crypto;
 import tp2.bitdlp.util.Pair;
@@ -516,16 +517,83 @@ public abstract class AccountsResource implements Accounts
         return LedgerTransaction.newGenerationTransaction(minerId, Settings.getGenerationTransactionValue());
     }
 
+
+
+    protected void verifyMinedBlockIntegrity(ProposeMinedBlock clientParams)
+    {
+        AccountId minerId = getAccountId(Utils.fromHex(clientParams.getMinerId()));
+        // verify client signature
+        verifySignature(minerId, clientParams.getClientSignature(),
+            clientParams.getBlock().digest());
+        
+        BCBlock block = clientParams.getBlock();
+        boolean check = block.getHeader().getVersion() == Settings.getCurrentVersion()
+            && block.getHeader().getDiffTarget() == Settings.getDifficultyTarget()
+            && block.getHeader().getMerkleRoot().equals(Utils.toHex(block.getTransactions().getMerkleRootHash()));
+            
+        if (!check)
+            throw new BadRequestException("Block integrity is invalid.");
+
+        List<LedgerTransaction> transactions = block.getTransactions().getTransactions();
+        if (transactions.isEmpty())
+            throw new BadRequestException("Block must have transactions.");
+
+        // check generation transaction
+        verifyGenerationTransaction(minerId, transactions.get(0));
+
+        // If blockchain is empty -> check genesis block
+        if (this.db.emptyBlockchain().resultOrThrow())
+        {
+            if (!BCBlock.isGenesisBlock(block))
+                throw new BadRequestException("Expected genesis block.");
+        } 
+        else
+        {
+            // verify exists n transactions
+            if (transactions.size() == Settings.getValidNumberTransactionsInBlock())
+                throw new BadRequestException("Expected at least " +
+                Settings.getValidNumberTransactionsInBlock() + " transactions");
+
+            // verify previous hash
+            if (!this.db.getPreviousBlockHash().resultOrThrow().equals(block.getHeader().getPreviousHash()))
+                throw new BadRequestException("Invalid previous hash.");
+        }
+    }
+
+    private void verifyGenerationTransaction(AccountId minerId, LedgerTransaction transaction)
+    {
+        boolean result =transaction.getType() == Type.GENERATION_TRANSACTION &&
+           transaction.getValue() == Settings.getGenerationTransactionValue()
+           && minerId.equals(transaction.getDest())
+           && transaction.getOrigin() == null;
+
+        if (!result)
+            throw new BadRequestException("Invalid generation transaction");
+    }
+
+    /**
+     * Propose a block.
+     * Verifies if the block is valid and all transactions are not mined yet.
+     * Adds the block to the blockchain.
+     * @param clientParams
+     * @return Result(hash of the block)
+     */
     protected Result<byte[]> proposeMinedBlock(ProposeMinedBlock clientParams)
     {
+        try {
+            verifyMinedBlockIntegrity(clientParams);
+        } catch (WebApplicationException e) {
+            return Result.error(e);
+        }
 
-        // verify client signature
-        // verify block integrity
-        // verify first transaction -> generation transaction
-        // verify exists n transactions
-        
         // verify if transactions are not mined.
+        List<LedgerTransaction> transactions = clientParams.getBlock().getTransactions().getTransactions();
+        if (!this.transactionsToMine.removeTransactionsIfexist(
+            transactions.subList(1, transactions.size())))
+            throw new WebApplicationException("At least one transaction is already mined.", Status.CONFLICT);
+        
         // add block to ledger.
+        return this.db.addBlock(clientParams.getBlock());
     }
 
 

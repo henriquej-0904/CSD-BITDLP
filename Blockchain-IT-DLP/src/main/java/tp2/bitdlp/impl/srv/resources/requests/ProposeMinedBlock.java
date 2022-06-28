@@ -4,6 +4,7 @@ import tp2.bitdlp.pow.block.BCBlock;
 
 public class ProposeMinedBlock extends Request {
     
+    private String minerId;
     private String clientSignature;
     private BCBlock block;
 
@@ -11,8 +12,9 @@ public class ProposeMinedBlock extends Request {
         super(Operation.PROPOSE_BLOCK_ASYNC);
     }
 
-    public ProposeMinedBlock(String clientSignature, BCBlock block){
+    public ProposeMinedBlock(String minerId, String clientSignature, BCBlock block){
         super(Operation.PROPOSE_BLOCK_ASYNC);
+        this.minerId = minerId;
         this.clientSignature = clientSignature;
         this.block = block;
     }
@@ -44,6 +46,21 @@ public class ProposeMinedBlock extends Request {
     public void setBlock(BCBlock block) {
         this.block = block;
     }
+
+    /**
+     * @return the minerId
+     */
+    public String getMinerId() {
+        return minerId;
+    }
+
+    /**
+     * @param minerId the minerId to set
+     */
+    public void setMinerId(String minerId) {
+        this.minerId = minerId;
+    }
+    
     
 }
 

@@ -21,6 +21,7 @@ import tp2.bitdlp.impl.srv.resources.requests.GetFullLedger;
 import tp2.bitdlp.impl.srv.resources.requests.GetGlobalValue;
 import tp2.bitdlp.impl.srv.resources.requests.GetAccount;
 import tp2.bitdlp.impl.srv.resources.requests.GetTotalValue;
+import tp2.bitdlp.impl.srv.resources.requests.ProposeMinedBlock;
 import tp2.bitdlp.impl.srv.resources.requests.SendTransaction;
 import tp2.bitdlp.pow.transaction.LedgerTransaction;
 import tp2.bitdlp.impl.srv.resources.requests.Request;
@@ -203,6 +204,12 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResourceBFT
         return invokeAsync(request, TOMMessageType.ORDERED_REQUEST);
     }
 
+    @Override
+    public ReplyWithSignatures proposeMinedBlockAsync(ProposeMinedBlock clientParams) {
+        byte[] request = toJson(clientParams);
+        return invokeAsync(request, TOMMessageType.ORDERED_REQUEST);
+    }
+
     public class BFTSMaRtServerReplica extends DefaultSingleRecoverable {
 
         public BFTSMaRtServerReplica(int id) {
@@ -288,6 +295,11 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResourceBFT
                     case SEND_TRANSACTION_ASYNC:
                         result = encodeAndSignReply(sendTransaction((SendTransaction) request));
                         break;
+
+                    case PROPOSE_BLOCK_ASYNC:
+                        result = encodeAndSignReply(proposeMinedBlock((ProposeMinedBlock) request));
+                        break;
+
                     default:
                         break;
 
@@ -322,6 +334,18 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResourceBFT
             }catch(Exception e){
                 //Utils.logError(e, LOG);
             }
+        }
+
+        protected Result<byte[]> proposeMinedBlock(ProposeMinedBlock request) {
+            // verify and execute
+            Result<byte[]> result = AccountsResourceWithBFTSMaRt.this.proposeMinedBlock(request);
+
+            if (result.isOK())
+                LOG.info("Added block to blockchain.");
+            else
+                LOG.info(result.errorException().getMessage());
+
+            return result;
         }
 
         protected Result<Account> getAccount(GetAccount request) {

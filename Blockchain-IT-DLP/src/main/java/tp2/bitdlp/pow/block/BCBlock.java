@@ -10,6 +10,8 @@ import tp2.bitdlp.util.Utils;
 
 public class BCBlock {
 
+    protected static final String GENESYS_BLOC_PREVIOUS_HASH = "GENESYS BLOCK!!! HERE WE GO!!!!!";
+
     protected BCBlockHeader header;
 
     protected MerkleTree transactions;
@@ -53,9 +55,15 @@ public class BCBlock {
     {
         MerkleTree transactionsTree = new MerkleTree(List.of(transaction));
         return new BCBlock(
-            new BCBlockHeader("GENESYS BLOCK!!! HERE WE GO!!!!!",
+            new BCBlockHeader(GENESYS_BLOC_PREVIOUS_HASH,
             Utils.toHex(transactionsTree.getMerkleRootHash())),
             transactionsTree);
+    }
+
+    public static boolean isGenesisBlock(BCBlock block)
+    {
+        return GENESYS_BLOC_PREVIOUS_HASH.equals(block.getHeader().getPreviousHash())
+            && block.transactions.getTransactions().size() == 1;
     }
 
     public BCBlockHeader getHeader() {
