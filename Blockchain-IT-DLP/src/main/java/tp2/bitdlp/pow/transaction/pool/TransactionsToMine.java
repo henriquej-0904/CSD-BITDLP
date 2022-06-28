@@ -35,12 +35,12 @@ public class TransactionsToMine
         lock = new ReentrantReadWriteLock();
     }
 
-    public void addTransactions(List<LedgerTransaction> transactions)
+    public boolean addTransaction(LedgerTransaction transaction)
     {
         lock.writeLock().lock();
         try
         {
-            this.transactions.addAll(transactions);
+            return this.transactions.add(transaction);
         } finally
         {
             lock.writeLock().unlock();
