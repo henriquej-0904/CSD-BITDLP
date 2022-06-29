@@ -194,6 +194,17 @@ public class WorkloadBFT extends Workload
                     tp2.bitdlp.impl.srv.resources.requests.Request.Operation.SEND_TRANSACTION_ASYNC);             
                 }
             }
+
+            while (mineBlock(client))
+            {
+                /* try {
+                    System.out.println("Continue... Press!");
+                    System.in.read();
+                    
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } */
+            };
     }
 
     /**
