@@ -91,14 +91,14 @@ public class WorkloadBFT extends Workload
             this.miner = this.accounts.values().iterator().next().entrySet().iterator().next();
 
             // writes
-            int nWrites = (int)((double)10 * ((double)perWrites / (double)100));
+            int nWrites = (int)((double)5 * ((double)perWrites / (double)100));
             for (int i = 0; i < nWrites; i++)
             {
                 // writes
                 mineBlocksAndSendTransactions(client);
             }
 
-            int nReads = 10 - nWrites;
+            int nReads = 5 - nWrites;
             for (int i = 0; i < nReads; i++)
             {
                 // reads
