@@ -1,4 +1,4 @@
-# CSD-ITDLP
+# CSD-Blockchained-ITDLP
 
 Grupo:
 - Henrique Campos Ferreira - 55065
@@ -21,7 +21,7 @@ IN_MEMORY = Sem persistência, em memória || MONGO = Com persistência, utiliza
 
 - Para inicializar os servidores Mongo DB (um por réplica) deve-se executar o script - [run-mongo-db.sh](https://github.com/pvpmadeira/CSD-ITDLP/blob/main/IT-DLP/run-mongo-db.sh) \<n_replicas\>.
 - Iniciar os servidores - [run-bft-servers.sh](https://github.com/pvpmadeira/CSD-ITDLP/blob/main/IT-DLP/run-bft-servers.sh) \<n_replicas\>.
-- Para testar todas as operações do sistema (e também casos de erro: criar contas com o mesmo id, sendTransaction() com o mesmo nonce ou assinaturas do cliente inválidas, etc) pode-se executar um workload através do script - [run-workload.sh](https://github.com/pvpmadeira/CSD-ITDLP/blob/main/IT-DLP/run-workload.sh) \<replicaId\> \<nUsers\> \<nAccounts\>
+- Para testar todas as operações do sistema (e também casos de erro: criar contas com o mesmo id, sendTransaction() com o mesmo nonce ou assinaturas do cliente inválidas, etc) pode-se executar um workload através do script - [run-workload.sh](https://github.com/pvpmadeira/CSD-ITDLP/blob/main/IT-DLP/run-workload.sh) \<replicaId\> \<fReplicas\> <\% reads\>
 - Para aceder aos logs de uma réplica deve-se executar:
 ```bash
 # Os ids começam em 0.
