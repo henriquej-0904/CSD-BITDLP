@@ -34,29 +34,34 @@ public class WorkloadBFT extends Workload
 
     protected LatencyThroughputCalc mineStats;
 
+    protected int perReads, perWrites;
+
     public WorkloadBFT(String replicaId, URI endpoint, int nUsers, int nAccounts,
-        int fReplicas) throws MalformedURLException
+        int fReplicas, int perReads) throws MalformedURLException
     {
         super(replicaId, endpoint, nUsers, nAccounts);
         this.fReplicas = fReplicas;
         this.mineStats = new LatencyThroughputCalc();
+        this.perReads = perReads;
+        this.perWrites = 100 - perReads;
     }
 
     public static void main(String[] args) throws MalformedURLException
     {
-        if (args.length < 5)
+        if (args.length < 4)
         {
-            System.err.println("Usage: <endpoint> <replicaID> <nUsers> <nAccounts> <fReplicas>");
+            System.err.println("Usage: <endpoint> <replicaID> <fReplicas> <% reads>");
             System.exit(1);
         }
 
         URI endpoint = URI.create(args[0]);
         String replicaId = args[1];
-        int nUsers = Integer.parseInt(args[2]);
-        int nAccounts = Integer.parseInt(args[3]);
-        int fReplicas = Integer.parseInt(args[4]);
+        int nUsers = 2;
+        int nAccounts = 1000;
+        int fReplicas = Integer.parseInt(args[2]);
+        int perReads = Integer.parseInt(args[3]);
 
-        WorkloadBFT workload = new WorkloadBFT(replicaId, endpoint, nUsers, nAccounts, fReplicas);
+        WorkloadBFT workload = new WorkloadBFT(replicaId, endpoint, nUsers, nAccounts, fReplicas, perReads);
         workload.run();
 
         System.out.println("Status Codes:");
@@ -81,22 +86,29 @@ public class WorkloadBFT extends Workload
         )
         {
             createAccounts(client);
-            getAccounts(client);
 
             // choose an account to be the miner.
             this.miner = this.accounts.values().iterator().next().entrySet().iterator().next();
 
-            //sendTransaction(client);
-            //sendTransactionBFT(client);
+            // writes
+            int nWrites = (int)((double)10 * ((double)perWrites / (double)100));
+            for (int i = 0; i < nWrites; i++)
+            {
+                // writes
+                mineBlocksAndSendTransactions(client);
+            }
 
-            mineBlocksAndSendTransactions(client);
+            int nReads = 10 - nWrites;
+            for (int i = 0; i < nReads; i++)
+            {
+                // reads
+                getAccounts(client);
+                getBalanceBFT(client);
 
-            //getBalance(client);
-            getBalanceBFT(client);
-
-            getTotalValue(client);
-            getGlobalLedgerValue(client);
-            getLedger(client);
+                getTotalValue(client);
+                getGlobalLedgerValue(client);
+                getLedger(client);
+            }
         }
         catch (Exception e)
         {
@@ -159,9 +171,7 @@ public class WorkloadBFT extends Workload
 
     protected void mineBlocksAndSendTransactions(LedgerClientBFT client)
     {
-        for (int i = 0; i < 3; i++)
-        {
-            while (mineBlock(client))
+        while (mineBlock(client))
             {
                 /* try {
                     System.out.println("Continue... Press!");
@@ -172,6 +182,7 @@ public class WorkloadBFT extends Workload
                 } */
             };
 
+            // send transactions
             for ( Map<AccountId, KeyPair> m : this.accounts.values())
             {
                 for (Entry<AccountId, KeyPair> account : m.entrySet()) {
@@ -183,10 +194,6 @@ public class WorkloadBFT extends Workload
                     tp2.bitdlp.impl.srv.resources.requests.Request.Operation.SEND_TRANSACTION_ASYNC);             
                 }
             }
-            
-
-            //sendTransactionBFT(client);
-        }
     }
 
     /**
