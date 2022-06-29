@@ -4,37 +4,26 @@ import java.util.List;
 
 import tp2.bitdlp.api.AccountId;
 import tp2.bitdlp.api.UserId;
-import tp2.bitdlp.api.operations.LedgerOperation;
+import tp2.bitdlp.pow.block.BCBlock;
 import tp2.bitdlp.util.Pair;
-import tp2.bitdlp.util.Utils;
 
 public class LedgerState {
 
     private List<Pair<AccountId, UserId>> accounts;
-    private List<LedgerOperation> operations;
-
-    private byte[] serializedState;
+    private List<BCBlock> ledger;
 
     
     /**
      * @param accounts
-     * @param operations
+     * @param ledger
      */
-    public LedgerState(List<Pair<AccountId, UserId>> accounts, List<LedgerOperation> operations) {
+    public LedgerState(List<Pair<AccountId, UserId>> accounts, List<BCBlock> ledger) {
         this.accounts = accounts;
-        this.operations = operations;
-        toSerializedState();
+        this.ledger = ledger;
     }
 
-    /**
-     * @param serializedState
-     * @throws ClassNotFoundException
-     */
-    public LedgerState(byte[] serializedState) throws ClassNotFoundException {
-        this.serializedState = serializedState;
-        fromSerializedState();
+    public LedgerState() {
     }
-
 
     /**
      * @return the accounts
@@ -42,39 +31,28 @@ public class LedgerState {
     public List<Pair<AccountId, UserId>> getAccounts() {
         return accounts;
     }
+
+    /**
+     * @param accounts the accounts to set
+     */
+    public void setAccounts(List<Pair<AccountId, UserId>> accounts) {
+        this.accounts = accounts;
+    }
+
+    /**
+     * @return the ledger
+     */
+    public List<BCBlock> getLedger() {
+        return ledger;
+    }
+
+    /**
+     * @param ledger the ledger to set
+     */
+    public void setLedger(List<BCBlock> ledger) {
+        this.ledger = ledger;
+    }
+
     
-
-    /**
-     * @return the operations
-     */
-    public List<LedgerOperation> getOperations() {
-        return operations;
-    }
-
-
-    /**
-     * @return the serializedState
-     */
-    public byte[] getSerializedState() {
-        return serializedState;
-    }
-
-
-    @SuppressWarnings("unchecked")
-    private void fromSerializedState() throws ClassNotFoundException
-    {
-        Object[] state = (Object[]) Utils.readObject(this.serializedState);
-        this.accounts = (List<Pair<AccountId, UserId>>) state[0];
-        this.operations = (List<LedgerOperation>) state[1];
-    }
-
-    private void toSerializedState()
-    {
-        Object[] state = new Object[2];
-        state[0] = this.accounts;
-        state[1] = this.operations;
-
-        this.serializedState = Utils.writeObject(state);
-    }
 
 }

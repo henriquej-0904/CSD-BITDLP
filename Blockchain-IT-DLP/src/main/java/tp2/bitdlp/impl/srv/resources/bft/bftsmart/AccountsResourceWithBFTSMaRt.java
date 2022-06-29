@@ -10,9 +10,6 @@ import bftsmart.tom.core.messages.TOMMessageType;
 import bftsmart.tom.server.defaultservices.DefaultSingleRecoverable;
 import tp2.bitdlp.api.Account;
 import tp2.bitdlp.api.AccountId;
-import tp2.bitdlp.api.operations.LedgerDeposit;
-import tp2.bitdlp.api.operations.LedgerOperation;
-import tp2.bitdlp.api.operations.LedgerTransaction;
 import tp2.bitdlp.data.LedgerState;
 import tp2.bitdlp.impl.srv.config.ServerConfig;
 import tp2.bitdlp.impl.srv.resources.bft.AccountsResourceBFT;
@@ -24,8 +21,10 @@ import tp2.bitdlp.impl.srv.resources.requests.GetFullLedger;
 import tp2.bitdlp.impl.srv.resources.requests.GetGlobalValue;
 import tp2.bitdlp.impl.srv.resources.requests.GetAccount;
 import tp2.bitdlp.impl.srv.resources.requests.GetTotalValue;
+import tp2.bitdlp.impl.srv.resources.requests.ProposeMinedBlock;
 import tp2.bitdlp.impl.srv.resources.requests.SendTransaction;
-import tp2.bitdlp.impl.srv.resources.requests.LoadMoney;
+import tp2.bitdlp.pow.block.BCBlock;
+import tp2.bitdlp.pow.transaction.LedgerTransaction;
 import tp2.bitdlp.impl.srv.resources.requests.Request;
 import tp2.bitdlp.util.result.Result;
 import tp2.bitdlp.util.Utils;
@@ -175,15 +174,6 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResourceBFT
     }
 
     @Override
-    public void loadMoney(LoadMoney clientParams, LedgerDeposit value) {
-        byte[] request = toJson(clientParams);
-        byte[] result = invokeOrdered(request);
-
-        this.fromJson(result,
-            new TypeReference<Result<Void>>() { }).resultOrThrow();
-    }
-
-    @Override
     public void sendTransaction(SendTransaction clientParams, LedgerTransaction transaction) {
         byte[] request = toJson(clientParams);
         byte[] result = invokeOrdered(request);
@@ -193,12 +183,12 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResourceBFT
     }
 
     @Override
-    public LedgerOperation[] getFullLedger() {
+    public BCBlock[] getFullLedger() {
         byte[] request = toJson(new GetFullLedger());
         byte[] result = invokeUnordered(request);
 
         return this.fromJson(result,
-            new TypeReference<Result<LedgerOperation[]>>() { }).resultOrThrow();
+            new TypeReference<Result<BCBlock[]>>() { }).resultOrThrow();
     }
 
     @Override
@@ -211,6 +201,12 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResourceBFT
     @Override
     public ReplyWithSignatures sendTransactionAsync(SendTransaction clientParams)
     {
+        byte[] request = toJson(clientParams);
+        return invokeAsync(request, TOMMessageType.ORDERED_REQUEST);
+    }
+
+    @Override
+    public ReplyWithSignatures proposeMinedBlockAsync(ProposeMinedBlock clientParams) {
         byte[] request = toJson(clientParams);
         return invokeAsync(request, TOMMessageType.ORDERED_REQUEST);
     }
@@ -274,9 +270,6 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResourceBFT
                     case CREATE_ACCOUNT:
                         result = createAccount((CreateAccount) request);
                         break;
-                    case LOAD_MONEY:
-                        result = loadMoney((LoadMoney) request);
-                        break;
                     case SEND_TRANSACTION:
                         result = sendTransaction((SendTransaction) request);
                         break;
@@ -303,6 +296,11 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResourceBFT
                     case SEND_TRANSACTION_ASYNC:
                         result = encodeAndSignReply(sendTransaction((SendTransaction) request));
                         break;
+
+                    case PROPOSE_BLOCK_ASYNC:
+                        result = encodeAndSignReply(proposeMinedBlock((ProposeMinedBlock) request));
+                        break;
+
                     default:
                         break;
 
@@ -320,7 +318,8 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResourceBFT
         public byte[] getSnapshot() {
             try{
                 init();
-                return AccountsResourceWithBFTSMaRt.this.db.getState().resultOrThrow().getSerializedState();
+                LedgerState state = AccountsResourceWithBFTSMaRt.this.db.getState().resultOrThrow();
+                return toJson(state);
             }catch(Exception e){
                 //Utils.logError(e, LOG);
                 return new byte[0];
@@ -332,11 +331,24 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResourceBFT
             try{
                 init();
 
-                AccountsResourceWithBFTSMaRt.this.db.loadState(new LedgerState(arg0)).resultOrThrow();
+                LedgerState state = fromJson(arg0, LedgerState.class);
+                AccountsResourceWithBFTSMaRt.this.db.loadState(state).resultOrThrow();
 
             }catch(Exception e){
                 //Utils.logError(e, LOG);
             }
+        }
+
+        protected Result<String> proposeMinedBlock(ProposeMinedBlock request) {
+            // verify and execute
+            Result<String> result = AccountsResourceWithBFTSMaRt.this.proposeMinedBlock(request);
+
+            if (result.isOK())
+                LOG.info("Added block to blockchain.");
+            else
+                Utils.logError(result.errorException(), LOG);
+
+            return result;
         }
 
         protected Result<Account> getAccount(GetAccount request) {
@@ -384,11 +396,11 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResourceBFT
             return result;
         }
 
-        protected Result<LedgerOperation[]> getLedger(GetFullLedger request) {
-            Result<LedgerOperation[]> result = AccountsResourceWithBFTSMaRt.this.db.getLedger();
+        protected Result<BCBlock[]> getLedger(GetFullLedger request) {
+            Result<BCBlock[]> result = AccountsResourceWithBFTSMaRt.this.db.getLedger();
 
             if (result.isOK())
-                LOG.info(String.format("Get Ledger with %d operations.", result.value().length));
+                LOG.info(String.format("Get Ledger with %d blocks.", result.value().length));
             else
                 LOG.info(result.errorException().getMessage());
 
@@ -414,20 +426,15 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResourceBFT
 
         protected Result<Void> sendTransaction(SendTransaction request) {
             // verify and execute
-            LedgerTransaction transaction = null;
             Result<Void> result;
             try {
-                transaction = verifySendTransaction(request);
-                result = AccountsResourceWithBFTSMaRt.this.db.sendTransaction(transaction);
+                verifyAndAddTransactionToPool(request);
+                result = Result.ok();
             } catch (WebApplicationException e) {
                 result = Result.error(e);
             }
 
-            if (result.isOK())
-                LOG.info(String.format("ORIGIN: %s, DEST: %s, TYPE: %s, VALUE: %d", 
-                    transaction.getOrigin(), transaction.getOrigin(),
-                    transaction.getType(), transaction.getValue()));
-            else
+            if (!result.isOK())
                 LOG.info(result.errorException().getMessage());
 
             return result;
@@ -444,26 +451,6 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResourceBFT
 
             if (result.isOK())
                 LOG.info(String.format("Created account with %s,\n%s\n", result.value().getId(), result.value().getOwner()));
-            else
-                LOG.info(result.errorException().getMessage());
-
-            return result;
-        }
-
-        protected Result<Void> loadMoney(LoadMoney request) {
-            // verify and execute
-            LedgerDeposit deposit = null;
-            Result<Void> result;
-            try {
-                deposit = verifyLoadMoney(request);
-                result = AccountsResourceWithBFTSMaRt.this.db.loadMoney(deposit);
-            } catch (WebApplicationException e) {
-                result = Result.error(e);
-            }
-
-            if (result.isOK())
-                LOG.info(String.format("ID: %s, TYPE: %s, VALUE: %s",
-                    deposit.getAccountId(), LedgerOperation.Type.DEPOSIT, request.getValue()));
             else
                 LOG.info(result.errorException().getMessage());
 

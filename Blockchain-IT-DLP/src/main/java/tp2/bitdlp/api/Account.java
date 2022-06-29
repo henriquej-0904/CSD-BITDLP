@@ -6,10 +6,8 @@ import java.security.MessageDigest;
 import java.util.LinkedList;
 import java.util.List;
 
-import tp2.bitdlp.api.operations.InvalidOperationException;
-import tp2.bitdlp.api.operations.LedgerDeposit;
-import tp2.bitdlp.api.operations.LedgerOperation;
-import tp2.bitdlp.api.operations.LedgerTransaction;
+import tp2.bitdlp.pow.transaction.InvalidTransactionException;
+import tp2.bitdlp.pow.transaction.LedgerTransaction;
 import tp2.bitdlp.util.Crypto;
 
 /**
@@ -22,7 +20,7 @@ public class Account implements Serializable {
     private AccountId id;
     private UserId owner;
 
-    private List<LedgerOperation> operations;
+    private List<LedgerTransaction> transactions;
 
     private int balance;
 
@@ -34,7 +32,7 @@ public class Account implements Serializable {
     public Account(AccountId id, UserId owner){
         this.owner = owner;
         this.id = id;
-        this.operations = new LinkedList<>();
+        this.transactions = new LinkedList<>();
         this.balance = 0;
     }
 
@@ -91,36 +89,27 @@ public class Account implements Serializable {
     /**
      * @return the operations
      */
-    public List<LedgerOperation> getOperations() {
-        return operations;
+    public List<LedgerTransaction> getTransactions() {
+        return transactions;
     }
 
     /**
      * @param operations the operations to set
      */
-    public void setOperations(List<LedgerOperation> operations) {
-        this.operations = operations;
+    public void setOperations(List<LedgerTransaction> operations) {
+        this.transactions = operations;
     }
 
     /**
      * Process an operation in this account.
      * 
      * @param operation The operation to process.
-     * @throws InvalidOperationException if the operation is invalid in this account.
+     * @throws InvalidTransactionException if the operation is invalid in this account.
      */
-    public void processOperation(LedgerOperation operation) throws InvalidOperationException
+    public void processOperation(LedgerTransaction transaction) throws InvalidTransactionException
     {
-        int value = 0;
-        switch (operation.getType()) {
-            case DEPOSIT:
-                value = operation.getValue();
-                this.operations.add((LedgerDeposit)operation);
-                break;
-            case TRANSACTION:
-                value = processTransaction((LedgerTransaction)operation);
-                this.operations.add((LedgerTransaction)operation);
-                break;
-        }
+        int value = id.equals(transaction.getOrigin()) ? -transaction.getValue() : transaction.getValue();
+        this.transactions.add(transaction);
         this.balance += value;
     }
 
@@ -135,14 +124,19 @@ public class Account implements Serializable {
 
         digest.update(buffer.array());
 
-        for (LedgerOperation ledgerOperation : operations) {
-            digest.update(ledgerOperation.digest());
+        for (LedgerTransaction LedgerTransaction : transactions) {
+            digest.update(LedgerTransaction.digest());
         }
 
         return digest.digest();
     }
 
-    private int processTransaction(LedgerTransaction transaction) throws InvalidOperationException
+    /**
+     * Verifies if this transaction is valid.
+     * @param transaction
+     * @return The value to sum to the current balance.
+     */
+    public int verifyTransaction(LedgerTransaction transaction)
     {
         if (getId().equals(transaction.getDest()))
             return transaction.getValue();
@@ -150,7 +144,7 @@ public class Account implements Serializable {
         assert getId().equals(transaction.getOrigin());
 
         if (getBalance() - transaction.getValue() < 0)
-            throw new InvalidOperationException("Transaction over the balance limit.");
+            throw new InvalidTransactionException("Transaction over the balance limit.");
 
         return -transaction.getValue();
     }

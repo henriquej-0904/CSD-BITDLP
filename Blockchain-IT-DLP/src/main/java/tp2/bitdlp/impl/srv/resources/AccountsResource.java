@@ -6,9 +6,9 @@ import java.security.InvalidKeyException;
 import java.security.MessageDigest;
 import java.security.PrivateKey;
 import java.security.PublicKey;
-import java.security.Signature;
 import java.security.SignatureException;
 import java.security.spec.InvalidKeySpecException;
+import java.util.List;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -20,10 +20,6 @@ import tp2.bitdlp.api.Account;
 import tp2.bitdlp.api.AccountId;
 import tp2.bitdlp.api.ObjectId;
 import tp2.bitdlp.api.UserId;
-import tp2.bitdlp.api.operations.InvalidOperationException;
-import tp2.bitdlp.api.operations.LedgerDeposit;
-import tp2.bitdlp.api.operations.LedgerOperation;
-import tp2.bitdlp.api.operations.LedgerTransaction;
 import tp2.bitdlp.api.service.Accounts;
 import tp2.bitdlp.data.LedgerDBlayer;
 import tp2.bitdlp.data.LedgerDBlayerException;
@@ -32,11 +28,18 @@ import tp2.bitdlp.impl.srv.resources.requests.CreateAccount;
 import tp2.bitdlp.impl.srv.resources.requests.GetAccount;
 import tp2.bitdlp.impl.srv.resources.requests.GetBalance;
 import tp2.bitdlp.impl.srv.resources.requests.GetTotalValue;
-import tp2.bitdlp.impl.srv.resources.requests.LoadMoney;
+import tp2.bitdlp.impl.srv.resources.requests.ProposeMinedBlock;
 import tp2.bitdlp.impl.srv.resources.requests.SendTransaction;
+import tp2.bitdlp.pow.Settings;
+import tp2.bitdlp.pow.block.BCBlock;
+import tp2.bitdlp.pow.transaction.InvalidTransactionException;
+import tp2.bitdlp.pow.transaction.LedgerTransaction;
+import tp2.bitdlp.pow.transaction.LedgerTransaction.Type;
+import tp2.bitdlp.pow.transaction.pool.TransactionsToMine;
 import tp2.bitdlp.util.Crypto;
 import tp2.bitdlp.util.Pair;
 import tp2.bitdlp.util.Utils;
+import tp2.bitdlp.util.result.Result;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.InternalServerErrorException;
@@ -50,6 +53,8 @@ public abstract class AccountsResource implements Accounts
 
     protected LedgerDBlayer db;
 
+    protected TransactionsToMine transactionsToMine;
+
     /**
      * Init the db layer instance.
      */
@@ -57,6 +62,7 @@ public abstract class AccountsResource implements Accounts
     {
         try {
             this.db = LedgerDBlayer.getInstance();
+            this.transactionsToMine = TransactionsToMine.getInstance();
         } catch (LedgerDBlayerException e) {
             throw new InternalServerErrorException(e.getMessage(), e);
         }
@@ -101,18 +107,8 @@ public abstract class AccountsResource implements Accounts
         }
     }
 
-    protected boolean verifySignature(ObjectId id, byte[] signature, byte[]... data){
-        try {
-            Signature verify = Crypto.createSignatureInstance();
-            verify.initVerify(getPublicKey(id));
-
-            for (byte[] buff : data)
-                verify.update(buff);
-
-            return verify.verify(signature);
-        } catch (InvalidKeyException | SignatureException e) {
-            throw new InternalServerErrorException(e.getMessage(), e);
-        }
+    protected boolean verifySignature(ObjectId id, String signature, byte[]... data){
+        return Crypto.verifySignature(getPublicKey(id), signature, data);
     }
 
     public String sign(PrivateKey key, byte[]... data)
@@ -158,7 +154,7 @@ public abstract class AccountsResource implements Accounts
         UserId owner = getUserId(params.getAccountUserPair().getRight());
 
         // verify signature
-        if (!verifySignature(owner, Utils.fromHex(params.getUserSignature()),
+        if (!verifySignature(owner, params.getUserSignature(),
             params.getAccountUserPair().getLeft(),
             params.getAccountUserPair().getRight()))
                 throw new ForbiddenException("Invalid User Signature.");
@@ -343,61 +339,6 @@ public abstract class AccountsResource implements Accounts
      */
     public abstract int getGlobalValue();
 
-    @Override
-    public final LedgerDeposit loadMoney(byte[] accountId, int value, String accountSignature) {
-        LoadMoney clientParams;
-        LedgerDeposit deposit;
-
-        try {
-            init();
-
-            clientParams = new LoadMoney(accountId, value, accountSignature);
-            deposit = verifyLoadMoney(clientParams);
-        } catch (WebApplicationException e) {
-            LOG.info(e.getMessage());
-            throw e;
-        }
-
-        loadMoney(clientParams, deposit);
-
-        // LOG.info(String.format("ID: %s, TYPE: %s, VALUE: %s", id, deposit.getType(),
-        // value));
-
-        throw new WebApplicationException(
-                Response.status(Status.OK)
-                        .entity(deposit)
-                        .header(Accounts.SERVER_SIG, sign(ServerConfig.getKeyPair().getPrivate(), deposit.digest()))
-                        .build());
-    }
-
-    protected LedgerDeposit verifyLoadMoney(LoadMoney clientParams) {
-        // verify signature
-        ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES);
-        buffer.putInt(clientParams.getValue());
-
-        byte[] clientSignature = Utils.fromHex(clientParams.getAccountSignature());
-        AccountId accountId = getAccountId(clientParams.getAccountId());
-
-        if (!verifySignature(accountId, clientSignature,
-            clientParams.getAccountId(), buffer.array()))
-            throw new ForbiddenException("Invalid Account Signature.");
-
-        // execute operation
-        try {
-            return new LedgerDeposit(clientParams.getValue(), accountId, clientSignature);
-        } catch (InvalidOperationException e) {
-            throw new BadRequestException(e.getMessage(), e);
-        }
-    }
-
-    /**
-	 * Loads money into an account.
-	 *
-     * @param value value to be loaded
-	 */
-    public abstract void loadMoney(LoadMoney clientParams, LedgerDeposit deposit);
-
-
 
     @Override
     public final LedgerTransaction sendTransaction(Pair<byte[], byte[]> originDestPair, int value,
@@ -410,7 +351,7 @@ public abstract class AccountsResource implements Accounts
             init();
 
             clientParams = new SendTransaction(originDestPair, value, accountSignature, nonce);
-            transaction = verifySendTransaction(clientParams);
+            transaction = verifySendTransactionParams(clientParams);
         } catch (WebApplicationException e) {
             LOG.info(e.getMessage());
             throw e;
@@ -429,7 +370,7 @@ public abstract class AccountsResource implements Accounts
                         .build());
     }
 
-    protected LedgerTransaction verifySendTransaction(SendTransaction clientParams) {
+    private LedgerTransaction verifySendTransactionParams(SendTransaction clientParams) {
         AccountId originId = getAccountId(clientParams.getOriginDestPair().getLeft());
             AccountId destId = getAccountId(clientParams.getOriginDestPair().getRight());
 
@@ -438,16 +379,37 @@ public abstract class AccountsResource implements Accounts
             buffer.putInt(clientParams.getValue());
             buffer.putInt(clientParams.getNonce());
 
-            byte[] clientSignature = Utils.fromHex(clientParams.getAccountSignature());
-            if (!verifySignature(originId, clientSignature, clientParams.getOriginDestPair().getLeft(),
+            if (!verifySignature(originId, clientParams.getAccountSignature(), clientParams.getOriginDestPair().getLeft(),
                 clientParams.getOriginDestPair().getRight(), buffer.array()))
                 throw new ForbiddenException("Invalid Account Signature.");    
         
             try {
-                return new LedgerTransaction(originId, destId, clientParams.getValue(), clientParams.getNonce(), clientSignature);
-            } catch (InvalidOperationException e) {
+                LedgerTransaction t = LedgerTransaction.newTransaction(originId, destId, clientParams.getValue(), clientParams.getNonce());
+                t.setClientSignature(clientParams.getAccountSignature());
+                t.setHash(t.digest());
+                return t;
+            } catch (InvalidTransactionException e) {
                 throw new BadRequestException(e.getMessage(), e);
             }
+    }
+
+    /**
+     * Verifies if a transaction is valid and is added to the pool.
+     * @param clientParams
+     */
+    protected void verifyAndAddTransactionToPool(SendTransaction clientParams)
+    {
+        LedgerTransaction t = verifySendTransactionParams(clientParams);
+
+        // verify transaction in db
+        this.db.verifySendTransaction(t).resultOrThrow();
+        
+        // add transaction to pool.
+        this.transactionsToMine.addTransaction(t, this.db.getBalance(t.getOrigin()).resultOrThrow())
+            .resultOrThrow();
+
+        LOG.info(String.format("Validated transaction to mine - ORIGIN: %s, DEST: %s, VALUE: %d", 
+                    t.getOrigin(), t.getDest(), t.getValue()));
     }
 
     /**
@@ -458,7 +420,7 @@ public abstract class AccountsResource implements Accounts
     public abstract void sendTransaction(SendTransaction clientParams, LedgerTransaction transaction);
 
     @Override
-    public final LedgerOperation[] getLedger() {
+    public final BCBlock[] getLedger() {
         try {
             init();
         } catch (WebApplicationException e) {
@@ -466,7 +428,7 @@ public abstract class AccountsResource implements Accounts
             throw e;
         }
 
-        LedgerOperation[] result = getFullLedger();
+        BCBlock[] result = getFullLedger();
 
         //LOG.info(String.format("Get Ledger with %d operations.", result.length));
 
@@ -487,7 +449,157 @@ public abstract class AccountsResource implements Accounts
      * Obtains the current Ledger.
      * @return The current Ledger.
      */
-    public abstract LedgerOperation[] getFullLedger();
+    public abstract BCBlock[] getFullLedger();
+
+
+    @Override
+    public final BCBlock getBlockToMine(String minerAccountId)
+    {
+        BCBlock block;
+        try {
+            init();
+
+            AccountId minerId = getAccountId(Utils.fromHex(minerAccountId));
+            block = createBlock(minerId);
+            
+        } catch (WebApplicationException e) {
+            LOG.info(e.getMessage());
+            throw e;
+        }
+
+        throw new WebApplicationException(
+                Response.status(Status.OK)
+                        .entity(block)
+                        .header(Accounts.SERVER_SIG, sign(ServerConfig.getKeyPair().getPrivate(), block.digest()))
+                        .build());
+    }
+
+    /**
+     * Create a block with transactions to mine.
+     * @param clientParams
+     * @return A new block with transactions to mine.
+     */
+    private BCBlock createBlock(AccountId minerId)
+    {
+        BCBlock result;
+
+        // If blockchain is empty -> return genesis block
+        if (this.db.emptyBlockchain().resultOrThrow())
+        {
+            result = BCBlock.createGenesisBlock(createGenerationTransaction(minerId));
+            LOG.info("Created genesis block to mine.");
+            return result;
+        }
+
+        // get transactions from pool
+        List<LedgerTransaction> transactions =
+            this.transactionsToMine
+            .getTransactions(Settings.getValidNumberTransactionsInBlock() - 1);
+
+        if (transactions == null)
+            throw new WebApplicationException(
+                "There are not enough transactions to create a block.", Status.CONFLICT);
+
+        // add generation transaction with dest -> minerId
+        transactions.add(0, createGenerationTransaction(minerId));
+
+        // create block
+        result = BCBlock.createBlock(transactions);
+
+        // link block to previous
+        result.getHeader().setPreviousHash(this.db.getPreviousBlockHash().resultOrThrow());
+
+        LOG.info("Created block to mine.");
+        return result;
+    }
+
+    private LedgerTransaction createGenerationTransaction(AccountId minerId)
+    {
+        return LedgerTransaction.newGenerationTransaction(minerId, Settings.getGenerationTransactionValue());
+    }
+
+
+    protected void verifyMinedBlockIntegrity(ProposeMinedBlock clientParams) {
+        try {
+            AccountId minerId = getAccountId(Utils.fromHex(clientParams.getMinerId()));
+            // verify client signature
+            verifySignature(minerId, clientParams.getClientSignature(),
+                    clientParams.getBlock().digest());
+
+            BCBlock block = clientParams.getBlock();
+            boolean check = block.getHeader().getVersion() == Settings.getCurrentVersion()
+                    && block.getHeader().getDiffTarget() == Settings.getDifficultyTarget()
+                    && block.getHeader().getMerkleRoot()
+                            .equals(Utils.toHex(block.getTransactions().getMerkleRootHash()))
+                    && block.isBlockMined();
+
+            if (!check)
+                throw new BadRequestException("Block integrity is invalid.");
+
+            List<LedgerTransaction> transactions = block.getTransactions().getTransactions();
+            if (transactions.isEmpty())
+                throw new BadRequestException("Block must have transactions.");
+
+            // check generation transaction
+            verifyGenerationTransaction(minerId, transactions.get(0));
+
+            // If blockchain is empty -> check genesis block
+            if (this.db.emptyBlockchain().resultOrThrow()) {
+                if (!BCBlock.isGenesisBlock(block))
+                    throw new BadRequestException("Expected genesis block.");
+            } else {
+                // verify exists n transactions
+                if (transactions.size() < Settings.getValidNumberTransactionsInBlock())
+                    throw new BadRequestException("Expected at least " +
+                            Settings.getValidNumberTransactionsInBlock() + " transactions");
+
+                // verify previous hash
+                if (!this.db.getPreviousBlockHash().resultOrThrow().equals(block.getHeader().getPreviousHash()))
+                    throw new BadRequestException("Invalid previous hash.");
+            }
+        } catch (WebApplicationException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new InternalServerErrorException(e.getMessage(), e);
+        }
+    }
+
+    private void verifyGenerationTransaction(AccountId minerId, LedgerTransaction transaction)
+    {
+        boolean result =transaction.getType() == Type.GENERATION_TRANSACTION &&
+           transaction.getValue() == Settings.getGenerationTransactionValue()
+           && minerId.equals(transaction.getDest())
+           && transaction.getOrigin() == null;
+
+        if (!result)
+            throw new BadRequestException("Invalid generation transaction");
+    }
+
+    /**
+     * Propose a block.
+     * Verifies if the block is valid and all transactions are not mined yet.
+     * Adds the block to the blockchain.
+     * @param clientParams
+     * @return Result(hash of the block)
+     */
+    protected Result<String> proposeMinedBlock(ProposeMinedBlock clientParams)
+    {
+        try {
+            verifyMinedBlockIntegrity(clientParams);
+        } catch (WebApplicationException e) {
+            return Result.error(e);
+        }
+
+        // verify if transactions are not mined.
+        List<LedgerTransaction> transactions = clientParams.getBlock().getTransactions().getTransactions();
+        if (transactions.size() > 1 && !this.transactionsToMine.removeTransactionsIfexist(
+            transactions.subList(1, transactions.size())))
+            return Result.error(new WebApplicationException("At least one transaction is already mined.", Status.CONFLICT));
+        
+        // add block to ledger.
+        return this.db.addBlock(clientParams.getBlock());
+    }
+
 
     protected byte[] toJson(Object obj)
     {

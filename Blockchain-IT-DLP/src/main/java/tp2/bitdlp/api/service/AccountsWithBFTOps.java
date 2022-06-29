@@ -1,6 +1,7 @@
 package tp2.bitdlp.api.service;
 
 import tp2.bitdlp.util.reply.ReplyWithSignatures;
+import tp2.bitdlp.pow.block.BCBlock;
 import tp2.bitdlp.util.Pair;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.POST;
@@ -49,4 +50,11 @@ public interface AccountsWithBFTOps extends Accounts
     @Produces(MediaType.APPLICATION_JSON)
     ReplyWithSignatures sendTransactionBFT(Pair<byte[],byte[]> originDestPair, @PathParam("value") int value,
         @HeaderParam(ACC_SIG) String accountSignature, @HeaderParam(NONCE) int nonce);
+
+
+    @Path(BFT_PATH + "/block")
+    @POST
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    ReplyWithSignatures proposeMinedBlockBFT(Pair<String, BCBlock> pairMinerIdBlock, @HeaderParam(ACC_SIG) String signature);
 }

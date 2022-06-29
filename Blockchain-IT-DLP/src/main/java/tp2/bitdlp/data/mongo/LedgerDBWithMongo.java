@@ -3,9 +3,7 @@ package tp2.bitdlp.data.mongo;
 import static com.mongodb.MongoClientSettings.getDefaultCodecRegistry;
 import static com.mongodb.client.model.Filters.and;
 import static com.mongodb.client.model.Filters.eq;
-import static com.mongodb.client.model.Filters.gte;
 import static com.mongodb.client.model.Filters.in;
-import static com.mongodb.client.model.Filters.or;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 
@@ -31,37 +29,26 @@ import com.mongodb.client.model.Accumulators;
 import com.mongodb.client.model.Aggregates;
 import com.mongodb.client.model.IndexOptions;
 import com.mongodb.client.model.Indexes;
-import com.mongodb.client.model.InsertManyOptions;
-import com.mongodb.client.model.InsertOneModel;
 import com.mongodb.client.model.Projections;
 import com.mongodb.client.model.Sorts;
 import com.mongodb.client.model.UpdateOptions;
 import com.mongodb.client.model.Updates;
-import com.mongodb.client.model.WriteModel;
-import com.mongodb.client.result.InsertManyResult;
-import com.mongodb.client.result.UpdateResult;
 
-import org.bson.BsonValue;
 import org.bson.Document;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.Conventions;
 import org.bson.codecs.pojo.PojoCodecProvider;
 import org.bson.conversions.Bson;
-import org.bson.types.ObjectId;
 
 import tp2.bitdlp.api.Account;
 import tp2.bitdlp.api.AccountId;
 import tp2.bitdlp.api.UserId;
-import tp2.bitdlp.api.operations.InvalidOperationException;
-import tp2.bitdlp.api.operations.LedgerDeposit;
-import tp2.bitdlp.api.operations.LedgerOperation;
-import tp2.bitdlp.api.operations.LedgerTransaction;
 import tp2.bitdlp.data.LedgerDBlayer;
 import tp2.bitdlp.data.LedgerState;
-import tp2.bitdlp.data.mongo.operations.LedgerDepositDAO;
-import tp2.bitdlp.data.mongo.operations.LedgerOperationDAO;
-import tp2.bitdlp.data.mongo.operations.LedgerTransactionDAO;
+import tp2.bitdlp.pow.block.BCBlock;
+import tp2.bitdlp.pow.transaction.LedgerTransaction;
 import tp2.bitdlp.util.Pair;
+import tp2.bitdlp.util.Utils;
 import tp2.bitdlp.util.result.Result;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.InternalServerErrorException;
@@ -100,8 +87,11 @@ public class LedgerDBWithMongo extends LedgerDBlayer
 	private MongoDatabase db;
 
     private MongoCollection<AccountDAO> accounts;
-    private MongoCollection<LedgerOperationDAO> ledger;
+    private MongoCollection<BCBlock> ledger;
     private MongoCollection<Nonce> nonces;
+
+    private boolean isLedgerEmpty;
+    private String previousBlockHash;
 
 
     /**
@@ -109,6 +99,8 @@ public class LedgerDBWithMongo extends LedgerDBlayer
      */
     public LedgerDBWithMongo(MongoClient client) {
         this.client = client;
+        this.isLedgerEmpty = true;
+        this.previousBlockHash = null;
     }
 
     private synchronized void init()
@@ -133,7 +125,7 @@ public class LedgerDBWithMongo extends LedgerDBlayer
 
     protected void createCollections() {
         this.accounts = this.db.getCollection("Accounts", AccountDAO.class);
-        this.ledger = this.db.getCollection("Ledger", LedgerOperationDAO.class);
+        this.ledger = this.db.getCollection("Ledger", BCBlock.class);
         this.nonces = this.db.getCollection("Nonce", Nonce.class);
 
         // Create indexes for id field
@@ -170,18 +162,8 @@ public class LedgerDBWithMongo extends LedgerDBlayer
             AccountDAO accountDAO = result.first();
             if (accountDAO == null)
                 return accountNotFound(accountId);
-            
-            FindIterable<LedgerOperationDAO> operations =
-                this.ledger.find(in("id", accountDAO.getOperations()));
 
-            Account account = accountDAO.toAccount();
-            List<LedgerOperation> accountOps = account.getOperations();
-
-            for (LedgerOperationDAO ledgerOperationDAO : operations) {
-                accountOps.add(ledgerOperationDAO.toLedgerOperation());
-            }
-
-            return Result.ok(account);
+            return Result.ok(accountDAO.toAccount());
         } catch (MongoException e) {
             return Result.error(new InternalServerErrorException(e.getMessage(), e));
         }
@@ -235,34 +217,7 @@ public class LedgerDBWithMongo extends LedgerDBlayer
         return Result.ok(result.first().getInteger("total_balance"));
     }
 
-    @Override
-    public Result<Void> loadMoney(LedgerDeposit deposit) {
-        init();
-
-        UpdateOptions op = new UpdateOptions();
-        op.upsert(false);
-
-        try {
-            UpdateResult result = this.accounts.updateOne(eq("accountId", deposit.getAccountId()),
-                    Updates.inc("balance", deposit.getValue()), op);
-
-            if (result.getMatchedCount() == 0)
-                return accountNotFound(deposit.getAccountId());
-
-            ObjectId operationId = this.ledger.insertOne(toDAO(deposit))
-                    .getInsertedId().asObjectId().getValue();
-
-            this.accounts.updateOne(eq("accountId", deposit.getAccountId()),
-                    Updates.push("operations", operationId), op);
-        }
-        catch (Exception e) {
-            return Result.error(new InternalServerErrorException(e.getMessage(), e));
-        }
-
-        return Result.ok();
-    }
-
-    @Override
+    /* @Override
     public Result<Void> sendTransaction(LedgerTransaction transaction) {
         init();
 
@@ -314,26 +269,26 @@ public class LedgerDBWithMongo extends LedgerDBlayer
         } catch (Exception e) {
             return Result.error(new InternalServerErrorException(e.getMessage(), e));
         }
-    }
+    } */
 
     @Override
-    public Result<LedgerOperation[]> getLedger() {
+    public Result<BCBlock[]> getLedger() {
         init();
 
-        AggregateIterable<LedgerOperationDAO> result = this.ledger.aggregate(Arrays.asList(
+        AggregateIterable<BCBlock> result = this.ledger.aggregate(Arrays.asList(
 			Aggregates.sort(Sorts.ascending("ts"))
 			));
 
         if (result.first() == null)
             return Result.error(new NotFoundException("The ledger is empty."));
 
-        List<LedgerOperation> list = new LinkedList<>();
+        List<BCBlock> list = new LinkedList<>();
 
-        for (LedgerOperationDAO lO : result) {
-            list.add(lO.toLedgerOperation());
+        for (BCBlock block : result) {
+            list.add(block);
         }
 
-        return Result.ok(list.toArray(new LedgerOperation[0]));
+        return Result.ok(list.toArray(new BCBlock[0]));
     }
 
     @Override
@@ -344,59 +299,23 @@ public class LedgerDBWithMongo extends LedgerDBlayer
             dropCollections();
             createCollections();
 
-            List<LedgerOperation> operations = state.getOperations();
-            List<LedgerOperationDAO> operationsDAO = loadOperations(state);
+            this.ledger.insertMany(state.getLedger());
 
-            Map<AccountId, Pair<Account, List<ObjectId>>> accounts = state.getAccounts().stream()
+            Map<AccountId, Account> accounts = state.getAccounts().stream()
                 .map((pairAccountUser) -> new Account(pairAccountUser.getLeft(), pairAccountUser.getRight()))
-                .collect(Collectors.toUnmodifiableMap(Account::getId, (acc) -> new Pair<>(acc, new LinkedList<>())));  
+                .collect(Collectors.toMap(Account::getId, (acc) -> acc, (acc1, acc2) -> acc1, () -> new TreeMap<>()));
 
-            Iterator<LedgerOperation> operationsIt = operations.iterator();
-            Iterator<LedgerOperationDAO> operationsDAOIt = operationsDAO.iterator();
+            this.accounts.insertMany(accounts.values().stream()
+                .map((t) -> new AccountDAO(t))
+                .collect(Collectors.toList()));
 
-            List<WriteModel<Nonce>> nonceOps = new LinkedList<>();
+            for (BCBlock block : state.getLedger())
+                processBlockTransactions(block.getTransactions().getTransactions());
 
-            for (int i = 0; i < operationsDAO.size(); i++)
-            {
-                LedgerOperation operation = operationsIt.next();
-                LedgerOperationDAO operationDAO = operationsDAOIt.next();
+            this.isLedgerEmpty = state.getLedger().isEmpty();
 
-                Pair<Account, List<ObjectId>> pairAccountOpsList;
-
-                switch (operation.getType()) {
-                    case DEPOSIT:
-                        LedgerDeposit deposit = (LedgerDeposit) operation;
-                        pairAccountOpsList = accounts.get(deposit.getAccountId());
-                        pairAccountOpsList.getLeft().processOperation(deposit);
-                        pairAccountOpsList.getRight().add(operationDAO.getId());
-                        break;
-
-                    case TRANSACTION:
-                        LedgerTransaction transaction = (LedgerTransaction) operation;
-                    
-                        pairAccountOpsList = accounts.get(transaction.getOrigin());
-                        pairAccountOpsList.getLeft().processOperation(transaction);
-                        pairAccountOpsList.getRight().add(operationDAO.getId());
-
-                        pairAccountOpsList = accounts.get(transaction.getDest());
-                        pairAccountOpsList.getLeft().processOperation(transaction);
-                        pairAccountOpsList.getRight().add(operationDAO.getId());
-
-                        nonceOps.add(new InsertOneModel<>(new Nonce(transaction.digest(), transaction.getNonce())));
-                    break;
-                }
-            }
-
-            List<WriteModel<AccountDAO>> accountsDAOmodel = accounts.values().stream()
-                .map((pairAccountListOps) -> {
-                    AccountDAO accountDAO = new AccountDAO(pairAccountListOps.getLeft());
-                    accountDAO.setOperations(pairAccountListOps.getRight());
-                    return accountDAO;
-                })
-                .map((accountDAO) -> (WriteModel<AccountDAO>) new InsertOneModel<>(accountDAO)).toList();
-
-            this.accounts.bulkWrite(accountsDAOmodel);
-            this.nonces.bulkWrite(nonceOps);
+            this.previousBlockHash = this.isLedgerEmpty ? null :
+                Utils.toHex(state.getLedger().get(state.getLedger().size() - 1).digest());
 
             return Result.ok();
             
@@ -405,30 +324,12 @@ public class LedgerDBWithMongo extends LedgerDBlayer
         }
     }
 
-    protected List<LedgerOperationDAO> loadOperations(LedgerState state)
-    {
-        List<LedgerOperationDAO> insertOperations = state.getOperations().stream()
-                .<LedgerOperationDAO>map(this::toDAO).toList();
-
-        InsertManyResult insertManyResult = this.ledger
-                .insertMany(insertOperations, new InsertManyOptions().ordered(true));
-
-        Map<Integer, BsonValue> insertedIds = insertManyResult.getInsertedIds();
-
-        Iterator<LedgerOperationDAO> operationsIt = insertOperations.iterator();
-        for (int i = 0; i < insertOperations.size(); i++)
-            operationsIt.next().setId(insertedIds.get(i).asObjectId().getValue());
-
-        return insertOperations;
-    }
-
 
     @Override
     public Result<LedgerState> getState() {
         init();
         
         SortedMap<AccountId, UserId> sortedAccounts = new TreeMap<>();
-        List<LedgerOperation> resOperations = new LinkedList<>();
 
         for (AccountDAO account : this.accounts.find()) {
             sortedAccounts.put(account.getAccountId(), account.getOwner());
@@ -438,18 +339,14 @@ public class LedgerDBWithMongo extends LedgerDBlayer
             .map((entry) -> new Pair<>(entry.getKey(), entry.getValue()))
             .toList();
         
-        AggregateIterable<LedgerOperationDAO> ledgerIt = this.ledger.aggregate(Arrays.asList(
+        AggregateIterable<BCBlock> ledgerIt = this.ledger.aggregate(Arrays.asList(
 		    Aggregates.sort(Sorts.ascending("ts"))
 			));
 
-        if (ledgerIt.first() != null)
-        {
-            for (LedgerOperationDAO operation : ledgerIt) {
-                resOperations.add(operation.toLedgerOperation());
-            }
-        }
+        List<BCBlock> blockchain = new LinkedList<>();
+        ledgerIt.into(blockchain);
 
-        return Result.ok(new LedgerState(resAccounts, resOperations));
+        return Result.ok(new LedgerState(resAccounts, blockchain));
     }
 
     protected boolean checkAccountExists(AccountId accountId)
@@ -461,38 +358,131 @@ public class LedgerDBWithMongo extends LedgerDBlayer
 
         return result.first() != null;
     }
-    
-    protected LedgerOperationDAO toDAO(LedgerOperation operation)
-    {
-        switch (operation.getType()) {
-            case DEPOSIT:
-                return toDAO((LedgerDeposit)operation);
-            case TRANSACTION:
-                return toDAO((LedgerTransaction)operation);
-            default:
-                return null;
+
+    @Override
+    public Result<String> addBlock(BCBlock block) {
+        // Add block to ledger
+        // update aux data structures.
+
+        try
+        {
+            this.ledger.insertOne(block);
+
+            this.isLedgerEmpty = false;
+            this.previousBlockHash = Utils.toHex(block.digest());
+
+            processBlockTransactions(block.getTransactions().getTransactions());
+
+            return Result.ok(this.previousBlockHash);
+            
+        } catch (Exception e){
+            return Result.error(new InternalServerErrorException(e.getMessage(), e));
         }
     }
 
-    protected LedgerDepositDAO toDAO(LedgerDeposit deposit)
+    @Override
+    public Result<Void> verifySendTransaction(LedgerTransaction transaction) {
+        Result<Integer> originBalance = getBalance(transaction.getOrigin());
+        Result<Integer> destBalance = getBalance(transaction.getDest());
+
+        if (!originBalance.isOK())
+            return Result.error(originBalance.errorException());
+        if (!destBalance.isOK())
+            return Result.error(destBalance.errorException());
+
+        if (!verifyNonce(transaction.digest(), transaction.getNonce()))
+            return Result.error(new ForbiddenException("Invalid Nonce."));
+
+        // verify balance
+        if (originBalance.value() - transaction.getValue() < 0)
+            return Result.error(new WebApplicationException("Transaction over the balance limit.", Status.CONFLICT));
+        
+        return Result.ok();
+    }
+
+    @Override
+    public synchronized Result<Boolean> emptyBlockchain() {
+        return Result.ok(this.isLedgerEmpty);  
+    }
+
+    @Override
+    public Result<String> getPreviousBlockHash()
     {
-        try {
-            return new LedgerDepositDAO(deposit);
-        } catch (InvalidOperationException e) {
-            throw new InternalServerErrorException(e.getMessage(), e);
+        if (this.previousBlockHash == null)
+                    return Result.error(new NotFoundException("The ledger is empty"));
+                else
+                    return Result.ok(this.previousBlockHash);
+    }
+
+    /**
+     * Process the transactions of a block.
+     * The first transaction is a generation transaction.
+     * @param transactions
+     */
+    protected void processBlockTransactions(List<LedgerTransaction> transactions)
+    {
+        if (transactions.isEmpty())
+            return;
+
+        UpdateOptions options = new UpdateOptions();
+        options.upsert(false);
+        
+        Iterator<LedgerTransaction> it = transactions.iterator();
+
+        LedgerTransaction transaction = it.next();
+
+        // process generation transaction
+        Bson originFilter;
+        Bson destFilter = eq("accountId", transaction.getDest());
+        this.accounts.updateOne(destFilter,
+            Updates.combine(
+                Updates.inc("balance", transaction.getValue()),
+                Updates.push("operations", new LedgerTransactionDAO(transaction))
+            ), options);
+
+        // process the rest of the transactions.
+        while (it.hasNext())
+        {
+            transaction = it.next();
+
+            originFilter = eq("accountId", transaction.getOrigin());
+            destFilter = eq("accountId", transaction.getDest());
+
+            addNonce(transaction.getHash(), transaction.getNonce());
+
+            this.accounts.updateOne(originFilter,
+            Updates.combine(
+                Updates.inc("balance", -transaction.getValue()),
+                Updates.push("operations", new LedgerTransactionDAO(transaction))
+            ), options);
+
+            this.accounts.updateOne(destFilter,
+            Updates.combine(
+                Updates.inc("balance", transaction.getValue()),
+                Updates.push("operations", new LedgerTransactionDAO(transaction))
+            ), options);
         }
     }
 
-    protected LedgerTransactionDAO toDAO(LedgerTransaction transaction)
+    /**
+     * Verifies if the specified nonce is valid.
+     * 
+     * @param digest
+     * @param nonce
+     * @return true if it is valid, false otherwise.
+     */
+    protected boolean verifyNonce(byte[] digest, int nonce)
     {
-        try {
-            return new LedgerTransactionDAO(transaction);
-        } catch (InvalidOperationException e) {
-            throw new InternalServerErrorException(e.getMessage(), e);
-        }
+        return this.nonces.find(
+            and(eq("left", digest), eq("right", nonce)))
+            .first() == null;
     }
 
-    
+    protected void addNonce(byte[] digest, int nonce){
+        // add nonce
+        this.nonces.insertOne(new Nonce(digest, nonce));
+    }
+
     protected static class Nonce extends Pair<byte[], Integer>
     {
 
