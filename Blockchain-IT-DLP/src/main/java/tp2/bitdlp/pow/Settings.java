@@ -4,7 +4,7 @@ public class Settings
 {
     public static final int DEFAULT_VERSION = 0x0001;
 
-    public static final int DEFAULT_DIFFICULTY_TARGET = 0x3FFFFFFF;
+    public static final int DEFAULT_DIFFICULTY_TARGET = 0x00FFFFFF;
 
     public static final int DEFAULT_NUM_TRANSACTIONS_IN_BLOCK = 8;
 

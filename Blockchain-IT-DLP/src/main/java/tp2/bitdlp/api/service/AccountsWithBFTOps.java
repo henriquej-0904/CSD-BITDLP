@@ -51,9 +51,10 @@ public interface AccountsWithBFTOps extends Accounts
     ReplyWithSignatures sendTransactionBFT(Pair<byte[],byte[]> originDestPair, @PathParam("value") int value,
         @HeaderParam(ACC_SIG) String accountSignature, @HeaderParam(NONCE) int nonce);
 
+
     @Path(BFT_PATH + "/block")
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    ReplyWithSignatures proposeMinedBlock(Pair<String, BCBlock> pairMinerIdBlock, @HeaderParam(ACC_SIG) String signature);
+    ReplyWithSignatures proposeMinedBlockBFT(Pair<String, BCBlock> pairMinerIdBlock, @HeaderParam(ACC_SIG) String signature);
 }

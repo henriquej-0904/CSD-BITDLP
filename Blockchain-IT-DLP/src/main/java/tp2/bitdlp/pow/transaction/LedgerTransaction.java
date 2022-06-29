@@ -8,7 +8,7 @@ import java.util.Objects;
 import tp2.bitdlp.api.AccountId;
 import tp2.bitdlp.util.Crypto;
 
-public class LedgerTransaction implements Comparable<LedgerTransaction>
+public class LedgerTransaction
 {
     public static enum Type
     {
@@ -26,8 +26,6 @@ public class LedgerTransaction implements Comparable<LedgerTransaction>
     protected int value;
     protected Type type;
 
-    protected long timeStamp;
-
     protected String clientSignature;
 
     protected AccountId origin, dest;
@@ -43,12 +41,12 @@ public class LedgerTransaction implements Comparable<LedgerTransaction>
     }
 
     public static LedgerTransaction newTransaction(AccountId origin,
-        AccountId dest, int value, int nonce, long timeStamp, String clientSignature)
+        AccountId dest, int value, int nonce, String clientSignature)
     {
         Objects.requireNonNull(origin);
 
         LedgerTransaction t =
-            newTransaction(Type.TRANSACTION, dest, value, nonce, timeStamp, clientSignature);
+            newTransaction(Type.TRANSACTION, dest, value, nonce, clientSignature);
 
         t.origin = origin;
 
@@ -58,21 +56,16 @@ public class LedgerTransaction implements Comparable<LedgerTransaction>
     public static LedgerTransaction newTransaction(AccountId origin,
         AccountId dest, int value, int nonce)
     {
-        return newTransaction(origin, dest, value, nonce, currentTime(), null);
-    }
-
-    public static LedgerTransaction newGenerationTransaction(AccountId dest, int value, long timeStamp)
-    {
-        return newTransaction(Type.GENERATION_TRANSACTION, dest, value, 0, timeStamp, null);
+        return newTransaction(origin, dest, value, nonce, null);
     }
 
     public static LedgerTransaction newGenerationTransaction(AccountId dest, int value)
     {
-        return newGenerationTransaction(dest, value, currentTime());
+        return newTransaction(Type.GENERATION_TRANSACTION, dest, value, 0, null);
     }
 
     protected static LedgerTransaction newTransaction(Type type, AccountId dest,
-        int value, int nonce, long timeStamp, String clientSignature)
+        int value, int nonce, String clientSignature)
     {
         Objects.requireNonNull(dest);
 
@@ -84,7 +77,6 @@ public class LedgerTransaction implements Comparable<LedgerTransaction>
         t.dest = dest;
         t.value = value;
         t.nonce = nonce;
-        t.timeStamp = timeStamp;
         t.clientSignature = clientSignature;
 
         return t;
@@ -123,20 +115,6 @@ public class LedgerTransaction implements Comparable<LedgerTransaction>
      */
     public void setType(Type type) {
         this.type = type;
-    }
-
-    /**
-     * @return the timeStamp
-     */
-    public long getTimeStamp() {
-        return timeStamp;
-    }
-
-    /**
-     * @param timeStamp the timeStamp to set
-     */
-    public void setTimeStamp(long timeStamp) {
-        this.timeStamp = timeStamp;
     }
 
     /**
@@ -207,7 +185,7 @@ public class LedgerTransaction implements Comparable<LedgerTransaction>
     @Override
     public String toString()
     {
-        String res = "Time (ms): " + timeStamp + ", " + type.toString() + ": ";
+        String res = type.toString() + ": ";
 
         if (type == Type.GENERATION_TRANSACTION)
             res += String.format("%s, value = %d", dest, value);
@@ -242,10 +220,9 @@ public class LedgerTransaction implements Comparable<LedgerTransaction>
     {
         MessageDigest digest = Crypto.getSha256Digest();
 
-        ByteBuffer buffer = ByteBuffer.allocate(2*Integer.BYTES + Long.BYTES);
+        ByteBuffer buffer = ByteBuffer.allocate(2*Integer.BYTES);
         buffer.putInt(getValue());
         buffer.putInt(getNonce());
-        buffer.putLong(getTimeStamp());
 
         digest.update(buffer.array());
         digest.update(type.name().getBytes());
@@ -259,15 +236,5 @@ public class LedgerTransaction implements Comparable<LedgerTransaction>
             digest.update(clientSignature.getBytes());
 
         return digest;
-    }
-
-    @Override
-    public int compareTo(LedgerTransaction o) {
-        int t = (int)(this.timeStamp - o.timeStamp);
-
-        if (t == 0)
-            return Arrays.compare(this.hash, o.hash);
-        else
-            return t;
     }
 }

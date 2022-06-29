@@ -1,10 +1,10 @@
 package tp2.bitdlp.pow.transaction.pool;
 
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.SortedSet;
-import java.util.TreeSet;
+import java.util.Set;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
@@ -20,7 +20,7 @@ import tp2.bitdlp.util.result.Result;
  */
 public class TransactionsToMine
 {
-    protected SortedSet<LedgerTransaction> transactions;
+    protected Set<LedgerTransaction> transactions;
 
     protected Map<AccountId, Integer> accountPoolValue;
 
@@ -41,7 +41,7 @@ public class TransactionsToMine
      * 
      */
     protected TransactionsToMine() {
-        transactions = new TreeSet<>();
+        transactions = new LinkedHashSet<>();
         accountPoolValue = new HashMap<>();
         lock = new ReentrantReadWriteLock();
     }

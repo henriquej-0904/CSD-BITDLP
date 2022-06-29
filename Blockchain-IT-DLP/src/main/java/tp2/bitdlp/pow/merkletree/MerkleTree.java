@@ -73,7 +73,7 @@ public class MerkleTree
         List<LedgerTransaction> transactions =
             transactions(this.merkleRoot, new ArrayList<>(this.size));
 
-        if (this.size % 2 != 0)
+        if (this.size >= 2 && this.size % 2 != 0)
             transactions.remove(this.size);
         
         return transactions;

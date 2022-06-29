@@ -130,7 +130,7 @@ public abstract class AccountsResourceBFT extends AccountsResource implements Ac
 
 
     @Override
-    public ReplyWithSignatures proposeMinedBlock(Pair<String, BCBlock> pairMinerIdBlock, String signature) {
+    public ReplyWithSignatures proposeMinedBlockBFT(Pair<String, BCBlock> pairMinerIdBlock, String signature) {
         ProposeMinedBlock clientParams;
 
         try {
@@ -139,7 +139,7 @@ public abstract class AccountsResourceBFT extends AccountsResource implements Ac
             clientParams = new ProposeMinedBlock(pairMinerIdBlock.getLeft(), signature, pairMinerIdBlock.getRight());
             verifyMinedBlockIntegrity(clientParams);
         } catch (WebApplicationException e) {
-            LOG.info(e.getMessage());
+            Utils.logError(e, LOG);
             throw e;
         }
 

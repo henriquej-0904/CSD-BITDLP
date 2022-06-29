@@ -1,5 +1,6 @@
 package tp2.bitdlp.tests;
 
+import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.security.KeyPair;
@@ -13,6 +14,7 @@ import tp2.bitdlp.api.UserId;
 import tp2.bitdlp.impl.client.InvalidReplyWithSignaturesException;
 import tp2.bitdlp.impl.client.InvalidServerSignatureException;
 import tp2.bitdlp.impl.client.LedgerClientBFT;
+import tp2.bitdlp.pow.block.BCBlock;
 import tp2.bitdlp.util.Pair;
 import tp2.bitdlp.util.reply.ReplyWithSignatures;
 import tp2.bitdlp.util.result.Result;
@@ -27,6 +29,8 @@ public class WorkloadBFT extends Workload
 
 
     protected int fReplicas;
+
+    protected Entry<AccountId, KeyPair> miner;
 
     public WorkloadBFT(String replicaId, URI endpoint, int nUsers, int nAccounts,
         int fReplicas) throws MalformedURLException
@@ -75,8 +79,13 @@ public class WorkloadBFT extends Workload
             createAccounts(client);
             getAccounts(client);
 
+            // choose an account to be the miner.
+            this.miner = this.accounts.values().iterator().next().entrySet().iterator().next();
+
             //sendTransaction(client);
-            sendTransactionBFT(client);
+            //sendTransactionBFT(client);
+
+            mineBlocksAndSendTransactions(client);
 
             //getBalance(client);
             getBalanceBFT(client);
@@ -118,14 +127,111 @@ public class WorkloadBFT extends Workload
                 int nonce = this.random.nextInt();
 
                 requestBFTOp(() -> client.sendTransactionBFT(originAccount.getKey(), destAccountId,
-                    55, originAccount.getValue(), nonce),
+                    5, originAccount.getValue(), nonce),
                     tp2.bitdlp.impl.srv.resources.requests.Request.Operation.SEND_TRANSACTION_ASYNC);
 
                 // expected to fail with 403
                 requestBFTOp(() -> client.sendTransactionBFT(originAccount.getKey(), destAccountId,
-                    55, originAccount.getValue(), nonce),
+                    5, originAccount.getValue(), nonce),
                     tp2.bitdlp.impl.srv.resources.requests.Request.Operation.SEND_TRANSACTION_ASYNC);
             }
+        }
+    }
+
+    protected boolean proposeBlockBFT(LedgerClientBFT client, BCBlock block) throws InvalidServerSignatureException,
+        InvalidReplyWithSignaturesException
+    {
+        var res = requestBFTOp(() -> client.proposeMinedBlockBFT(this.miner.getKey(), block, this.miner.getValue()),
+                tp2.bitdlp.impl.srv.resources.requests.Request.Operation.PROPOSE_BLOCK_ASYNC);
+        
+        if (res.isOK())
+            return true;
+        else
+        {
+            System.err.println(res.errorException().getMessage());
+            return false;
+        }
+    }
+
+    protected void mineBlocksAndSendTransactions(LedgerClientBFT client)
+    {
+        for (int i = 0; i < 3; i++)
+        {
+            while (mineBlock(client))
+            {
+                try {
+                    System.out.println("Continue... Press!");
+                    System.in.read();
+                    
+                } catch (IOException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
+            };
+
+            Iterator<Map<AccountId, KeyPair>> accountsIt = this.accounts.values().iterator();
+            accountsIt.next();
+            for (Entry<AccountId, KeyPair> account : accountsIt.next().entrySet()) {
+                if (account.getKey().equals(this.miner.getKey()))
+                    continue;
+                
+                requestBFTOp(() -> client.sendTransactionBFT(this.miner.getKey(), account.getKey(),
+                5, this.miner.getValue()),
+                tp2.bitdlp.impl.srv.resources.requests.Request.Operation.SEND_TRANSACTION_ASYNC);             
+            }
+
+            //sendTransactionBFT(client);
+        }
+    }
+
+    /**
+     * Mine a block.
+     * @param client
+     * @return true if there was a block to mine.
+     */
+    protected boolean mineBlock(LedgerClientBFT client)
+    {
+        // get block
+        Result<BCBlock> result = client.getBlockToMine(this.miner.getKey());
+        if (!result.isOK())
+        {
+            System.out.println("There are no blocks to mine!");
+            return false;
+        }
+
+        BCBlock block = result.value();
+
+        // mine block
+        System.out.println("Mining block...");
+
+        long t1 = System.currentTimeMillis();
+        while (!block.isBlockMined())
+            block.getHeader().setNonce(this.random.nextInt());
+
+        long t2 = System.currentTimeMillis();
+
+        long time = (t2 - t1) / 1000;
+        System.out.println("Mined block in " + time + "s");
+
+        // propose block
+        if (proposeBlockBFT(client, block))
+        {
+            System.out.println("Block accepted and added to the blockchain!");
+
+            Result<Integer> balanceRes = requestBFTOp(() -> client.getBalanceBFT(this.miner.getKey()),
+                tp2.bitdlp.impl.srv.resources.requests.Request.Operation.GET_BALANCE_ASYNC);
+
+            if (balanceRes.isOK())
+            {
+                System.out.println("Current miner balance: " + balanceRes.value());
+            }
+
+            return true;
+        }
+        else
+        {
+            System.out.println("The block was invalid \\:");
+            return true;
         }
     }
 

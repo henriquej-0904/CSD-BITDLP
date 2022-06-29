@@ -14,6 +14,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
     @JsonSubTypes.Type(value = GetTotalValue.class, name = "GetTotalValue"),
     @JsonSubTypes.Type(value = LoadMoney.class, name = "LoadMoney"),
     @JsonSubTypes.Type(value = SendTransaction.class, name = "SendTransaction"),
+    @JsonSubTypes.Type(value = ProposeMinedBlock.class, name = "ProposeMinedBlock")
  }
 )
 public abstract class Request

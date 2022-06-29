@@ -1,7 +1,11 @@
 package tp2.bitdlp.pow.block;
 
+import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.core.JsonProcessingException;
 
 import tp2.bitdlp.pow.merkletree.MerkleTree;
 import tp2.bitdlp.pow.transaction.LedgerTransaction;
@@ -85,7 +89,20 @@ public class BCBlock {
     public byte[] digest()
     {
         MessageDigest md = Crypto.getSha256Digest();
-        this.header.digest(md);
+        try {
+            md.update(Utils.json.writeValueAsBytes(this));;
+        } catch (JsonProcessingException e) {
+            e.printStackTrace();
+        }
+        
         return md.digest();
+    }
+
+    @JsonIgnore
+    public boolean isBlockMined()
+    {
+        byte[] digest = digest();
+        int val = ByteBuffer.wrap(digest).getInt();
+        return Integer.toUnsignedLong(val) < Integer.toUnsignedLong(getHeader().getDiffTarget());
     }
 }

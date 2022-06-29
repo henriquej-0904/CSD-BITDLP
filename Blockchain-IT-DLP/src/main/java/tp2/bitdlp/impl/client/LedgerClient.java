@@ -21,6 +21,7 @@ import tp2.bitdlp.api.Account;
 import tp2.bitdlp.api.AccountId;
 import tp2.bitdlp.api.UserId;
 import tp2.bitdlp.api.service.Accounts;
+import tp2.bitdlp.pow.block.BCBlock;
 import tp2.bitdlp.pow.transaction.LedgerTransaction;
 import tp2.bitdlp.util.Crypto;
 import tp2.bitdlp.util.Pair;
@@ -171,11 +172,11 @@ public class LedgerClient implements Closeable
         return verifyResponseSignature(resultPair, LedgerTransaction::digest); 
     }
 
-    public Result<LedgerTransaction[]> getLedger() throws InvalidServerSignatureException {
-        Pair<Result<LedgerTransaction[]>, Response> resultPair = request(this.client.target(this.endpoint)
+    public Result<BCBlock[]> getLedger() throws InvalidServerSignatureException {
+        Pair<Result<BCBlock[]>, Response> resultPair = request(this.client.target(this.endpoint)
         .path(Accounts.PATH).path("ledger")
         .request()
-        .buildGet(), LedgerTransaction[].class);
+        .buildGet(), BCBlock[].class);
 
         return verifyResponseSignature(resultPair, (ledgerOps) -> 
         {
@@ -187,6 +188,21 @@ public class LedgerClient implements Closeable
 
             return digest.digest();
         });
+    }
+
+    /**
+     * Get a block to mine.
+     * @param minerId
+     * @return The block to mine
+     * @throws InvalidServerSignatureException
+     */
+    public Result<BCBlock> getBlockToMine(AccountId minerId) throws InvalidServerSignatureException {
+        Pair<Result<BCBlock>, Response> resultPair =  request(this.client.target(this.endpoint)
+            .path(Accounts.PATH).path("block").path(Utils.toHex(minerId.getObjectId()))
+            .request()
+            .buildGet(), BCBlock.class);
+
+        return verifyResponseSignature(resultPair, BCBlock::digest);
     }
 
     @Override

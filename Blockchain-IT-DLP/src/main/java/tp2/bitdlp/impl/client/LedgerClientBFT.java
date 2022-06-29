@@ -22,6 +22,7 @@ import jakarta.ws.rs.core.Response.Status;
 import tp2.bitdlp.api.AccountId;
 import tp2.bitdlp.api.service.Accounts;
 import tp2.bitdlp.api.service.AccountsWithBFTOps;
+import tp2.bitdlp.pow.block.BCBlock;
 import tp2.bitdlp.pow.transaction.LedgerTransaction;
 import tp2.bitdlp.util.Crypto;
 import tp2.bitdlp.util.Pair;
@@ -101,6 +102,21 @@ public class LedgerClientBFT extends LedgerClient
             .header(Accounts.NONCE, nonce)
             .buildPost(Entity.json(new Pair<>(originId.getObjectId(), destId.getObjectId()))),
             LedgerTransaction.class);
+    }
+
+    public Pair<Result<String>, ReplyWithSignatures> proposeMinedBlockBFT(
+        AccountId minerId, BCBlock block, KeyPair minerKeyPair)
+            throws InvalidServerSignatureException, InvalidReplyWithSignaturesException
+    {
+        String signature = sign(minerKeyPair.getPrivate(), block.digest());
+
+        return requestBFTOp(this.client.target(this.endpoint).path(AccountsWithBFTOps.PATH)
+            .path("block")
+            .request()
+            .header(Accounts.ACC_SIG, signature)
+            .buildPost(Entity.json(new Pair<>(
+                Utils.toHex(minerId.getObjectId()), block))),
+            String.class);
     }
 
     private <T> Pair<Result<T>, ReplyWithSignatures> requestBFTOp(Invocation invocation, Class<T> classType)

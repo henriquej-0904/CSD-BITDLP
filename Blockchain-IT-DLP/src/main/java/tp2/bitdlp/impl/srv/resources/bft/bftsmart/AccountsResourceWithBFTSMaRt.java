@@ -23,6 +23,7 @@ import tp2.bitdlp.impl.srv.resources.requests.GetAccount;
 import tp2.bitdlp.impl.srv.resources.requests.GetTotalValue;
 import tp2.bitdlp.impl.srv.resources.requests.ProposeMinedBlock;
 import tp2.bitdlp.impl.srv.resources.requests.SendTransaction;
+import tp2.bitdlp.pow.block.BCBlock;
 import tp2.bitdlp.pow.transaction.LedgerTransaction;
 import tp2.bitdlp.impl.srv.resources.requests.Request;
 import tp2.bitdlp.util.result.Result;
@@ -182,12 +183,12 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResourceBFT
     }
 
     @Override
-    public LedgerTransaction[] getFullLedger() {
+    public BCBlock[] getFullLedger() {
         byte[] request = toJson(new GetFullLedger());
         byte[] result = invokeUnordered(request);
 
         return this.fromJson(result,
-            new TypeReference<Result<LedgerTransaction[]>>() { }).resultOrThrow();
+            new TypeReference<Result<BCBlock[]>>() { }).resultOrThrow();
     }
 
     @Override
@@ -317,7 +318,8 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResourceBFT
         public byte[] getSnapshot() {
             try{
                 init();
-                return AccountsResourceWithBFTSMaRt.this.db.getState().resultOrThrow().getSerializedState();
+                LedgerState state = AccountsResourceWithBFTSMaRt.this.db.getState().resultOrThrow();
+                return toJson(state);
             }catch(Exception e){
                 //Utils.logError(e, LOG);
                 return new byte[0];
@@ -329,21 +331,22 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResourceBFT
             try{
                 init();
 
-                AccountsResourceWithBFTSMaRt.this.db.loadState(new LedgerState(arg0)).resultOrThrow();
+                LedgerState state = fromJson(arg0, LedgerState.class);
+                AccountsResourceWithBFTSMaRt.this.db.loadState(state).resultOrThrow();
 
             }catch(Exception e){
                 //Utils.logError(e, LOG);
             }
         }
 
-        protected Result<byte[]> proposeMinedBlock(ProposeMinedBlock request) {
+        protected Result<String> proposeMinedBlock(ProposeMinedBlock request) {
             // verify and execute
-            Result<byte[]> result = AccountsResourceWithBFTSMaRt.this.proposeMinedBlock(request);
+            Result<String> result = AccountsResourceWithBFTSMaRt.this.proposeMinedBlock(request);
 
             if (result.isOK())
                 LOG.info("Added block to blockchain.");
             else
-                LOG.info(result.errorException().getMessage());
+                Utils.logError(result.errorException(), LOG);
 
             return result;
         }
@@ -393,11 +396,11 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResourceBFT
             return result;
         }
 
-        protected Result<LedgerTransaction[]> getLedger(GetFullLedger request) {
-            Result<LedgerTransaction[]> result = AccountsResourceWithBFTSMaRt.this.db.getLedger();
+        protected Result<BCBlock[]> getLedger(GetFullLedger request) {
+            Result<BCBlock[]> result = AccountsResourceWithBFTSMaRt.this.db.getLedger();
 
             if (result.isOK())
-                LOG.info(String.format("Get Ledger with %d operations.", result.value().length));
+                LOG.info(String.format("Get Ledger with %d blocks.", result.value().length));
             else
                 LOG.info(result.errorException().getMessage());
 

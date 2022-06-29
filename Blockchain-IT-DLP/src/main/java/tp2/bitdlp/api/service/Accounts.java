@@ -103,7 +103,7 @@ public interface Accounts {
     @Path("/ledger")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    LedgerTransaction[] getLedger();
+    BCBlock[] getLedger();
 
     /**
      * Get a block with transactions to mine.
@@ -112,10 +112,9 @@ public interface Accounts {
      * 
      * @return A block with transactions to mine.
      */
-    @Path("/block")
+    @Path("/block/{minerAccountId}")
     @GET
-    @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    BCBlock getBlockToMine(String minerAccountId);
+    BCBlock getBlockToMine(@PathParam("minerAccountId") String minerAccountId);
 
 }

@@ -39,7 +39,6 @@ import tp2.bitdlp.pow.transaction.pool.TransactionsToMine;
 import tp2.bitdlp.util.Crypto;
 import tp2.bitdlp.util.Pair;
 import tp2.bitdlp.util.Utils;
-import tp2.bitdlp.util.reply.ReplyWithSignatures;
 import tp2.bitdlp.util.result.Result;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.ForbiddenException;
@@ -387,6 +386,7 @@ public abstract class AccountsResource implements Accounts
             try {
                 LedgerTransaction t = LedgerTransaction.newTransaction(originId, destId, clientParams.getValue(), clientParams.getNonce());
                 t.setClientSignature(clientParams.getAccountSignature());
+                t.setHash(t.digest());
                 return t;
             } catch (InvalidTransactionException e) {
                 throw new BadRequestException(e.getMessage(), e);
@@ -405,10 +405,11 @@ public abstract class AccountsResource implements Accounts
         this.db.verifySendTransaction(t).resultOrThrow();
         
         // add transaction to pool.
-        this.transactionsToMine.addTransaction(t, this.db.getBalance(t.getOrigin()).resultOrThrow());
+        this.transactionsToMine.addTransaction(t, this.db.getBalance(t.getOrigin()).resultOrThrow())
+            .resultOrThrow();
 
         LOG.info(String.format("Validated transaction to mine - ORIGIN: %s, DEST: %s, VALUE: %d", 
-                    t.getOrigin(), t.getOrigin(), t.getValue()));
+                    t.getOrigin(), t.getDest(), t.getValue()));
     }
 
     /**
@@ -419,7 +420,7 @@ public abstract class AccountsResource implements Accounts
     public abstract void sendTransaction(SendTransaction clientParams, LedgerTransaction transaction);
 
     @Override
-    public final LedgerTransaction[] getLedger() {
+    public final BCBlock[] getLedger() {
         try {
             init();
         } catch (WebApplicationException e) {
@@ -427,7 +428,7 @@ public abstract class AccountsResource implements Accounts
             throw e;
         }
 
-        LedgerTransaction[] result = getFullLedger();
+        BCBlock[] result = getFullLedger();
 
         //LOG.info(String.format("Get Ledger with %d operations.", result.length));
 
@@ -448,7 +449,7 @@ public abstract class AccountsResource implements Accounts
      * Obtains the current Ledger.
      * @return The current Ledger.
      */
-    public abstract LedgerTransaction[] getFullLedger();
+    public abstract BCBlock[] getFullLedger();
 
 
     @Override
@@ -500,7 +501,7 @@ public abstract class AccountsResource implements Accounts
                 "There are not enough transactions to create a block.", Status.CONFLICT);
 
         // add generation transaction with dest -> minerId
-        transactions.add(createGenerationTransaction(minerId));
+        transactions.add(0, createGenerationTransaction(minerId));
 
         // create block
         result = BCBlock.createBlock(transactions);
@@ -518,45 +519,48 @@ public abstract class AccountsResource implements Accounts
     }
 
 
+    protected void verifyMinedBlockIntegrity(ProposeMinedBlock clientParams) {
+        try {
+            AccountId minerId = getAccountId(Utils.fromHex(clientParams.getMinerId()));
+            // verify client signature
+            verifySignature(minerId, clientParams.getClientSignature(),
+                    clientParams.getBlock().digest());
 
-    protected void verifyMinedBlockIntegrity(ProposeMinedBlock clientParams)
-    {
-        AccountId minerId = getAccountId(Utils.fromHex(clientParams.getMinerId()));
-        // verify client signature
-        verifySignature(minerId, clientParams.getClientSignature(),
-            clientParams.getBlock().digest());
-        
-        BCBlock block = clientParams.getBlock();
-        boolean check = block.getHeader().getVersion() == Settings.getCurrentVersion()
-            && block.getHeader().getDiffTarget() == Settings.getDifficultyTarget()
-            && block.getHeader().getMerkleRoot().equals(Utils.toHex(block.getTransactions().getMerkleRootHash()));
-            
-        if (!check)
-            throw new BadRequestException("Block integrity is invalid.");
+            BCBlock block = clientParams.getBlock();
+            boolean check = block.getHeader().getVersion() == Settings.getCurrentVersion()
+                    && block.getHeader().getDiffTarget() == Settings.getDifficultyTarget()
+                    && block.getHeader().getMerkleRoot()
+                            .equals(Utils.toHex(block.getTransactions().getMerkleRootHash()))
+                    && block.isBlockMined();
 
-        List<LedgerTransaction> transactions = block.getTransactions().getTransactions();
-        if (transactions.isEmpty())
-            throw new BadRequestException("Block must have transactions.");
+            if (!check)
+                throw new BadRequestException("Block integrity is invalid.");
 
-        // check generation transaction
-        verifyGenerationTransaction(minerId, transactions.get(0));
+            List<LedgerTransaction> transactions = block.getTransactions().getTransactions();
+            if (transactions.isEmpty())
+                throw new BadRequestException("Block must have transactions.");
 
-        // If blockchain is empty -> check genesis block
-        if (this.db.emptyBlockchain().resultOrThrow())
-        {
-            if (!BCBlock.isGenesisBlock(block))
-                throw new BadRequestException("Expected genesis block.");
-        } 
-        else
-        {
-            // verify exists n transactions
-            if (transactions.size() == Settings.getValidNumberTransactionsInBlock())
-                throw new BadRequestException("Expected at least " +
-                Settings.getValidNumberTransactionsInBlock() + " transactions");
+            // check generation transaction
+            verifyGenerationTransaction(minerId, transactions.get(0));
 
-            // verify previous hash
-            if (!this.db.getPreviousBlockHash().resultOrThrow().equals(block.getHeader().getPreviousHash()))
-                throw new BadRequestException("Invalid previous hash.");
+            // If blockchain is empty -> check genesis block
+            if (this.db.emptyBlockchain().resultOrThrow()) {
+                if (!BCBlock.isGenesisBlock(block))
+                    throw new BadRequestException("Expected genesis block.");
+            } else {
+                // verify exists n transactions
+                if (transactions.size() < Settings.getValidNumberTransactionsInBlock())
+                    throw new BadRequestException("Expected at least " +
+                            Settings.getValidNumberTransactionsInBlock() + " transactions");
+
+                // verify previous hash
+                if (!this.db.getPreviousBlockHash().resultOrThrow().equals(block.getHeader().getPreviousHash()))
+                    throw new BadRequestException("Invalid previous hash.");
+            }
+        } catch (WebApplicationException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new InternalServerErrorException(e.getMessage(), e);
         }
     }
 
@@ -578,7 +582,7 @@ public abstract class AccountsResource implements Accounts
      * @param clientParams
      * @return Result(hash of the block)
      */
-    protected Result<byte[]> proposeMinedBlock(ProposeMinedBlock clientParams)
+    protected Result<String> proposeMinedBlock(ProposeMinedBlock clientParams)
     {
         try {
             verifyMinedBlockIntegrity(clientParams);
@@ -588,9 +592,9 @@ public abstract class AccountsResource implements Accounts
 
         // verify if transactions are not mined.
         List<LedgerTransaction> transactions = clientParams.getBlock().getTransactions().getTransactions();
-        if (!this.transactionsToMine.removeTransactionsIfexist(
+        if (transactions.size() > 1 && !this.transactionsToMine.removeTransactionsIfexist(
             transactions.subList(1, transactions.size())))
-            throw new WebApplicationException("At least one transaction is already mined.", Status.CONFLICT);
+            return Result.error(new WebApplicationException("At least one transaction is already mined.", Status.CONFLICT));
         
         // add block to ledger.
         return this.db.addBlock(clientParams.getBlock());

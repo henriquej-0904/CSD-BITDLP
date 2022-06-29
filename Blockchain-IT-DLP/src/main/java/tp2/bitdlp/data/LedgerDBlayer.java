@@ -6,7 +6,7 @@ import java.util.Properties;
 
 import tp2.bitdlp.api.Account;
 import tp2.bitdlp.api.AccountId;
-import tp2.bitdlp.data.mongo.LedgerDBWithMongo;
+import tp2.bitdlp.pow.block.BCBlock;
 import tp2.bitdlp.pow.transaction.LedgerTransaction;
 import tp2.bitdlp.util.result.Result;
 import jakarta.ws.rs.NotFoundException;
@@ -53,7 +53,7 @@ public abstract class LedgerDBlayer
                     instance = LedgerDBinMemory.getInstance();
                     break;
                 case MONGO:
-                    instance = LedgerDBWithMongo.getInstance();
+                    //instance = LedgerDBWithMongo.getInstance();
                     break;
             }
         }
@@ -125,13 +125,13 @@ public abstract class LedgerDBlayer
 	 *
 	 * @param transaction The transaction to perform.
 	 */
-    public abstract Result<Void> sendTransaction(LedgerTransaction transaction);
+    //public abstract Result<Void> sendTransaction(LedgerTransaction transaction);
 
     /**
      * Obtains the current Ledger.
      * @return The current Ledger.
      */
-    public abstract Result<LedgerTransaction[]> getLedger();
+    public abstract Result<BCBlock[]> getLedger();
 
     /**
      * Load a ledger state
@@ -144,6 +144,8 @@ public abstract class LedgerDBlayer
      * @return ledger state
      */
     public abstract Result<LedgerState> getState();
+
+
 
     /**
 	 * Verifies if the transaction is valid.
@@ -163,7 +165,14 @@ public abstract class LedgerDBlayer
      * @return The hash of the last block in the blockchain.
      */
     public abstract Result<String> getPreviousBlockHash();
-    
+
+    /**
+     * Add a block to the ledger.
+     * @param block
+     * @return The hash of the block if success.
+     */
+    public abstract Result<String> addBlock(BCBlock block);
+
 
     protected <T> Result<T> accountAlreadyExistsConflict(AccountId id)
     {

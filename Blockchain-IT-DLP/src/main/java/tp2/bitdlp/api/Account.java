@@ -108,7 +108,7 @@ public class Account implements Serializable {
      */
     public void processOperation(LedgerTransaction transaction) throws InvalidTransactionException
     {
-        int value = verifyTransaction(transaction);
+        int value = id.equals(transaction.getOrigin()) ? -transaction.getValue() : transaction.getValue();
         this.transactions.add(transaction);
         this.balance += value;
     }
@@ -131,7 +131,12 @@ public class Account implements Serializable {
         return digest.digest();
     }
 
-    private int verifyTransaction(LedgerTransaction transaction)
+    /**
+     * Verifies if this transaction is valid.
+     * @param transaction
+     * @return The value to sum to the current balance.
+     */
+    public int verifyTransaction(LedgerTransaction transaction)
     {
         if (getId().equals(transaction.getDest()))
             return transaction.getValue();
