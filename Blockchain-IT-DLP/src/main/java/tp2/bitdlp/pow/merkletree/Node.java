@@ -2,6 +2,8 @@ package tp2.bitdlp.pow.merkletree;
 
 import java.util.Arrays;
 
+import org.bson.codecs.pojo.annotations.BsonDiscriminator;
+
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 
@@ -11,6 +13,8 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 
     @JsonSubTypes.Type(value = LeafNode.class, name = "LeafNode") }
 )
+
+@BsonDiscriminator(value = "Node", key = "_cls")
 public class Node {
 
     // double SHA256

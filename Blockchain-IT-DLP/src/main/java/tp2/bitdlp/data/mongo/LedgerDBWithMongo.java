@@ -3,13 +3,10 @@ package tp2.bitdlp.data.mongo;
 import static com.mongodb.MongoClientSettings.getDefaultCodecRegistry;
 import static com.mongodb.client.model.Filters.and;
 import static com.mongodb.client.model.Filters.eq;
-import static com.mongodb.client.model.Filters.gte;
 import static com.mongodb.client.model.Filters.in;
-import static com.mongodb.client.model.Filters.or;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -17,8 +14,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
 import com.mongodb.ConnectionString;
@@ -34,32 +29,23 @@ import com.mongodb.client.model.Accumulators;
 import com.mongodb.client.model.Aggregates;
 import com.mongodb.client.model.IndexOptions;
 import com.mongodb.client.model.Indexes;
-import com.mongodb.client.model.InsertManyOptions;
-import com.mongodb.client.model.InsertOneModel;
 import com.mongodb.client.model.Projections;
 import com.mongodb.client.model.Sorts;
 import com.mongodb.client.model.UpdateOptions;
 import com.mongodb.client.model.Updates;
-import com.mongodb.client.model.WriteModel;
-import com.mongodb.client.result.InsertManyResult;
-import com.mongodb.client.result.UpdateResult;
 
-import org.bson.BsonValue;
 import org.bson.Document;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.Conventions;
 import org.bson.codecs.pojo.PojoCodecProvider;
 import org.bson.conversions.Bson;
-import org.bson.types.ObjectId;
 
 import tp2.bitdlp.api.Account;
 import tp2.bitdlp.api.AccountId;
 import tp2.bitdlp.api.UserId;
 import tp2.bitdlp.data.LedgerDBlayer;
 import tp2.bitdlp.data.LedgerState;
-import tp2.bitdlp.data.mongo.LedgerTransactionDAO;
 import tp2.bitdlp.pow.block.BCBlock;
-import tp2.bitdlp.pow.transaction.InvalidTransactionException;
 import tp2.bitdlp.pow.transaction.LedgerTransaction;
 import tp2.bitdlp.util.Pair;
 import tp2.bitdlp.util.Utils;
@@ -313,68 +299,29 @@ public class LedgerDBWithMongo extends LedgerDBlayer
             dropCollections();
             createCollections();
 
-            List<LedgerTransaction> operations = state.getTransactions();
-            List<LedgerTransactionDAO> operationsDAO = loadOperations(state);
+            this.ledger.insertMany(state.getLedger());
 
-            Map<AccountId, Pair<Account, List<ObjectId>>> accounts = state.getAccounts().stream()
+            Map<AccountId, Account> accounts = state.getAccounts().stream()
                 .map((pairAccountUser) -> new Account(pairAccountUser.getLeft(), pairAccountUser.getRight()))
-                .collect(Collectors.toUnmodifiableMap(Account::getId, (acc) -> new Pair<>(acc, new LinkedList<>())));  
+                .collect(Collectors.toMap(Account::getId, (acc) -> acc, (acc1, acc2) -> acc1, () -> new TreeMap<>()));
 
-            Iterator<LedgerTransaction> operationsIt = operations.iterator();
-            Iterator<LedgerTransactionDAO> operationsDAOIt = operationsDAO.iterator();
+            this.accounts.insertMany(accounts.values().stream()
+                .map((t) -> new AccountDAO(t))
+                .collect(Collectors.toList()));
 
-            List<WriteModel<Nonce>> nonceOps = new LinkedList<>();
+            for (BCBlock block : state.getLedger())
+                processBlockTransactions(block.getTransactions().getTransactions());
 
-            for (int i = 0; i < operationsDAO.size(); i++) {
-                LedgerTransaction transaction = operationsIt.next();
-                LedgerTransactionDAO operationDAO = operationsDAOIt.next();
+            this.isLedgerEmpty = state.getLedger().isEmpty();
 
-                Pair<Account, List<ObjectId>> pairAccountOpsList;
-
-                pairAccountOpsList = accounts.get(transaction.getOrigin());
-                pairAccountOpsList.getLeft().processOperation(transaction);
-                pairAccountOpsList.getRight().add(operationDAO.getId());
-
-                pairAccountOpsList = accounts.get(transaction.getDest());
-                pairAccountOpsList.getLeft().processOperation(transaction);
-                pairAccountOpsList.getRight().add(operationDAO.getId());
-
-                nonceOps.add(new InsertOneModel<>(new Nonce(transaction.digest(), transaction.getNonce())));
-            }
-
-            List<WriteModel<AccountDAO>> accountsDAOmodel = accounts.values().stream()
-                .map((pairAccountListOps) -> {
-                    AccountDAO accountDAO = new AccountDAO(pairAccountListOps.getLeft());
-                    accountDAO.setOperations(pairAccountListOps.getRight());
-                    return accountDAO;
-                })
-                .map((accountDAO) -> (WriteModel<AccountDAO>) new InsertOneModel<>(accountDAO)).toList();
-
-            this.accounts.bulkWrite(accountsDAOmodel);
-            this.nonces.bulkWrite(nonceOps);
+            this.previousBlockHash = this.isLedgerEmpty ? null :
+                Utils.toHex(state.getLedger().get(state.getLedger().size() - 1).digest());
 
             return Result.ok();
             
         } catch (Exception e) {
             return Result.error(new InternalServerErrorException(e.getMessage(), e));
         }
-    }
-
-    protected List<LedgerTransactionDAO> loadOperations(LedgerState state)
-    {
-        List<LedgerTransactionDAO> insertOperations = state.getTransactions().stream()
-                .<LedgerTransactionDAO>map(this::toDAO).toList();
-
-        InsertManyResult insertManyResult = this.ledger
-                .insertMany(insertOperations, new InsertManyOptions().ordered(true));
-
-        Map<Integer, BsonValue> insertedIds = insertManyResult.getInsertedIds();
-
-        Iterator<LedgerTransactionDAO> operationsIt = insertOperations.iterator();
-        for (int i = 0; i < insertOperations.size(); i++)
-            operationsIt.next().setId(insertedIds.get(i).asObjectId().getValue());
-
-        return insertOperations;
     }
 
 
@@ -454,20 +401,8 @@ public class LedgerDBWithMongo extends LedgerDBlayer
     }
 
     @Override
-    public Result<Boolean> emptyBlockchain() {
-        if (!this.isLedgerEmpty)
-            return Result.ok(false);
-        
-        try {
-            long val = this.ledger.countDocuments();
-            if (val > 0)
-                this.isLedgerEmpty = false;
-            
-            return Result.ok(val == 0);
-        } catch (Exception e) {
-            return Result.error(new InternalServerErrorException(e.getMessage(), e));
-        }
-        
+    public synchronized Result<Boolean> emptyBlockchain() {
+        return Result.ok(this.isLedgerEmpty);  
     }
 
     @Override

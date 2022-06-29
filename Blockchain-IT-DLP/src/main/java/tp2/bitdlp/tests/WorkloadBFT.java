@@ -159,13 +159,13 @@ public class WorkloadBFT extends Workload
         {
             while (mineBlock(client))
             {
-                try {
+                /* try {
                     System.out.println("Continue... Press!");
                     System.in.read();
                     
                 } catch (IOException e) {
                     e.printStackTrace();
-                }
+                } */
             };
 
             for ( Map<AccountId, KeyPair> m : this.accounts.values())
@@ -206,6 +206,14 @@ public class WorkloadBFT extends Workload
         System.out.println("Mining block...");
 
         long t1 = System.currentTimeMillis();
+
+        /* try {
+            Thread.sleep(this.random.nextLong(20000, 60000));
+        } catch (InterruptedException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        } */
+
         while (!block.isBlockMined())
             block.getHeader().setNonce(this.random.nextInt());
 

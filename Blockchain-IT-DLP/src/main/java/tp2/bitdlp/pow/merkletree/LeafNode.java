@@ -1,7 +1,10 @@
 package tp2.bitdlp.pow.merkletree;
 
+import org.bson.codecs.pojo.annotations.BsonDiscriminator;
+
 import tp2.bitdlp.pow.transaction.LedgerTransaction;
 
+@BsonDiscriminator(value = "LeafNode", key = "_cls")
 public class LeafNode extends Node
 {
     protected LedgerTransaction transaction;

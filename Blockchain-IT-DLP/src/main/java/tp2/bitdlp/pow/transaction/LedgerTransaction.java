@@ -61,7 +61,9 @@ public class LedgerTransaction
 
     public static LedgerTransaction newGenerationTransaction(AccountId dest, int value)
     {
-        return newTransaction(Type.GENERATION_TRANSACTION, dest, value, 0, null);
+        var transaction = newTransaction(Type.GENERATION_TRANSACTION, dest, value, 0, null);
+        transaction.setHash(transaction.digest());
+        return transaction;
     }
 
     protected static LedgerTransaction newTransaction(Type type, AccountId dest,

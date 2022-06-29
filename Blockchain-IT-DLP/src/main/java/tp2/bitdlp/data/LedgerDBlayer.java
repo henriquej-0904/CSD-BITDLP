@@ -6,6 +6,7 @@ import java.util.Properties;
 
 import tp2.bitdlp.api.Account;
 import tp2.bitdlp.api.AccountId;
+import tp2.bitdlp.data.mongo.LedgerDBWithMongo;
 import tp2.bitdlp.pow.block.BCBlock;
 import tp2.bitdlp.pow.transaction.LedgerTransaction;
 import tp2.bitdlp.util.result.Result;
@@ -53,7 +54,7 @@ public abstract class LedgerDBlayer
                     instance = LedgerDBinMemory.getInstance();
                     break;
                 case MONGO:
-                    //instance = LedgerDBWithMongo.getInstance();
+                    instance = LedgerDBWithMongo.getInstance();
                     break;
             }
         }
