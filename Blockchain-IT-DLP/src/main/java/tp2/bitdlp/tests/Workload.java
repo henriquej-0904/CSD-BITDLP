@@ -8,8 +8,6 @@ import java.security.KeyStore;
 import java.security.SecureRandom;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.stream.Collectors;
@@ -21,37 +19,37 @@ import tp2.bitdlp.api.AccountId;
 import tp2.bitdlp.api.UserId;
 import tp2.bitdlp.impl.client.InvalidServerSignatureException;
 import tp2.bitdlp.impl.client.LedgerClient;
+import tp2.bitdlp.impl.srv.resources.requests.Request.Operation;
 import tp2.bitdlp.util.Crypto;
-import tp2.bitdlp.util.Result;
+import tp2.bitdlp.util.result.Result;
 import jakarta.ws.rs.core.Response.Status;
 
 public class Workload implements Runnable
 {
-    private static interface Request<T>
+    protected static interface Request<T>
     {
         Result<T> request() throws InvalidServerSignatureException;
     }
 
     // statistics
-    private Map<tp2.bitdlp.impl.srv.resources.requests.Request.Operation, List<Long>> latencies;
-    private Map<tp2.bitdlp.impl.srv.resources.requests.Request.Operation, Map<Status, Integer>> statusCodes;
-    private int nUsers, nAccounts;
+    protected Map<tp2.bitdlp.impl.srv.resources.requests.Request.Operation, LatencyThroughputCalc> stats;
+    protected Map<tp2.bitdlp.impl.srv.resources.requests.Request.Operation, Map<Status, Integer>> statusCodes;
+    protected int nUsers, nAccounts;
 
     // state
-    private Map<UserId, KeyPair> users;
-    private Map<UserId, Map<AccountId, KeyPair>> accounts;
+    protected Map<UserId, KeyPair> users;
+    protected Map<UserId, Map<AccountId, KeyPair>> accounts;
 
-    private SecureRandom random;
+    protected SecureRandom random;
 
-    private URI endpoint;
-    private boolean isHttps;
+    protected URI endpoint;
+    protected boolean isHttps;
 
-    private String replicaId;
+    protected String replicaId;
 
     public Workload(String replicaId, URI endpoint, int nUsers, int nAccounts) throws MalformedURLException
     {
-        this.latencies = Stream.of(tp2.bitdlp.impl.srv.resources.requests.Request.Operation.values())
-            .collect(Collectors.toUnmodifiableMap((op) -> op, (op) -> new LinkedList<>()));
+        this.stats = new HashMap<>();
         
         this.statusCodes = Stream.of(tp2.bitdlp.impl.srv.resources.requests.Request.Operation.values())
             .collect(Collectors.toUnmodifiableMap((op) -> op, (op) -> new HashMap<>()));
@@ -98,7 +96,6 @@ public class Workload implements Runnable
         )
         {
             createAccounts(client);
-            loadMoney(client);
             getAccounts(client);
             sendTransaction(client);
             getBalance(client);
@@ -112,7 +109,7 @@ public class Workload implements Runnable
         }
     }
 
-    private static SSLContext getSSLContext()
+    protected static SSLContext getSSLContext()
 	{
 		File configFolder = new File("tls-config");
 
@@ -120,7 +117,7 @@ public class Workload implements Runnable
 		return Crypto.getSSLContext(null, truststore, Crypto.KEYSTORE_PWD);
 	}
 
-    private void createAccounts(LedgerClient client) throws InvalidServerSignatureException
+    protected void createAccounts(LedgerClient client) throws InvalidServerSignatureException
     {
         // send create account requests
         for (Entry<UserId, Map<AccountId, KeyPair>> entry : this.accounts.entrySet())
@@ -144,7 +141,7 @@ public class Workload implements Runnable
     }
 
     
-    private void getAccounts(LedgerClient client) throws InvalidServerSignatureException
+    protected void getAccounts(LedgerClient client) throws InvalidServerSignatureException
     {
         // send get account requests
         for (Entry<UserId, Map<AccountId, KeyPair>> entry : this.accounts.entrySet())
@@ -166,7 +163,7 @@ public class Workload implements Runnable
         
     }
 
-    private void getBalance(LedgerClient client) throws InvalidServerSignatureException
+    protected void getBalance(LedgerClient client) throws InvalidServerSignatureException
     {
         // send get balance requests
         for (Entry<UserId, Map<AccountId, KeyPair>> entry : this.accounts.entrySet())
@@ -177,7 +174,7 @@ public class Workload implements Runnable
         }
     }
 
-    private void getTotalValue(LedgerClient client) throws InvalidServerSignatureException
+    protected void getTotalValue(LedgerClient client) throws InvalidServerSignatureException
     {
         // send create account requests
         for (Entry<UserId, Map<AccountId, KeyPair>> entry : this.accounts.entrySet())
@@ -187,7 +184,7 @@ public class Workload implements Runnable
         }
     }
 
-    private void getGlobalLedgerValue(LedgerClient client) throws InvalidServerSignatureException
+    protected void getGlobalLedgerValue(LedgerClient client) throws InvalidServerSignatureException
     {
         // send getGlovalLedgerValue requests
         request(() -> client.getGlobalLedgerValue(),
@@ -195,20 +192,7 @@ public class Workload implements Runnable
         
     }
 
-    private void loadMoney(LedgerClient client) throws InvalidServerSignatureException
-    {
-        // send loadMoney requests
-        for (Map<AccountId, KeyPair> accounts : this.accounts.values())
-        {
-            for (Entry<AccountId, KeyPair> account : accounts.entrySet())
-            {
-                request(() -> client.loadMoney(account.getKey(), 100, account.getValue()),
-                tp2.bitdlp.impl.srv.resources.requests.Request.Operation.LOAD_MONEY);
-            }
-        }
-    }
-
-    private void sendTransaction(LedgerClient client) throws InvalidServerSignatureException
+    protected void sendTransaction(LedgerClient client) throws InvalidServerSignatureException
     {
         // sendTransaction requests
 
@@ -233,18 +217,18 @@ public class Workload implements Runnable
         }
     }
 
-    private void getLedger(LedgerClient client) throws InvalidServerSignatureException
+    protected void getLedger(LedgerClient client) throws InvalidServerSignatureException
     {
         request(() -> client.getLedger(), tp2.bitdlp.impl.srv.resources.requests.Request.Operation.GET_LEDGER);
     }
 
-    private <T> Result<T> request(Request<T> request, tp2.bitdlp.impl.srv.resources.requests.Request.Operation operation) throws InvalidServerSignatureException
+    protected <T> Result<T> request(Request<T> request, tp2.bitdlp.impl.srv.resources.requests.Request.Operation operation) throws InvalidServerSignatureException
     {
         long before = System.currentTimeMillis();
         Result<T> result = request.request();
         long after = System.currentTimeMillis();
 
-        this.latencies.get(operation).add(after - before);
+        getStats(operation).addLatency(after - before);
         
         Map<Status, Integer> statusCodes = this.statusCodes.get(operation);
         Status status = Status.fromStatusCode(result.error());
@@ -259,9 +243,14 @@ public class Workload implements Runnable
         return result;
     }
 
+    protected LatencyThroughputCalc getStats(Operation operation)
+    {
+        return this.stats.computeIfAbsent(operation, (op) -> new LatencyThroughputCalc());
+    }
+
     //#region random users & accounts
 
-    private void init()
+    protected void init()
     {
         // create users & accounts in memory
         this.users = createUsers(this.random, this.nUsers);
@@ -273,12 +262,12 @@ public class Workload implements Runnable
             );
     }
 
-    private static Stream<KeyPair> randomKeyPairStream(SecureRandom random)
+    protected static Stream<KeyPair> randomKeyPairStream(SecureRandom random)
     {
         return Stream.generate(() -> Crypto.createKeyPairForEcc256bits(random));
     }
 
-    private static Map<UserId, KeyPair> createUsers(SecureRandom random, int n)
+    protected static Map<UserId, KeyPair> createUsers(SecureRandom random, int n)
     {
         return randomKeyPairStream(random)
             .limit(n)
@@ -288,7 +277,7 @@ public class Workload implements Runnable
             );
     }
 
-    private static Map<AccountId, KeyPair> createAccounts(SecureRandom random, int n)
+    protected static Map<AccountId, KeyPair> createAccounts(SecureRandom random, int n)
     {
         return randomKeyPairStream(random)
             .limit(n)

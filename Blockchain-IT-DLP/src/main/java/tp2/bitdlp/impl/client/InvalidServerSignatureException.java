@@ -1,6 +1,6 @@
 package tp2.bitdlp.impl.client;
 
-public class InvalidServerSignatureException extends Exception {
+public class InvalidServerSignatureException extends RuntimeException {
 
     /**
      * @param message

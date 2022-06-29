@@ -1,9 +1,8 @@
 package tp2.bitdlp.api.service;
 
 import tp2.bitdlp.api.Account;
-import tp2.bitdlp.api.operations.LedgerDeposit;
-import tp2.bitdlp.api.operations.LedgerOperation;
-import tp2.bitdlp.api.operations.LedgerTransaction;
+import tp2.bitdlp.pow.block.BCBlock;
+import tp2.bitdlp.pow.transaction.LedgerTransaction;
 import tp2.bitdlp.util.Pair;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.POST;
@@ -83,19 +82,6 @@ public interface Accounts {
     int getGlobalLedgerValue();
 
     /**
-	 * Loads money into an account.
-	 *
-	 * @param accountId account id
-     * @param value value to be loaded
-     * @param accountSignature The signature of the account.
-	 */
-    @Path("/balance/{value}")
-    @POST
-    @Consumes(MediaType.APPLICATION_OCTET_STREAM)
-    @Produces(MediaType.APPLICATION_JSON)
-    LedgerDeposit loadMoney(byte[] accountId, @PathParam("value") int value, @HeaderParam(ACC_SIG) String accountSignature);
-
-    /**
 	 * Transfers money from an origin to a destination.
 	 *
      * @param originDestPair A pair of origin and destination accounts.
@@ -117,6 +103,18 @@ public interface Accounts {
     @Path("/ledger")
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    LedgerOperation[] getLedger();
+    BCBlock[] getLedger();
+
+    /**
+     * Get a block with transactions to mine.
+     * 
+     * @param minerAccountId The account id of the miner.
+     * 
+     * @return A block with transactions to mine.
+     */
+    @Path("/block/{minerAccountId}")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    BCBlock getBlockToMine(@PathParam("minerAccountId") String minerAccountId);
 
 }

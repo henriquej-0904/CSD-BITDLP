@@ -1,22 +1,27 @@
 package tp2.bitdlp.impl.srv.resources.requests;
 
-import tp2.bitdlp.api.AccountId;
-
 public class GetBalance extends Request {
-    private AccountId accountId;
+    private String id;
 
-    private static final long serialVersionUID = 1243244654L;
-
-    public GetBalance(AccountId accountId){
+    public GetBalance(){
         super(Operation.GET_BALANCE);
-        this.accountId = accountId;
     }
 
-    public AccountId getAccount() {
-        return accountId;
+    public GetBalance(String accountId){
+        super(Operation.GET_BALANCE);
+        this.id = accountId;
     }
 
-    public void setAccount(AccountId accountId) {
-        this.accountId = accountId;
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String accountId) {
+        this.id = accountId;
+    }
+
+    public void async()
+    {
+        this.setOperation(Operation.GET_BALANCE_ASYNC);
     }
 }

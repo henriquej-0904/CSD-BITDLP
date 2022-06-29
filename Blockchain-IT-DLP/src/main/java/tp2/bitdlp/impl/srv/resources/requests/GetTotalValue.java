@@ -1,23 +1,23 @@
 package tp2.bitdlp.impl.srv.resources.requests;
 
-import tp2.bitdlp.api.AccountId;
-
 public class GetTotalValue extends Request {
 
-    private AccountId[] accounts;
-    
-    private static final long serialVersionUID = 3L;
+    private byte[][] accounts;
 
-    public GetTotalValue(AccountId[] accounts){
+    public GetTotalValue(){
+        super(Operation.GET_TOTAL_VALUE);
+    }
+
+    public GetTotalValue(byte[][] accounts){
         super(Operation.GET_TOTAL_VALUE);
         this.accounts = accounts;
     }
 
-    public AccountId[] getAccounts() {
+    public byte[][] getAccounts() {
         return accounts;
     }
 
-    public void setAccounts(AccountId[] accounts) {
+    public void setAccounts(byte[][] accounts) {
         this.accounts = accounts;
     }
 }

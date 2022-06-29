@@ -2,6 +2,7 @@
 
 replicaId=$1
 
+server_port=`expr 8080 + $replicaId`
 mongo_port=`expr 27017 + $replicaId`
 
 docker run --rm -it --network host \
@@ -10,4 +11,4 @@ docker run --rm -it --network host \
 -v "$(pwd)/db-config.properties:/app/db-config.properties" \
 -e MONGO_DB_CONNECTION_STRING="mongodb://root:password@localhost:$mongo_port" \
 csd-tp2-blockchain-it-dlp-55065-52464 -agentlib:jdwp=transport=dt_socket,server=y,address=5555 \
--Dlogback.configurationFile="./config/logback.xml" tp2.bitdlp.impl.srv.BFTSMaRtServer $*
+-Dlogback.configurationFile="./config/logback.xml" tp2.bitdlp.impl.srv.BFTSMaRtServer $replicaId $server_port

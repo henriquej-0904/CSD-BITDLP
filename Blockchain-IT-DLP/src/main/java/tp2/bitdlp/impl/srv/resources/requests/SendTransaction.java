@@ -1,31 +1,88 @@
 package tp2.bitdlp.impl.srv.resources.requests;
 
-import tp2.bitdlp.api.operations.LedgerTransaction;
+import tp2.bitdlp.util.Pair;
 
 public class SendTransaction extends Request {
-    private static final long serialVersionUID = 9032490L;
 
-    private LedgerTransaction transaction;
+    private Pair<byte[],byte[]> originDestPair;
+    private int value;
+    private String accountSignature;
+    private int nonce;
+
+    public SendTransaction() {
+        super(Operation.SEND_TRANSACTION);
+    }
 
     /**
      * @param transaction
      */
-    public SendTransaction(LedgerTransaction transaction) {
+    public SendTransaction(Pair<byte[],byte[]> originDestPair, int value,
+    String accountSignature, int nonce) {
         super(Operation.SEND_TRANSACTION);
-        this.transaction = transaction;
+        this.originDestPair = originDestPair;
+        this.value = value;
+        this.accountSignature = accountSignature;
+        this.nonce = nonce;
     }
 
     /**
-     * @return the transaction
+     * @return the originDestPair
      */
-    public LedgerTransaction getTransaction() {
-        return transaction;
+    public Pair<byte[], byte[]> getOriginDestPair() {
+        return originDestPair;
     }
 
     /**
-     * @param transaction the transaction to set
+     * @param originDestPair the originDestPair to set
      */
-    public void setTransaction(LedgerTransaction transaction) {
-        this.transaction = transaction;
+    public void setOriginDestPair(Pair<byte[], byte[]> originDestPair) {
+        this.originDestPair = originDestPair;
+    }
+
+    /**
+     * @return the value
+     */
+    public int getValue() {
+        return value;
+    }
+
+    /**
+     * @param value the value to set
+     */
+    public void setValue(int value) {
+        this.value = value;
+    }
+
+    /**
+     * @return the accountSignature
+     */
+    public String getAccountSignature() {
+        return accountSignature;
+    }
+
+    /**
+     * @param accountSignature the accountSignature to set
+     */
+    public void setAccountSignature(String accountSignature) {
+        this.accountSignature = accountSignature;
+    }
+
+    /**
+     * @return the nonce
+     */
+    public int getNonce() {
+        return nonce;
+    }
+
+    /**
+     * @param nonce the nonce to set
+     */
+    public void setNonce(int nonce) {
+        this.nonce = nonce;
+    }
+
+    public void async()
+    {
+        this.setOperation(Operation.SEND_TRANSACTION_ASYNC);
     }
 }

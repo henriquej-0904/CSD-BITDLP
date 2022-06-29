@@ -13,8 +13,12 @@ import java.util.Base64;
 import java.util.Calendar;
 import java.util.logging.Logger;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 public class Utils
 {
+    public static final ObjectMapper json = new ObjectMapper();
+
     public static void logError(Exception e, Logger log)
     {
         StringWriter sw = new StringWriter();
@@ -46,6 +50,8 @@ public class Utils
             throw new RuntimeException(ex);
         }
     }
+
+    
 
     public static String printDate(SimpleDateFormat format, Calendar calendar)
     {

@@ -6,11 +6,10 @@ import java.util.Properties;
 
 import tp2.bitdlp.api.Account;
 import tp2.bitdlp.api.AccountId;
-import tp2.bitdlp.api.operations.LedgerDeposit;
-import tp2.bitdlp.api.operations.LedgerOperation;
-import tp2.bitdlp.api.operations.LedgerTransaction;
 import tp2.bitdlp.data.mongo.LedgerDBWithMongo;
-import tp2.bitdlp.util.Result;
+import tp2.bitdlp.pow.block.BCBlock;
+import tp2.bitdlp.pow.transaction.LedgerTransaction;
+import tp2.bitdlp.util.result.Result;
 import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response.Status;
@@ -123,24 +122,17 @@ public abstract class LedgerDBlayer
     public abstract Result<Integer> getGlobalLedgerValue();
 
     /**
-	 * Loads money into an account.
-	 *
-     * @param deposit The value to load into the account.
-	 */
-    public abstract Result<Void> loadMoney(LedgerDeposit deposit);
-
-    /**
 	 * Transfers money from an origin to a destination.
 	 *
 	 * @param transaction The transaction to perform.
 	 */
-    public abstract Result<Void> sendTransaction(LedgerTransaction transaction);
+    //public abstract Result<Void> sendTransaction(LedgerTransaction transaction);
 
     /**
      * Obtains the current Ledger.
      * @return The current Ledger.
      */
-    public abstract Result<LedgerOperation[]> getLedger();
+    public abstract Result<BCBlock[]> getLedger();
 
     /**
      * Load a ledger state
@@ -153,7 +145,35 @@ public abstract class LedgerDBlayer
      * @return ledger state
      */
     public abstract Result<LedgerState> getState();
-    
+
+
+
+    /**
+	 * Verifies if the transaction is valid.
+	 *
+	 * @param transaction The transaction to perform.
+	 */
+    public abstract Result<Void> verifySendTransaction(LedgerTransaction transaction);
+
+    /**
+     * Check if the blockchain is empty.
+     * @return true if the blockchain is empty.
+     */
+    public abstract Result<Boolean> emptyBlockchain();
+
+    /**
+     * Get the hash of the last block in the blockchain.
+     * @return The hash of the last block in the blockchain.
+     */
+    public abstract Result<String> getPreviousBlockHash();
+
+    /**
+     * Add a block to the ledger.
+     * @param block
+     * @return The hash of the block if success.
+     */
+    public abstract Result<String> addBlock(BCBlock block);
+
 
     protected <T> Result<T> accountAlreadyExistsConflict(AccountId id)
     {
