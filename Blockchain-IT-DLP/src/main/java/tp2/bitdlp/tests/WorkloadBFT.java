@@ -32,11 +32,14 @@ public class WorkloadBFT extends Workload
 
     protected Entry<AccountId, KeyPair> miner;
 
+    protected LatencyThroughputCalc mineStats;
+
     public WorkloadBFT(String replicaId, URI endpoint, int nUsers, int nAccounts,
         int fReplicas) throws MalformedURLException
     {
         super(replicaId, endpoint, nUsers, nAccounts);
         this.fReplicas = fReplicas;
+        this.mineStats = new LatencyThroughputCalc();
     }
 
     public static void main(String[] args) throws MalformedURLException
@@ -56,13 +59,14 @@ public class WorkloadBFT extends Workload
         WorkloadBFT workload = new WorkloadBFT(replicaId, endpoint, nUsers, nAccounts, fReplicas);
         workload.run();
 
-        /* System.out.println("Latencies:");
-        System.out.println(workload.latencies);
-        System.out.println(); */
-
         System.out.println("Status Codes:");
         System.out.println(workload.statusCodes);
         System.out.println();
+
+        System.out.println("Stats:");
+        System.out.println(workload.stats);
+        System.out.println();
+        System.out.println("Mining stats: " + workload.mineStats);
     }
 
     @Override
@@ -203,7 +207,7 @@ public class WorkloadBFT extends Workload
         BCBlock block = result.value();
 
         // mine block
-        System.out.println("Mining block...");
+        System.err.println("Mining block...");
 
         long t1 = System.currentTimeMillis();
 
@@ -219,27 +223,30 @@ public class WorkloadBFT extends Workload
 
         long t2 = System.currentTimeMillis();
 
-        long time = (t2 - t1) / 1000;
-        System.out.println("Mined block in " + time + "s");
+        long time = (t2 - t1);
+
+        this.mineStats.addLatency(time);
+
+        System.err.println("Mined block in " + time + "ms");
 
         // propose block
         if (proposeBlockBFT(client, block))
         {
-            System.out.println("Block accepted and added to the blockchain!");
+            System.err.println("Block accepted and added to the blockchain!");
 
             Result<Integer> balanceRes = requestBFTOp(() -> client.getBalanceBFT(this.miner.getKey()),
                 tp2.bitdlp.impl.srv.resources.requests.Request.Operation.GET_BALANCE_ASYNC);
 
             if (balanceRes.isOK())
             {
-                System.out.println("Current miner balance: " + balanceRes.value());
+                System.err.println("Current miner balance: " + balanceRes.value());
             }
 
             return true;
         }
         else
         {
-            System.out.println("The block was invalid \\:");
+            System.err.println("The block was invalid \\:");
             return true;
         }
     }
@@ -250,7 +257,7 @@ public class WorkloadBFT extends Workload
         Pair<Result<T>, ReplyWithSignatures> result = request.request();
         long after = System.currentTimeMillis();
 
-        this.latencies.get(operation).add(after - before);
+        getStats(operation).addLatency(after - before);
         
         Map<Status, Integer> statusCodes = this.statusCodes.get(operation);
         Status status = Status.fromStatusCode(result.getLeft().error());

@@ -8,8 +8,6 @@ import java.security.KeyStore;
 import java.security.SecureRandom;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.stream.Collectors;
@@ -21,6 +19,7 @@ import tp2.bitdlp.api.AccountId;
 import tp2.bitdlp.api.UserId;
 import tp2.bitdlp.impl.client.InvalidServerSignatureException;
 import tp2.bitdlp.impl.client.LedgerClient;
+import tp2.bitdlp.impl.srv.resources.requests.Request.Operation;
 import tp2.bitdlp.util.Crypto;
 import tp2.bitdlp.util.result.Result;
 import jakarta.ws.rs.core.Response.Status;
@@ -33,7 +32,7 @@ public class Workload implements Runnable
     }
 
     // statistics
-    protected Map<tp2.bitdlp.impl.srv.resources.requests.Request.Operation, List<Long>> latencies;
+    protected Map<tp2.bitdlp.impl.srv.resources.requests.Request.Operation, LatencyThroughputCalc> stats;
     protected Map<tp2.bitdlp.impl.srv.resources.requests.Request.Operation, Map<Status, Integer>> statusCodes;
     protected int nUsers, nAccounts;
 
@@ -50,8 +49,7 @@ public class Workload implements Runnable
 
     public Workload(String replicaId, URI endpoint, int nUsers, int nAccounts) throws MalformedURLException
     {
-        this.latencies = Stream.of(tp2.bitdlp.impl.srv.resources.requests.Request.Operation.values())
-            .collect(Collectors.toUnmodifiableMap((op) -> op, (op) -> new LinkedList<>()));
+        this.stats = new HashMap<>();
         
         this.statusCodes = Stream.of(tp2.bitdlp.impl.srv.resources.requests.Request.Operation.values())
             .collect(Collectors.toUnmodifiableMap((op) -> op, (op) -> new HashMap<>()));
@@ -230,7 +228,7 @@ public class Workload implements Runnable
         Result<T> result = request.request();
         long after = System.currentTimeMillis();
 
-        this.latencies.get(operation).add(after - before);
+        getStats(operation).addLatency(after - before);
         
         Map<Status, Integer> statusCodes = this.statusCodes.get(operation);
         Status status = Status.fromStatusCode(result.error());
@@ -243,6 +241,11 @@ public class Workload implements Runnable
         statusCodes.put(status, statusCodeCounter);
 
         return result;
+    }
+
+    protected LatencyThroughputCalc getStats(Operation operation)
+    {
+        return this.stats.computeIfAbsent(operation, (op) -> new LatencyThroughputCalc());
     }
 
     //#region random users & accounts

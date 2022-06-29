@@ -6,9 +6,9 @@ public class Settings
 
     public static final int DEFAULT_DIFFICULTY_TARGET = 0x0000FFFF;
 
-    public static final int DEFAULT_NUM_TRANSACTIONS_IN_BLOCK = 32;
+    public static final int DEFAULT_NUM_TRANSACTIONS_IN_BLOCK = 128;
 
-    public static final int DEFAULT_GENERATION_TRANSACTION_VALUE = 100;
+    public static final int DEFAULT_GENERATION_TRANSACTION_VALUE = 1000;
 
     /**
      * Get the current version of BC blocks.
