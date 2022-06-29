@@ -336,11 +336,6 @@ public class LedgerDBinMemory extends LedgerDBlayer
         {
             getWriteLock().lock();
 
-            /* if (!this.emptyLedger &&
-                !this.previousBlockHash.equals(block.getHeader().getPreviousHash()))
-                return Result.error(new WebApplicationException(
-                    "Invalid previous block hash!", Status.CONFLICT)); */
-
             this.ledger.add(block);
 
             this.emptyLedger = false;

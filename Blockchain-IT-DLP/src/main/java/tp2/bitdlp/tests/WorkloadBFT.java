@@ -164,21 +164,22 @@ public class WorkloadBFT extends Workload
                     System.in.read();
                     
                 } catch (IOException e) {
-                    // TODO Auto-generated catch block
                     e.printStackTrace();
                 }
             };
 
-            Iterator<Map<AccountId, KeyPair>> accountsIt = this.accounts.values().iterator();
-            accountsIt.next();
-            for (Entry<AccountId, KeyPair> account : accountsIt.next().entrySet()) {
-                if (account.getKey().equals(this.miner.getKey()))
-                    continue;
-                
-                requestBFTOp(() -> client.sendTransactionBFT(this.miner.getKey(), account.getKey(),
-                5, this.miner.getValue()),
-                tp2.bitdlp.impl.srv.resources.requests.Request.Operation.SEND_TRANSACTION_ASYNC);             
+            for ( Map<AccountId, KeyPair> m : this.accounts.values())
+            {
+                for (Entry<AccountId, KeyPair> account : m.entrySet()) {
+                    if (account.getKey().equals(this.miner.getKey()))
+                        continue;
+                    
+                    requestBFTOp(() -> client.sendTransactionBFT(this.miner.getKey(), account.getKey(),
+                    1, this.miner.getValue()),
+                    tp2.bitdlp.impl.srv.resources.requests.Request.Operation.SEND_TRANSACTION_ASYNC);             
+                }
             }
+            
 
             //sendTransactionBFT(client);
         }
