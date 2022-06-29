@@ -1,4 +1,4 @@
-package tp2.bitdlp.data.mongo.operations;
+package tp2.bitdlp.data.mongo;
 
 import org.bson.types.ObjectId;
 

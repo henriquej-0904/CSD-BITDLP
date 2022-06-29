@@ -1,10 +1,8 @@
 package tp2.bitdlp.data.mongo;
 
-import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
-
-import org.bson.types.ObjectId;
+import java.util.stream.Collectors;
 
 import tp2.bitdlp.api.Account;
 import tp2.bitdlp.api.AccountId;
@@ -18,7 +16,7 @@ public class AccountDAO {
     private AccountId accountId;
     private UserId owner;
 
-    private List<ObjectId> operations;
+    private List<LedgerTransactionDAO> operations;
 
     private int balance;
 
@@ -93,14 +91,14 @@ public class AccountDAO {
     /**
      * @return the operations
      */
-    public List<ObjectId> getOperations() {
+    public List<LedgerTransactionDAO> getOperations() {
         return operations;
     }
 
     /**
      * @param operations the operations to set
      */
-    public void setOperations(List<ObjectId> operations) {
+    public void setOperations(List<LedgerTransactionDAO> operations) {
         this.operations = operations;
     }
 
@@ -108,7 +106,9 @@ public class AccountDAO {
     {
         Account account = new Account(this.accountId, this.owner);
         account.setBalance(this.balance);
-        account.setOperations(new ArrayList<>(operations.size()));
+        account.setOperations(this.operations.stream()
+            .map(LedgerTransactionDAO::toLedgerTransaction)
+            .collect(Collectors.toList()));
 
         return account;
     }
