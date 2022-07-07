@@ -3,7 +3,7 @@ package tp2.bitdlp.pow.block;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 
-import tp2.bitdlp.pow.Settings;
+import tp2.bitdlp.impl.srv.config.ServerConfig;
 
 public class BCBlockHeader
 {
@@ -31,8 +31,8 @@ public class BCBlockHeader
      */
     public BCBlockHeader(String previousHash, String merkleRoot, int timeStamp)
     {
-        this.version = Settings.getCurrentVersion();
-        this.diffTarget = Settings.getDifficultyTarget();
+        this.version = ServerConfig.getCurrentVersion();
+        this.diffTarget = ServerConfig.getDifficultyTarget();
         this.nonce = 0;
 
         this.previousHash = previousHash;
