@@ -36,7 +36,7 @@ public class BFTSMaRtServer
 			int asyncProxyId = replicaId + 11;
 			int port = Integer.parseInt(args[1]);
 
-			ServerConfig.setReplicaId(replicaId);
+			ServerConfig.init(replicaId);
 
             AccountsResourceWithBFTSMaRt.setProxy(new ServiceProxy(proxyId));
 			AccountsResourceWithBFTSMaRt.setAsyncProxy(new AsynchServiceProxy(asyncProxyId, null, new ReplyWithSignatureComparator(), null, null));

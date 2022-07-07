@@ -1,12 +1,12 @@
 package tp2.bitdlp.tests;
 
-import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.security.KeyPair;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import jakarta.ws.rs.core.Response.Status;
 import tp2.bitdlp.api.AccountId;
@@ -34,23 +34,23 @@ public class WorkloadBFT extends Workload
 
     protected LatencyThroughputCalc mineStats;
 
-    protected int perReads, perWrites;
+    //protected int perReads, perWrites;
 
     public WorkloadBFT(String replicaId, URI endpoint, int nUsers, int nAccounts,
-        int fReplicas, int perReads) throws MalformedURLException
+        int fReplicas) throws MalformedURLException
     {
         super(replicaId, endpoint, nUsers, nAccounts);
         this.fReplicas = fReplicas;
         this.mineStats = new LatencyThroughputCalc();
-        this.perReads = perReads;
-        this.perWrites = 100 - perReads;
+        //this.perReads = perReads;
+        //this.perWrites = 100 - perReads;
     }
 
     public static void main(String[] args) throws MalformedURLException
     {
-        if (args.length < 4)
+        if (args.length < 3)
         {
-            System.err.println("Usage: <endpoint> <replicaID> <fReplicas> <% reads>");
+            System.err.println("Usage: <endpoint> <replicaID> <fReplicas>");
             System.exit(1);
         }
 
@@ -59,9 +59,9 @@ public class WorkloadBFT extends Workload
         int nUsers = 2;
         int nAccounts = 1000;
         int fReplicas = Integer.parseInt(args[2]);
-        int perReads = Integer.parseInt(args[3]);
+        //int perReads = Integer.parseInt(args[3]);
 
-        WorkloadBFT workload = new WorkloadBFT(replicaId, endpoint, nUsers, nAccounts, fReplicas, perReads);
+        WorkloadBFT workload = new WorkloadBFT(replicaId, endpoint, nUsers, nAccounts, fReplicas);
         workload.run();
 
         System.out.println("Status Codes:");
@@ -90,25 +90,33 @@ public class WorkloadBFT extends Workload
             // choose an account to be the miner.
             this.miner = this.accounts.values().iterator().next().entrySet().iterator().next();
 
-            // writes
-            int nWrites = (int)((double)5 * ((double)perWrites / (double)100));
-            for (int i = 0; i < nWrites; i++)
+            AtomicBoolean stopReads = new AtomicBoolean(false);
+            Thread readsThread = new Thread(() ->
+                {
+                    while(!stopReads.get())
+                    {
+                        // reads
+                        if (random.nextBoolean())
+                            getAccounts(client);
+                        else
+                            getBalanceBFT(client);
+                        
+                        getTotalValue(client);
+                        getGlobalLedgerValue(client);
+                        getLedger(client);
+                    }
+                });
+
+            readsThread.start();
+
+            for (int i = 0; i < 3; i++)
             {
                 // writes
                 mineBlocksAndSendTransactions(client);
             }
 
-            int nReads = 5 - nWrites;
-            for (int i = 0; i < nReads; i++)
-            {
-                // reads
-                getAccounts(client);
-                getBalanceBFT(client);
-
-                getTotalValue(client);
-                getGlobalLedgerValue(client);
-                getLedger(client);
-            }
+            stopReads.set(true);
+            readsThread.join();
         }
         catch (Exception e)
         {

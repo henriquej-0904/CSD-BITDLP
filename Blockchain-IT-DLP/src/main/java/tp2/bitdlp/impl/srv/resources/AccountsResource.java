@@ -30,7 +30,6 @@ import tp2.bitdlp.impl.srv.resources.requests.GetBalance;
 import tp2.bitdlp.impl.srv.resources.requests.GetTotalValue;
 import tp2.bitdlp.impl.srv.resources.requests.ProposeMinedBlock;
 import tp2.bitdlp.impl.srv.resources.requests.SendTransaction;
-import tp2.bitdlp.pow.Settings;
 import tp2.bitdlp.pow.block.BCBlock;
 import tp2.bitdlp.pow.transaction.InvalidTransactionException;
 import tp2.bitdlp.pow.transaction.LedgerTransaction;
@@ -494,7 +493,7 @@ public abstract class AccountsResource implements Accounts
         // get transactions from pool
         List<LedgerTransaction> transactions =
             this.transactionsToMine
-            .getTransactions(Settings.getValidNumberTransactionsInBlock() - 1);
+            .getTransactions(ServerConfig.getValidNumberTransactionsInBlock() - 1);
 
         if (transactions == null)
             throw new WebApplicationException(
@@ -515,7 +514,7 @@ public abstract class AccountsResource implements Accounts
 
     private LedgerTransaction createGenerationTransaction(AccountId minerId)
     {
-        return LedgerTransaction.newGenerationTransaction(minerId, Settings.getGenerationTransactionValue());
+        return LedgerTransaction.newGenerationTransaction(minerId, ServerConfig.getGenerationTransactionValue());
     }
 
 
@@ -527,8 +526,8 @@ public abstract class AccountsResource implements Accounts
                     clientParams.getBlock().digest());
 
             BCBlock block = clientParams.getBlock();
-            boolean check = block.getHeader().getVersion() == Settings.getCurrentVersion()
-                    && block.getHeader().getDiffTarget() == Settings.getDifficultyTarget()
+            boolean check = block.getHeader().getVersion() == ServerConfig.getCurrentVersion()
+                    && block.getHeader().getDiffTarget() == ServerConfig.getDifficultyTarget()
                     && block.getHeader().getMerkleRoot()
                             .equals(Utils.toHex(block.getTransactions().getMerkleRootHash()))
                     && block.isBlockMined();
@@ -549,9 +548,9 @@ public abstract class AccountsResource implements Accounts
                     throw new BadRequestException("Expected genesis block.");
             } else {
                 // verify exists n transactions
-                if (transactions.size() < Settings.getValidNumberTransactionsInBlock())
+                if (transactions.size() < ServerConfig.getValidNumberTransactionsInBlock())
                     throw new BadRequestException("Expected at least " +
-                            Settings.getValidNumberTransactionsInBlock() + " transactions");
+                    ServerConfig.getValidNumberTransactionsInBlock() + " transactions");
 
                 // verify previous hash
                 if (!this.db.getPreviousBlockHash().resultOrThrow().equals(block.getHeader().getPreviousHash()))
@@ -567,7 +566,7 @@ public abstract class AccountsResource implements Accounts
     private void verifyGenerationTransaction(AccountId minerId, LedgerTransaction transaction)
     {
         boolean result =transaction.getType() == Type.GENERATION_TRANSACTION &&
-           transaction.getValue() == Settings.getGenerationTransactionValue()
+           transaction.getValue() == ServerConfig.getGenerationTransactionValue()
            && minerId.equals(transaction.getDest())
            && transaction.getOrigin() == null;
 
