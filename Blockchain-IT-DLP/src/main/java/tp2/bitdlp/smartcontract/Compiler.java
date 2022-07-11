@@ -16,7 +16,7 @@ import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.InternalServerErrorException;
 import tp2.bitdlp.util.result.Result;
 
-public class Compiler
+class Compiler
 {
     protected static final JavaCompiler javac = ToolProvider.getSystemJavaCompiler();
     
