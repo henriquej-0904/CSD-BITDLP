@@ -1,6 +1,7 @@
 package tp2.bitdlp.api.service;
 
 import tp2.bitdlp.api.Account;
+import tp2.bitdlp.impl.srv.resources.requests.SmartContractValidation;
 import tp2.bitdlp.pow.block.BCBlock;
 import tp2.bitdlp.pow.transaction.LedgerTransaction;
 import tp2.bitdlp.util.Pair;
@@ -116,5 +117,14 @@ public interface Accounts {
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     BCBlock getBlockToMine(@PathParam("minerAccountId") String minerAccountId);
+
+    /**
+     * Submit a transaction for smart-contract validation.
+     * @param param The smart-contract and the transaction to validade.
+     **/
+    @Path("/smart-contract")
+    @POST
+    @Consumes(MediaType.APPLICATION_JSON)
+    void smartContractValidation(SmartContractValidation param);
 
 }

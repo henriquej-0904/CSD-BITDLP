@@ -30,11 +30,13 @@ import tp2.bitdlp.impl.srv.resources.requests.GetBalance;
 import tp2.bitdlp.impl.srv.resources.requests.GetTotalValue;
 import tp2.bitdlp.impl.srv.resources.requests.ProposeMinedBlock;
 import tp2.bitdlp.impl.srv.resources.requests.SendTransaction;
+import tp2.bitdlp.impl.srv.resources.requests.SmartContractValidation;
 import tp2.bitdlp.pow.block.BCBlock;
 import tp2.bitdlp.pow.transaction.InvalidTransactionException;
 import tp2.bitdlp.pow.transaction.LedgerTransaction;
 import tp2.bitdlp.pow.transaction.LedgerTransaction.Type;
 import tp2.bitdlp.pow.transaction.pool.TransactionsToMine;
+import tp2.bitdlp.smartcontract.SmartContract;
 import tp2.bitdlp.util.Crypto;
 import tp2.bitdlp.util.Pair;
 import tp2.bitdlp.util.Utils;
@@ -599,6 +601,51 @@ public abstract class AccountsResource implements Accounts
         return this.db.addBlock(clientParams.getBlock());
     }
 
+
+    @Override
+    public void smartContractValidation(SmartContractValidation param)
+    {
+        try {
+            init();
+
+            AccountId origin = getAccountId(param.getOriginDestPair().getLeft());
+            AccountId dest = getAccountId(param.getOriginDestPair().getRight());
+            
+            // check signature
+            ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES * 2);
+            buffer.putInt(param.getValue()).putInt(param.getNonce());
+            byte[] bufferArray = buffer.array();
+
+            if (!verifySignature(origin, param.getSignature(), param.getName().getBytes(),
+                param.getCode(), origin.getObjectId(), dest.getObjectId(),
+                bufferArray))
+                throw new ForbiddenException("Invalid signature");
+
+            // run smart-contract and validate transaction
+            SmartContract smartContract = new SmartContract(param.getName(), param.getCode());
+            smartContract.compile().resultOrThrow();
+            boolean validated = smartContract.execute(
+                LedgerTransaction.newTransaction(origin, dest, param.getValue(), param.getNonce())
+                ).resultOrThrow();
+
+            if (!validated)
+                throw new WebApplicationException("The smart-contract dit not validate the transaction");
+
+            String serverSig = sign(ServerConfig.getKeyPair().getPrivate(),
+            param.getName().getBytes(), param.getCode(), origin.getObjectId(),
+            dest.getObjectId(), bufferArray);
+
+
+            throw new WebApplicationException(
+                Response.status(Status.OK)
+                        .header(Accounts.SERVER_SIG, serverSig)
+                        .build());
+
+        } catch (WebApplicationException e) {
+            LOG.info(e.getMessage());
+            throw e;
+        }
+    }
 
     protected byte[] toJson(Object obj)
     {
