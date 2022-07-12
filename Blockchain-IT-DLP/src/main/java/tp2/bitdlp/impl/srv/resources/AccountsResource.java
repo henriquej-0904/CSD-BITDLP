@@ -45,6 +45,7 @@ import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.InternalServerErrorException;
 import jakarta.ws.rs.WebApplicationException;
+import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
 
@@ -603,7 +604,7 @@ public abstract class AccountsResource implements Accounts
 
 
     @Override
-    public void smartContractValidation(SmartContractValidation param)
+    public Pair<String, String> smartContractValidation(SmartContractValidation param)
     {
         try {
             init();
@@ -638,7 +639,8 @@ public abstract class AccountsResource implements Accounts
 
             throw new WebApplicationException(
                 Response.status(Status.OK)
-                        .header(Accounts.SERVER_SIG, serverSig)
+                        .entity(new Pair<>(ServerConfig.getReplicaId(), serverSig))
+                        .type(MediaType.APPLICATION_JSON)
                         .build());
 
         } catch (WebApplicationException e) {

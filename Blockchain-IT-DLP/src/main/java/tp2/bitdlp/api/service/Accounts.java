@@ -121,10 +121,12 @@ public interface Accounts {
     /**
      * Submit a transaction for smart-contract validation.
      * @param param The smart-contract and the transaction to validade.
+     * @return A pair of serverId and signature.
      **/
     @Path("/smart-contract")
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
-    void smartContractValidation(SmartContractValidation param);
+    @Produces(MediaType.APPLICATION_JSON)
+    Pair<String, String> smartContractValidation(SmartContractValidation param);
 
 }
