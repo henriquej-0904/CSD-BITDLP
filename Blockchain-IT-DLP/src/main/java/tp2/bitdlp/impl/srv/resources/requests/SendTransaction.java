@@ -1,5 +1,6 @@
 package tp2.bitdlp.impl.srv.resources.requests;
 
+import tp2.bitdlp.pow.transaction.SmartContract;
 import tp2.bitdlp.util.Pair;
 
 public class SendTransaction extends Request {
@@ -9,6 +10,8 @@ public class SendTransaction extends Request {
     private String accountSignature;
     private int nonce;
 
+    private SmartContract smartContract;
+
     public SendTransaction() {
         super(Operation.SEND_TRANSACTION);
     }
@@ -17,12 +20,13 @@ public class SendTransaction extends Request {
      * @param transaction
      */
     public SendTransaction(Pair<byte[],byte[]> originDestPair, int value,
-    String accountSignature, int nonce) {
+    String accountSignature, int nonce, SmartContract smartContract) {
         super(Operation.SEND_TRANSACTION);
         this.originDestPair = originDestPair;
         this.value = value;
         this.accountSignature = accountSignature;
         this.nonce = nonce;
+        this.smartContract = smartContract;
     }
 
     /**
@@ -81,8 +85,24 @@ public class SendTransaction extends Request {
         this.nonce = nonce;
     }
 
+    /**
+     * @return the smartContract
+     */
+    public SmartContract getSmartContract() {
+        return smartContract;
+    }
+
+    /**
+     * @param smartContract the smartContract to set
+     */
+    public void setSmartContract(SmartContract smartContract) {
+        this.smartContract = smartContract;
+    }
+
     public void async()
     {
         this.setOperation(Operation.SEND_TRANSACTION_ASYNC);
     }
+
+    
 }

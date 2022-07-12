@@ -22,6 +22,7 @@ import jakarta.ws.rs.core.Response.Status;
 import tp2.bitdlp.api.AccountId;
 import tp2.bitdlp.api.service.Accounts;
 import tp2.bitdlp.api.service.AccountsWithBFTOps;
+import tp2.bitdlp.impl.srv.resources.requests.SendTransaction;
 import tp2.bitdlp.pow.block.BCBlock;
 import tp2.bitdlp.pow.transaction.LedgerTransaction;
 import tp2.bitdlp.util.Crypto;
@@ -89,19 +90,33 @@ public class LedgerClientBFT extends LedgerClient
     public Pair<Result<LedgerTransaction>, ReplyWithSignatures> sendTransactionBFT(AccountId originId, AccountId destId, int value, KeyPair originAccountKeys,
         int nonce) throws InvalidServerSignatureException, InvalidReplyWithSignaturesException
     {
-        ByteBuffer buffer = ByteBuffer.allocate(2 * Integer.BYTES);
-        buffer.putInt(value);
-        buffer.putInt(nonce);
+        return sendTransactionBFT(
+            new SendTransaction(new Pair<>(originId.getObjectId(), destId.getObjectId()),
+            value, null, nonce, null), originAccountKeys);
+    }
 
-        String signature = sign(originAccountKeys.getPrivate(), originId.getObjectId(), destId.getObjectId(), buffer.array());
+    public Pair<Result<LedgerTransaction>, ReplyWithSignatures>
+        sendTransactionBFT(SendTransaction params, KeyPair originAccountKeys) throws InvalidServerSignatureException, InvalidReplyWithSignaturesException
+    {
+        ByteBuffer buffer = ByteBuffer.allocate(2 * Integer.BYTES);
+        buffer.putInt(params.getValue());
+        buffer.putInt(params.getNonce());
+
+        String signature = params.getSmartContract() == null ? sign(originAccountKeys.getPrivate(),
+            params.getOriginDestPair().getLeft(), params.getOriginDestPair().getRight(),
+            buffer.array())
+        :
+        sign(originAccountKeys.getPrivate(),
+            params.getOriginDestPair().getLeft(), params.getOriginDestPair().getRight(),
+            buffer.array(), params.getSmartContract().getName().getBytes(),
+            params.getSmartContract().getCode());
+
+        params.setAccountSignature(signature);
 
         return requestBFTOp(this.client.target(this.endpoint).path(AccountsWithBFTOps.PATH)
-            .path("transaction").path(Integer.toString(value))
-            .request()
-            .header(Accounts.ACC_SIG, signature)
-            .header(Accounts.NONCE, nonce)
-            .buildPost(Entity.json(new Pair<>(originId.getObjectId(), destId.getObjectId()))),
-            LedgerTransaction.class);
+        .path("transaction")
+        .request()
+        .buildPost(Entity.json(params)), LedgerTransaction.class);
     }
 
     public Pair<Result<String>, ReplyWithSignatures> proposeMinedBlockBFT(

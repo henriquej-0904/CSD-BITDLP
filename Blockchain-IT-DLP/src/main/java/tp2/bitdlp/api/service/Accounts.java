@@ -1,6 +1,7 @@
 package tp2.bitdlp.api.service;
 
 import tp2.bitdlp.api.Account;
+import tp2.bitdlp.impl.srv.resources.requests.SendTransaction;
 import tp2.bitdlp.impl.srv.resources.requests.SmartContractValidation;
 import tp2.bitdlp.pow.block.BCBlock;
 import tp2.bitdlp.pow.transaction.LedgerTransaction;
@@ -90,12 +91,11 @@ public interface Accounts {
      * @param accountSignature The signature of the account.
      * @param nonce The nonce.
 	 */
-    @Path("/transaction/{value}")
+    @Path("/transaction")
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    LedgerTransaction sendTransaction(Pair<byte[],byte[]> originDestPair, @PathParam("value") int value,
-        @HeaderParam(ACC_SIG) String accountSignature, @HeaderParam(NONCE) int nonce);
+    LedgerTransaction sendTransaction(SendTransaction params);
 
     /**
      * Obtains the current Ledger.

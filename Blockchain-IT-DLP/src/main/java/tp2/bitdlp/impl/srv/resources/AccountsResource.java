@@ -343,23 +343,20 @@ public abstract class AccountsResource implements Accounts
 
 
     @Override
-    public final LedgerTransaction sendTransaction(Pair<byte[], byte[]> originDestPair, int value,
-            String accountSignature, int nonce)
+    public final LedgerTransaction sendTransaction(SendTransaction params)
     {
-        SendTransaction clientParams;
         LedgerTransaction transaction;
 
         try {
             init();
 
-            clientParams = new SendTransaction(originDestPair, value, accountSignature, nonce);
-            transaction = verifySendTransactionParams(clientParams);
+            transaction = verifySendTransactionParams(params);
         } catch (WebApplicationException e) {
             LOG.info(e.getMessage());
             throw e;
         }
 
-        sendTransaction(clientParams, transaction);
+        sendTransaction(params, transaction);
 
         // log operation if successful
         // LOG.info(String.format("ORIGIN: %s, DEST: %s, TYPE: %s, VALUE: %d",
@@ -381,13 +378,32 @@ public abstract class AccountsResource implements Accounts
             buffer.putInt(clientParams.getValue());
             buffer.putInt(clientParams.getNonce());
 
-            if (!verifySignature(originId, clientParams.getAccountSignature(), clientParams.getOriginDestPair().getLeft(),
-                clientParams.getOriginDestPair().getRight(), buffer.array()))
+            boolean checkSig = clientParams.getSmartContract() == null ?
+            verifySignature(originId, clientParams.getAccountSignature(),
+                clientParams.getOriginDestPair().getLeft(),
+                clientParams.getOriginDestPair().getRight(), buffer.array())
+            :
+            verifySignature(originId, clientParams.getAccountSignature(),
+                clientParams.getOriginDestPair().getLeft(),
+                clientParams.getOriginDestPair().getRight(), buffer.array(),
+                clientParams.getSmartContract().getName().getBytes(),
+                clientParams.getSmartContract().getCode());
+            
+            if (!checkSig)
                 throw new ForbiddenException("Invalid Account Signature.");    
         
             try {
                 LedgerTransaction t = LedgerTransaction.newTransaction(originId, destId, clientParams.getValue(), clientParams.getNonce());
                 t.setClientSignature(clientParams.getAccountSignature());
+                t.setSmartContract(clientParams.getSmartContract());
+
+                if (t.getSmartContract() != null)
+                {
+                    if (!t.getSmartContract().verifySignatures(t))
+                        throw new ForbiddenException("Invalid Smart-Contract signatures.");    
+                }
+                    
+
                 t.setHash(t.digest());
                 return t;
             } catch (InvalidTransactionException e) {
@@ -617,9 +633,9 @@ public abstract class AccountsResource implements Accounts
             buffer.putInt(param.getValue()).putInt(param.getNonce());
             byte[] bufferArray = buffer.array();
 
-            if (!verifySignature(origin, param.getSignature(), param.getName().getBytes(),
-                param.getCode(), origin.getObjectId(), dest.getObjectId(),
-                bufferArray))
+            if (!verifySignature(origin, param.getSignature(), origin.getObjectId(),
+                dest.getObjectId(), bufferArray, param.getName().getBytes(),
+                param.getCode()))
                 throw new ForbiddenException("Invalid signature");
 
             // run smart-contract and validate transaction
@@ -630,11 +646,11 @@ public abstract class AccountsResource implements Accounts
                 ).resultOrThrow();
 
             if (!validated)
-                throw new WebApplicationException("The smart-contract dit not validate the transaction");
+                throw new WebApplicationException("The smart-contract did not validate the transaction");
 
             String serverSig = sign(ServerConfig.getKeyPair().getPrivate(),
-            param.getName().getBytes(), param.getCode(), origin.getObjectId(),
-            dest.getObjectId(), bufferArray);
+                origin.getObjectId(), dest.getObjectId(), bufferArray,
+                param.getName().getBytes(), param.getCode());
 
 
             throw new WebApplicationException(

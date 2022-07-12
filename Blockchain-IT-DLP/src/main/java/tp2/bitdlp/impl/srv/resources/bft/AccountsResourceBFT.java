@@ -76,16 +76,12 @@ public abstract class AccountsResourceBFT extends AccountsResource implements Ac
 
 
     @Override
-    public ReplyWithSignatures sendTransactionBFT(Pair<byte[], byte[]> originDestPair,
-        int value, String accountSignature, int nonce)
+    public ReplyWithSignatures sendTransactionBFT(SendTransaction params)
     {
-        SendTransaction clientParams;
-
         try {
             init();
 
-            clientParams = new SendTransaction(originDestPair, value, accountSignature, nonce);
-            clientParams.async();
+            params.async();
         } catch (WebApplicationException e) {
             LOG.info(e.getMessage());
             throw e;
@@ -95,7 +91,7 @@ public abstract class AccountsResourceBFT extends AccountsResource implements Ac
         String signature;
 
         try {
-            reply = sendTransactionAsync(clientParams);
+            reply = sendTransactionAsync(params);
             signature = signReplyWithSignatures(reply);
         } catch (WebApplicationException e) {
             if (e.getResponse().getStatus() == 500)

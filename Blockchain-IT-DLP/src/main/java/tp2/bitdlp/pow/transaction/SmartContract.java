@@ -79,6 +79,9 @@ public class SmartContract
 
     public boolean verifySignatures(LedgerTransaction transaction)
     {
+        if (signatures == null || signatures.isEmpty())
+            return false;
+        
         Map<String, PublicKey> keys = ServerConfig.getAllReplicaKeys();
 
         ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES * 2);
