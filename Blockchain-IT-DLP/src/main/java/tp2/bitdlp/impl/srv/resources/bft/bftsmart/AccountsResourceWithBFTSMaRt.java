@@ -23,6 +23,7 @@ import tp2.bitdlp.impl.srv.resources.requests.GetAccount;
 import tp2.bitdlp.impl.srv.resources.requests.GetTotalValue;
 import tp2.bitdlp.impl.srv.resources.requests.ProposeMinedBlock;
 import tp2.bitdlp.impl.srv.resources.requests.SendTransaction;
+import tp2.bitdlp.impl.srv.resources.requests.SmartContractValidation;
 import tp2.bitdlp.pow.block.BCBlock;
 import tp2.bitdlp.pow.transaction.LedgerTransaction;
 import tp2.bitdlp.impl.srv.resources.requests.Request;
@@ -37,7 +38,7 @@ import jakarta.ws.rs.WebApplicationException;
 public class AccountsResourceWithBFTSMaRt extends AccountsResourceBFT
 {
     private static final long ASYNC_TIME_TO_WAIT_MILLIS = 20;
-    private static final long ASYNC_MAX_WAIT_ITER = 2000/ASYNC_TIME_TO_WAIT_MILLIS;
+    private static final long ASYNC_MAX_WAIT_ITER = 60000/ASYNC_TIME_TO_WAIT_MILLIS;
 
     private static BFTSMaRtServerReplica replica;
     private static ServiceProxy proxy;
@@ -211,6 +212,12 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResourceBFT
         return invokeAsync(request, TOMMessageType.ORDERED_REQUEST);
     }
 
+    @Override
+    protected ReplyWithSignatures smartContractValidationAsync(SmartContractValidation param) {
+        byte[] request = toJson(param);
+        return invokeAsync(request, TOMMessageType.UNORDERED_REQUEST);
+    }
+
     public class BFTSMaRtServerReplica extends DefaultSingleRecoverable {
 
         public BFTSMaRtServerReplica(int id) {
@@ -245,6 +252,9 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResourceBFT
                     // ASYNC
                     case GET_BALANCE_ASYNC:
                         result = encodeAndSignReply(getBalance((GetBalance) request));
+                        break;
+                    case SMART_CONTRACT_VALIDATION_ASYNC:
+                        result = encodeAndSignReplyBytes(smartContractValidation((SmartContractValidation) request));
                         break;
                     default:
                         break;
@@ -299,6 +309,10 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResourceBFT
 
                     case PROPOSE_BLOCK_ASYNC:
                         result = encodeAndSignReply(proposeMinedBlock((ProposeMinedBlock) request));
+                        break;
+
+                    case SMART_CONTRACT_VALIDATION_ASYNC:
+                        result = encodeAndSignReplyBytes(smartContractValidation((SmartContractValidation) request));
                         break;
 
                     default:
@@ -465,6 +479,23 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResourceBFT
 
             if (result.isOK() && result.value() != null)
                 reply.setReply(toJson(result.value()));
+
+            try {
+                reply.sign(ServerConfig.getKeyPair().getPrivate());
+                return reply;
+            } catch (Exception e) {
+                throw new InternalServerErrorException(e.getMessage(), e);
+            }
+        }
+
+        protected ReplyWithSignature encodeAndSignReplyBytes(Result<byte[]> result)
+        {
+            ReplyWithSignature reply = new ReplyWithSignature();
+            reply.setReplicaId(ServerConfig.getReplicaId());
+            reply.setStatusCode(result.error());
+
+            if (result.isOK() && result.value() != null)
+                reply.setReply(result.value());
 
             try {
                 reply.sign(ServerConfig.getKeyPair().getPrivate());

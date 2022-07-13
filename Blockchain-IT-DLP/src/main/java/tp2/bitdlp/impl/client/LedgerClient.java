@@ -163,20 +163,8 @@ public class LedgerClient implements Closeable
 
     public Result<LedgerTransaction> sendTransaction(SendTransaction params, KeyPair originAccountKeys) throws InvalidServerSignatureException
     {
-        ByteBuffer buffer = ByteBuffer.allocate(2 * Integer.BYTES);
-        buffer.putInt(params.getValue());
-        buffer.putInt(params.getNonce());
-
-        String signature = params.getSmartContract() == null ? sign(originAccountKeys.getPrivate(),
-            params.getOriginDestPair().getLeft(), params.getOriginDestPair().getRight(),
-            buffer.array())
-        :
-        sign(originAccountKeys.getPrivate(),
-            params.getOriginDestPair().getLeft(), params.getOriginDestPair().getRight(),
-            buffer.array(), params.getSmartContract().getName().getBytes(),
-            params.getSmartContract().getCode());
-
-        params.setAccountSignature(signature);
+        byte[] digest = params.digest();
+        params.setAccountSignature(sign(originAccountKeys.getPrivate(), digest));
 
         Pair<Result<LedgerTransaction>, Response> resultPair = request(this.client.target(this.endpoint).path(Accounts.PATH)
             .path("transaction")

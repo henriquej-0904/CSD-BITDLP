@@ -1,10 +1,12 @@
 package tp2.bitdlp.impl.srv.resources.bft;
 
+import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.InternalServerErrorException;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
+import tp2.bitdlp.api.AccountId;
 import tp2.bitdlp.api.service.Accounts;
 import tp2.bitdlp.api.service.AccountsWithBFTOps;
 import tp2.bitdlp.impl.srv.config.ServerConfig;
@@ -12,10 +14,14 @@ import tp2.bitdlp.impl.srv.resources.AccountsResource;
 import tp2.bitdlp.impl.srv.resources.requests.GetBalance;
 import tp2.bitdlp.impl.srv.resources.requests.ProposeMinedBlock;
 import tp2.bitdlp.impl.srv.resources.requests.SendTransaction;
+import tp2.bitdlp.impl.srv.resources.requests.SmartContractValidation;
 import tp2.bitdlp.pow.block.BCBlock;
+import tp2.bitdlp.pow.transaction.LedgerTransaction;
+import tp2.bitdlp.smartcontract.SmartContract;
 import tp2.bitdlp.util.Pair;
 import tp2.bitdlp.util.Utils;
 import tp2.bitdlp.util.reply.ReplyWithSignatures;
+import tp2.bitdlp.util.result.Result;
 
 /**
  * An abstract class that defines methods and operations for implementing a BFT service.
@@ -170,6 +176,71 @@ public abstract class AccountsResourceBFT extends AccountsResource implements Ac
      * all signed by the replica that responds to the client.
 	 */
     public abstract ReplyWithSignatures proposeMinedBlockAsync(ProposeMinedBlock clientParams);
+
+    @Override
+    public ReplyWithSignatures smartContractValidationBFT(SmartContractValidation param)
+    {
+        try {
+            init();
+        } catch (WebApplicationException e) {
+            Utils.logError(e, LOG);
+            throw e;
+        }
+
+        ReplyWithSignatures reply;
+        String serverSig;
+
+        try {
+            reply = smartContractValidationAsync(param);
+            serverSig = signReplyWithSignatures(reply);
+        } catch (WebApplicationException e) {
+            if (e.getResponse().getStatus() == 500)
+                Utils.logError(e, LOG);
+
+            throw e;
+        }
+
+        Status replyStatus = Status.fromStatusCode(reply.getStatusCode());
+        throw new WebApplicationException(
+                Response.status(replyStatus)
+                .type(MediaType.APPLICATION_JSON)
+                .entity(reply)
+                .header(Accounts.SERVER_SIG, serverSig)
+                .build());
+    }
+
+    protected abstract ReplyWithSignatures smartContractValidationAsync(SmartContractValidation param);
+
+    protected Result<byte[]> smartContractValidation(SmartContractValidation param)
+    {
+        try {
+            AccountId origin = getAccountId(param.getOriginDestPair().getLeft());
+            AccountId dest = getAccountId(param.getOriginDestPair().getRight());
+            
+            // check signature
+            byte[] digest = param.digest();
+
+            if (!verifySignature(origin, param.getSignature(), digest))
+                throw new ForbiddenException("Invalid signature");
+
+            // run smart-contract and validate transaction
+            SmartContract smartContract = new SmartContract(param.getName(), param.getCode());
+            smartContract.compile().resultOrThrow();
+
+            LedgerTransaction transaction = LedgerTransaction.newTransaction(origin, dest, param.getValue(), param.getNonce());
+            transaction.setClientSignature(param.getSignature());
+            boolean validated = smartContract.execute(transaction).resultOrThrow();
+
+            if (!validated)
+                throw new WebApplicationException("The smart-contract did not validate the transaction");
+
+            return Result.ok(digest);
+
+        } catch (WebApplicationException e) {
+            LOG.info(e.getMessage());
+            return Result.error(e);
+        }
+    }
 
     /**
      * Sign a reply with signatures.

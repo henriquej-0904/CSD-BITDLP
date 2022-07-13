@@ -1,8 +1,12 @@
 package tp2.bitdlp.tests;
 
+import java.io.File;
+import java.io.FilenameFilter;
 import java.net.MalformedURLException;
 import java.net.URI;
+import java.nio.file.Files;
 import java.security.KeyPair;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -14,7 +18,10 @@ import tp2.bitdlp.api.UserId;
 import tp2.bitdlp.impl.client.InvalidReplyWithSignaturesException;
 import tp2.bitdlp.impl.client.InvalidServerSignatureException;
 import tp2.bitdlp.impl.client.LedgerClientBFT;
+import tp2.bitdlp.impl.srv.resources.requests.SendTransaction;
+import tp2.bitdlp.impl.srv.resources.requests.SmartContractValidation;
 import tp2.bitdlp.pow.block.BCBlock;
+import tp2.bitdlp.pow.transaction.SmartContract;
 import tp2.bitdlp.util.Pair;
 import tp2.bitdlp.util.reply.ReplyWithSignatures;
 import tp2.bitdlp.util.result.Result;
@@ -34,6 +41,8 @@ public class WorkloadBFT extends Workload
 
     protected LatencyThroughputCalc mineStats;
 
+    protected Map<String, byte[]> smartContracts;
+
     //protected int perReads, perWrites;
 
     public WorkloadBFT(String replicaId, URI endpoint, int nUsers, int nAccounts,
@@ -44,6 +53,42 @@ public class WorkloadBFT extends Workload
         this.mineStats = new LatencyThroughputCalc();
         //this.perReads = perReads;
         //this.perWrites = 100 - perReads;
+        this.smartContracts = loadSmartContracts();
+    }
+
+    protected static Map<String, byte[]> loadSmartContracts()
+    {
+        File folder = new File("smart-contracts");
+        File[] files = folder.listFiles(new FilenameFilter() {
+
+            @Override
+            public boolean accept(File dir, String name) {
+                return name.endsWith(".java");
+            }
+            
+        });
+
+        if (files == null)
+        {
+            System.err.println("There are no smart contracts to load");
+            return null;
+        }
+
+        Map<String, byte[]> smartContracts = new HashMap<>();
+
+        for (File file : files)
+        {
+            try {
+                String fileName = file.getName();
+                String name = fileName.substring(0, fileName.length() - ".java".length());
+                smartContracts.put(name, Files.readAllBytes(file.toPath()));
+            } catch (Exception e) {
+                
+            }
+        }
+
+        System.out.println("Loaded " + smartContracts.size() + " smart-contracts");
+        return smartContracts;
     }
 
     public static void main(String[] args) throws MalformedURLException
@@ -191,15 +236,36 @@ public class WorkloadBFT extends Workload
             };
 
             // send transactions
+
             for ( Map<AccountId, KeyPair> m : this.accounts.values())
             {
-                for (Entry<AccountId, KeyPair> account : m.entrySet()) {
+                for (Entry<AccountId, KeyPair> account : m.entrySet())
+                {
                     if (account.getKey().equals(this.miner.getKey()))
                         continue;
                     
-                    requestBFTOp(() -> client.sendTransactionBFT(this.miner.getKey(), account.getKey(),
-                    1, this.miner.getValue()),
-                    tp2.bitdlp.impl.srv.resources.requests.Request.Operation.SEND_TRANSACTION_ASYNC);             
+                    if (!smartContracts.isEmpty() && random.nextDouble() < 0.33)
+                    {
+                        // send transaction with smart contract validation
+
+                        SmartContractValidation param =
+                            new SmartContractValidation("ValueMultiple5",
+                            smartContracts.get("ValueMultiple5"),
+                            new Pair<>(this.miner.getKey().getObjectId(), account.getKey().getObjectId()), 5, this.random.nextInt(), null);
+                        
+                        SmartContract smartContract = smartContractValidation(client, param, this.miner.getValue());
+                        SendTransaction sendTransaction =
+                            new SendTransaction(param.getOriginDestPair(), param.getValue(),
+                            null, param.getNonce(), smartContract);
+                        requestBFTOp(() -> client.sendTransactionBFT(sendTransaction, this.miner.getValue()),
+                        tp2.bitdlp.impl.srv.resources.requests.Request.Operation.SEND_TRANSACTION_ASYNC);  
+                    }
+                    else
+                    {
+                        requestBFTOp(() -> client.sendTransactionBFT(this.miner.getKey(), account.getKey(),
+                        1, this.miner.getValue()),
+                        tp2.bitdlp.impl.srv.resources.requests.Request.Operation.SEND_TRANSACTION_ASYNC);  
+                    }              
                 }
             }
 
@@ -277,6 +343,20 @@ public class WorkloadBFT extends Workload
         }
     }
 
+    protected SmartContract smartContractValidation(LedgerClientBFT client,
+        SmartContractValidation param, KeyPair keypair)
+    {
+        try {
+            var result = 
+                requestBFTOpWithSignatures(() -> client.smartContractValidationBFT(param, keypair),
+                        tp2.bitdlp.impl.srv.resources.requests.Request.Operation.SMART_CONTRACT_VALIDATION_ASYNC);  
+            return new SmartContract(param.getName(), param.getCode(), result.getRight().getSignatures());
+        } catch (Exception e) {
+            System.err.println(e.getMessage());
+            return null;
+        }
+    }
+
     protected <T> Result<T> requestBFTOp(BFTRequest<T> request, tp2.bitdlp.impl.srv.resources.requests.Request.Operation operation) throws InvalidServerSignatureException
     {
         long before = System.currentTimeMillis();
@@ -296,6 +376,27 @@ public class WorkloadBFT extends Workload
         statusCodes.put(status, statusCodeCounter);
 
         return result.getLeft();
+    }
+
+    protected <T> Pair<Result<T>, ReplyWithSignatures> requestBFTOpWithSignatures(BFTRequest<T> request, tp2.bitdlp.impl.srv.resources.requests.Request.Operation operation) throws InvalidServerSignatureException
+    {
+        long before = System.currentTimeMillis();
+        Pair<Result<T>, ReplyWithSignatures> result = request.request();
+        long after = System.currentTimeMillis();
+
+        getStats(operation).addLatency(after - before);
+        
+        Map<Status, Integer> statusCodes = this.statusCodes.get(operation);
+        Status status = Status.fromStatusCode(result.getLeft().error());
+        Integer statusCodeCounter = statusCodes.get(status);
+
+        if (statusCodeCounter == null)
+            statusCodeCounter = 0;
+
+        statusCodeCounter++;
+        statusCodes.put(status, statusCodeCounter);
+
+        return result;
     }
     
 }

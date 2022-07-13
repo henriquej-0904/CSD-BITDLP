@@ -1,6 +1,5 @@
 package tp2.bitdlp.pow.transaction;
 
-import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.PublicKey;
 import java.util.Map;
@@ -77,24 +76,20 @@ public class SmartContract
         this.signatures = signatures;
     }
 
-    public boolean verifySignatures(LedgerTransaction transaction)
+    public boolean verifySignatures(byte[] transactionDigest)
     {
         if (signatures == null || signatures.isEmpty())
             return false;
         
         Map<String, PublicKey> keys = ServerConfig.getAllReplicaKeys();
 
-        ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES * 2);
-            buffer.putInt(transaction.getValue()).putInt(transaction.getNonce());
-        byte[] bufferArray = buffer.array();
-
         for (Entry<String, String> sig : signatures.entrySet()) {
             PublicKey key = keys.get(sig.getKey());
+
             if (key == null)
                 return false;
 
-            if (!Crypto.verifySignature(key, sig.getValue(), getName().getBytes(), getCode(),
-                transaction.getOrigin().getObjectId(), transaction.getDest().getObjectId(), bufferArray))
+            if (!Crypto.verifySignature(key, sig.getValue(), transactionDigest))
                 return false;
         }
 

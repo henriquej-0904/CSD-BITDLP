@@ -30,13 +30,11 @@ import tp2.bitdlp.impl.srv.resources.requests.GetBalance;
 import tp2.bitdlp.impl.srv.resources.requests.GetTotalValue;
 import tp2.bitdlp.impl.srv.resources.requests.ProposeMinedBlock;
 import tp2.bitdlp.impl.srv.resources.requests.SendTransaction;
-import tp2.bitdlp.impl.srv.resources.requests.SmartContractValidation;
 import tp2.bitdlp.pow.block.BCBlock;
 import tp2.bitdlp.pow.transaction.InvalidTransactionException;
 import tp2.bitdlp.pow.transaction.LedgerTransaction;
 import tp2.bitdlp.pow.transaction.LedgerTransaction.Type;
 import tp2.bitdlp.pow.transaction.pool.TransactionsToMine;
-import tp2.bitdlp.smartcontract.SmartContract;
 import tp2.bitdlp.util.Crypto;
 import tp2.bitdlp.util.Pair;
 import tp2.bitdlp.util.Utils;
@@ -45,7 +43,6 @@ import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.InternalServerErrorException;
 import jakarta.ws.rs.WebApplicationException;
-import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
 
@@ -369,46 +366,34 @@ public abstract class AccountsResource implements Accounts
                         .build());
     }
 
-    private LedgerTransaction verifySendTransactionParams(SendTransaction clientParams) {
+    private LedgerTransaction verifySendTransactionParams(SendTransaction clientParams)
+    {
         AccountId originId = getAccountId(clientParams.getOriginDestPair().getLeft());
-            AccountId destId = getAccountId(clientParams.getOriginDestPair().getRight());
+        AccountId destId = getAccountId(clientParams.getOriginDestPair().getRight());
 
-            // verify signature
-            ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES*2);
-            buffer.putInt(clientParams.getValue());
-            buffer.putInt(clientParams.getNonce());
-
-            boolean checkSig = clientParams.getSmartContract() == null ?
-            verifySignature(originId, clientParams.getAccountSignature(),
-                clientParams.getOriginDestPair().getLeft(),
-                clientParams.getOriginDestPair().getRight(), buffer.array())
-            :
-            verifySignature(originId, clientParams.getAccountSignature(),
-                clientParams.getOriginDestPair().getLeft(),
-                clientParams.getOriginDestPair().getRight(), buffer.array(),
-                clientParams.getSmartContract().getName().getBytes(),
-                clientParams.getSmartContract().getCode());
+        // verify signature
+        byte[] digest = clientParams.digest();
             
-            if (!checkSig)
-                throw new ForbiddenException("Invalid Account Signature.");    
+        if (!verifySignature(originId, clientParams.getAccountSignature(), digest))
+            throw new ForbiddenException("Invalid Account Signature.");    
         
-            try {
-                LedgerTransaction t = LedgerTransaction.newTransaction(originId, destId, clientParams.getValue(), clientParams.getNonce());
-                t.setClientSignature(clientParams.getAccountSignature());
-                t.setSmartContract(clientParams.getSmartContract());
+        try
+        {
+            LedgerTransaction t = LedgerTransaction.newTransaction(originId, destId, clientParams.getValue(), clientParams.getNonce());
+            t.setClientSignature(clientParams.getAccountSignature());
+            t.setSmartContract(clientParams.getSmartContract());
 
-                if (t.getSmartContract() != null)
-                {
-                    if (!t.getSmartContract().verifySignatures(t))
-                        throw new ForbiddenException("Invalid Smart-Contract signatures.");    
-                }
-                    
+            if (t.getSmartContract() != null)
+            {
+                if (!t.getSmartContract().verifySignatures(digest))
+                    throw new ForbiddenException("Invalid Smart-Contract signatures.");    
+            }     
 
-                t.setHash(t.digest());
-                return t;
-            } catch (InvalidTransactionException e) {
-                throw new BadRequestException(e.getMessage(), e);
-            }
+            t.setHash(t.digest());
+            return t;
+        } catch (InvalidTransactionException e) {
+            throw new BadRequestException(e.getMessage(), e);
+        }
     }
 
     /**
@@ -616,53 +601,6 @@ public abstract class AccountsResource implements Accounts
         
         // add block to ledger.
         return this.db.addBlock(clientParams.getBlock());
-    }
-
-
-    @Override
-    public Pair<String, String> smartContractValidation(SmartContractValidation param)
-    {
-        try {
-            init();
-
-            AccountId origin = getAccountId(param.getOriginDestPair().getLeft());
-            AccountId dest = getAccountId(param.getOriginDestPair().getRight());
-            
-            // check signature
-            ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES * 2);
-            buffer.putInt(param.getValue()).putInt(param.getNonce());
-            byte[] bufferArray = buffer.array();
-
-            if (!verifySignature(origin, param.getSignature(), origin.getObjectId(),
-                dest.getObjectId(), bufferArray, param.getName().getBytes(),
-                param.getCode()))
-                throw new ForbiddenException("Invalid signature");
-
-            // run smart-contract and validate transaction
-            SmartContract smartContract = new SmartContract(param.getName(), param.getCode());
-            smartContract.compile().resultOrThrow();
-            boolean validated = smartContract.execute(
-                LedgerTransaction.newTransaction(origin, dest, param.getValue(), param.getNonce())
-                ).resultOrThrow();
-
-            if (!validated)
-                throw new WebApplicationException("The smart-contract did not validate the transaction");
-
-            String serverSig = sign(ServerConfig.getKeyPair().getPrivate(),
-                origin.getObjectId(), dest.getObjectId(), bufferArray,
-                param.getName().getBytes(), param.getCode());
-
-
-            throw new WebApplicationException(
-                Response.status(Status.OK)
-                        .entity(new Pair<>(ServerConfig.getReplicaId(), serverSig))
-                        .type(MediaType.APPLICATION_JSON)
-                        .build());
-
-        } catch (WebApplicationException e) {
-            LOG.info(e.getMessage());
-            throw e;
-        }
     }
 
     protected byte[] toJson(Object obj)

@@ -1,5 +1,9 @@
 package tp2.bitdlp.impl.srv.resources.requests;
 
+import java.nio.ByteBuffer;
+import java.security.MessageDigest;
+
+import tp2.bitdlp.util.Crypto;
 import tp2.bitdlp.util.Pair;
 
 public class SmartContractValidation extends Request {
@@ -117,5 +121,20 @@ public class SmartContractValidation extends Request {
         this.signature = signature;
     }
 
-    
+    public byte[] digest()
+    {
+        MessageDigest digest = Crypto.getSha256Digest();
+        
+        ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES * 2);
+        buffer.putInt(getValue()).putInt(getNonce());
+        byte[] bufferArray = buffer.array();
+
+        digest.update(getOriginDestPair().getLeft());
+        digest.update(getOriginDestPair().getRight());
+        digest.update(bufferArray);
+        digest.update(getName().getBytes());
+        digest.update(getCode());
+
+        return digest.digest();
+    }
 }

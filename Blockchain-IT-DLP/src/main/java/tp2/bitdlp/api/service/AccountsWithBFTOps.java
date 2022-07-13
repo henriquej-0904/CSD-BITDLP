@@ -2,6 +2,7 @@ package tp2.bitdlp.api.service;
 
 import tp2.bitdlp.util.reply.ReplyWithSignatures;
 import tp2.bitdlp.impl.srv.resources.requests.SendTransaction;
+import tp2.bitdlp.impl.srv.resources.requests.SmartContractValidation;
 import tp2.bitdlp.pow.block.BCBlock;
 import tp2.bitdlp.util.Pair;
 import jakarta.ws.rs.Consumes;
@@ -57,4 +58,15 @@ public interface AccountsWithBFTOps extends Accounts
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     ReplyWithSignatures proposeMinedBlockBFT(Pair<String, BCBlock> pairMinerIdBlock, @HeaderParam(ACC_SIG) String signature);
+
+    /**
+     * Submit a transaction for smart-contract validation.
+     * @param param The smart-contract and the transaction to validade.
+     * @return The id of the replica and the signature.
+     **/
+    @Path(BFT_PATH + "/smart-contract")
+    @POST
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    ReplyWithSignatures smartContractValidationBFT(SmartContractValidation param);
 }

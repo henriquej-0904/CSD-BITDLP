@@ -1,6 +1,10 @@
 package tp2.bitdlp.impl.srv.resources.requests;
 
+import java.nio.ByteBuffer;
+import java.security.MessageDigest;
+
 import tp2.bitdlp.pow.transaction.SmartContract;
+import tp2.bitdlp.util.Crypto;
 import tp2.bitdlp.util.Pair;
 
 public class SendTransaction extends Request {
@@ -104,5 +108,24 @@ public class SendTransaction extends Request {
         this.setOperation(Operation.SEND_TRANSACTION_ASYNC);
     }
 
-    
+    public byte[] digest()
+    {
+        MessageDigest digest = Crypto.getSha256Digest();
+        
+        ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES * 2);
+        buffer.putInt(getValue()).putInt(getNonce());
+        byte[] bufferArray = buffer.array();
+
+        digest.update(getOriginDestPair().getLeft());
+        digest.update(getOriginDestPair().getRight());
+        digest.update(bufferArray);
+
+        if (getSmartContract() != null)
+        {
+            digest.update(getSmartContract().getName().getBytes());
+            digest.update(getSmartContract().getCode());
+        }
+
+        return digest.digest();
+    }
 }
