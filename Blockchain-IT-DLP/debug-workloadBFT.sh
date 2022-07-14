@@ -3,7 +3,7 @@
 # usage: <replicaId> <nUsers> <nAccounts> <fReplicas>
 
 replicaId=$1
-replicaPort=`expr 8080 + $replicaId`
+replicaPort=`expr 10800 + $replicaId`
 
 docker run --rm -it --network host \
 -v "$(pwd)/tls-config/truststore.pkcs12:/app/tls-config/truststore.pkcs12" \

@@ -4,6 +4,8 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import bftsmart.communication.client.ReplyListener;
 import bftsmart.tom.RequestContext;
@@ -20,6 +22,8 @@ public class AsyncReplyListener implements ReplyListener {
 
     private ReplyWithSignatures reply;
 
+    private CountDownLatch sync;
+
     /**
      * 
      */
@@ -27,6 +31,7 @@ public class AsyncReplyListener implements ReplyListener {
     {
         this.maxReplies = maxReplies;
         this.replies = new LinkedList<>();
+        this.sync = new CountDownLatch(1);
     }
 
     @Override
@@ -64,7 +69,10 @@ public class AsyncReplyListener implements ReplyListener {
             // reply processed!
 
             if (hasConsensus(replyWithSignatures))
+            {
                 this.reply = replyWithSignatures;
+                this.sync.countDown();
+            }
 
         } catch (Exception e) {
             return;
@@ -87,6 +95,15 @@ public class AsyncReplyListener implements ReplyListener {
      */
     public ReplyWithSignatures getReply() {
         return reply;
+    }
+
+    public boolean waitForReply(long timeout, TimeUnit unit)
+    {
+        try {
+            return this.sync.await(timeout, unit);
+        } catch (InterruptedException e) {
+            return false;
+        }
     }
     
 }

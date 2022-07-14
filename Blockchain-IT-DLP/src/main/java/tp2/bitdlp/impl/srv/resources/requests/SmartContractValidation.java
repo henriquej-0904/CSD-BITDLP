@@ -3,34 +3,66 @@ package tp2.bitdlp.impl.srv.resources.requests;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 
-import tp2.bitdlp.pow.transaction.SmartContract;
 import tp2.bitdlp.util.Crypto;
 import tp2.bitdlp.util.Pair;
 
-public class SendTransaction extends Request {
+public class SmartContractValidation extends Request {
+
+    private String name;
+    private byte[] code;
 
     private Pair<byte[],byte[]> originDestPair;
     private int value;
-    private String accountSignature;
     private int nonce;
 
-    private SmartContract smartContract;
+    private String signature;
 
-    public SendTransaction() {
-        super(Operation.SEND_TRANSACTION);
+    public SmartContractValidation() {
+        super(Operation.SMART_CONTRACT_VALIDATION_ASYNC);
     }
 
     /**
      * @param transaction
      */
-    public SendTransaction(Pair<byte[],byte[]> originDestPair, int value,
-    String accountSignature, int nonce, SmartContract smartContract) {
-        super(Operation.SEND_TRANSACTION);
+    public SmartContractValidation(String name, byte[] code,
+        Pair<byte[],byte[]> originDestPair, int value, int nonce,
+        String signature)
+    {
+        super(Operation.SMART_CONTRACT_VALIDATION_ASYNC);
+        this.name = name;
+        this.code = code;
         this.originDestPair = originDestPair;
         this.value = value;
-        this.accountSignature = accountSignature;
         this.nonce = nonce;
-        this.smartContract = smartContract;
+        this.signature = signature;
+    }
+
+    /**
+     * @return the name
+     */
+    public String getName() {
+        return name;
+    }
+
+    /**
+     * @param name the name to set
+     */
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    /**
+     * @return the code
+     */
+    public byte[] getCode() {
+        return code;
+    }
+
+    /**
+     * @param code the code to set
+     */
+    public void setCode(byte[] code) {
+        this.code = code;
     }
 
     /**
@@ -62,20 +94,6 @@ public class SendTransaction extends Request {
     }
 
     /**
-     * @return the accountSignature
-     */
-    public String getAccountSignature() {
-        return accountSignature;
-    }
-
-    /**
-     * @param accountSignature the accountSignature to set
-     */
-    public void setAccountSignature(String accountSignature) {
-        this.accountSignature = accountSignature;
-    }
-
-    /**
      * @return the nonce
      */
     public int getNonce() {
@@ -90,22 +108,17 @@ public class SendTransaction extends Request {
     }
 
     /**
-     * @return the smartContract
+     * @return the signature
      */
-    public SmartContract getSmartContract() {
-        return smartContract;
+    public String getSignature() {
+        return signature;
     }
 
     /**
-     * @param smartContract the smartContract to set
+     * @param signature the signature to set
      */
-    public void setSmartContract(SmartContract smartContract) {
-        this.smartContract = smartContract;
-    }
-
-    public void async()
-    {
-        this.setOperation(Operation.SEND_TRANSACTION_ASYNC);
+    public void setSignature(String signature) {
+        this.signature = signature;
     }
 
     public byte[] digest()
@@ -119,12 +132,8 @@ public class SendTransaction extends Request {
         digest.update(getOriginDestPair().getLeft());
         digest.update(getOriginDestPair().getRight());
         digest.update(bufferArray);
-
-        if (getSmartContract() != null)
-        {
-            digest.update(getSmartContract().getName().getBytes());
-            digest.update(getSmartContract().getCode());
-        }
+        digest.update(getName().getBytes());
+        digest.update(getCode());
 
         return digest.digest();
     }

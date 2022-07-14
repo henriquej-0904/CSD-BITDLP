@@ -1,10 +1,16 @@
 package tp2.bitdlp.tests;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FilenameFilter;
 import java.net.MalformedURLException;
 import java.net.URI;
+import java.nio.file.Files;
 import java.security.KeyPair;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -14,7 +20,10 @@ import tp2.bitdlp.api.UserId;
 import tp2.bitdlp.impl.client.InvalidReplyWithSignaturesException;
 import tp2.bitdlp.impl.client.InvalidServerSignatureException;
 import tp2.bitdlp.impl.client.LedgerClientBFT;
+import tp2.bitdlp.impl.srv.resources.requests.SendTransaction;
+import tp2.bitdlp.impl.srv.resources.requests.SmartContractValidation;
 import tp2.bitdlp.pow.block.BCBlock;
+import tp2.bitdlp.pow.transaction.SmartContract;
 import tp2.bitdlp.util.Pair;
 import tp2.bitdlp.util.reply.ReplyWithSignatures;
 import tp2.bitdlp.util.result.Result;
@@ -34,34 +43,97 @@ public class WorkloadBFT extends Workload
 
     protected LatencyThroughputCalc mineStats;
 
-    //protected int perReads, perWrites;
+    protected Map<String, byte[]> smartContracts;
+
+    protected boolean executeReads;
 
     public WorkloadBFT(String replicaId, URI endpoint, int nUsers, int nAccounts,
-        int fReplicas) throws MalformedURLException
+        int fReplicas, boolean executeReads) throws MalformedURLException
     {
         super(replicaId, endpoint, nUsers, nAccounts);
         this.fReplicas = fReplicas;
         this.mineStats = new LatencyThroughputCalc();
-        //this.perReads = perReads;
-        //this.perWrites = 100 - perReads;
+        this.smartContracts = loadSmartContracts();
+        this.executeReads = executeReads;
     }
 
-    public static void main(String[] args) throws MalformedURLException
+    protected static Map<String, byte[]> loadSmartContracts()
     {
-        if (args.length < 3)
+        File folder = new File("smart-contracts");
+        File[] files = folder.listFiles(new FilenameFilter() {
+
+            @Override
+            public boolean accept(File dir, String name) {
+                return name.endsWith(".java");
+            }
+            
+        });
+
+        if (files == null)
         {
-            System.err.println("Usage: <endpoint> <replicaID> <fReplicas>");
+            System.err.println("There are no smart contracts to load");
+            return null;
+        }
+
+        Map<String, byte[]> smartContracts = new HashMap<>();
+
+        for (File file : files)
+        {
+            try {
+                String fileName = file.getName();
+                String name = fileName.substring(0, fileName.length() - ".java".length());
+                smartContracts.put(name, Files.readAllBytes(file.toPath()));
+            } catch (Exception e) {
+                
+            }
+        }
+
+        System.out.println("Loaded " + smartContracts.size() + " smart-contracts");
+        return smartContracts;
+    }
+
+    protected static Properties loadConfig(File configFile)
+    {
+        try (FileInputStream input = new FileInputStream(configFile)) {
+            Properties config = new Properties();
+            config.load(input);
+            return config;
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.exit(1);
+            return null;
+        }
+    }
+
+    public static void main(String[] args) throws  MalformedURLException
+    {
+        if (args.length < 2)
+        {
+            System.err.println("Usage: <workload-config> <replicaId> <OPTIONAL (defaults to false) - execute reads: true or false>");
             System.exit(1);
         }
 
-        URI endpoint = URI.create(args[0]);
+        File configFile = new File(args[0]);
         String replicaId = args[1];
-        int nUsers = 2;
-        int nAccounts = 1000;
-        int fReplicas = Integer.parseInt(args[2]);
-        //int perReads = Integer.parseInt(args[3]);
+        boolean executeReads = args.length == 3 && Boolean.parseBoolean(args[2].toLowerCase());
 
-        WorkloadBFT workload = new WorkloadBFT(replicaId, endpoint, nUsers, nAccounts, fReplicas);
+        Properties config = loadConfig(configFile);
+
+        int nUsers = Integer.parseInt(config.getProperty("N_USERS"));
+        int nAccounts = Integer.parseInt(config.getProperty("N_ACCOUNTS"));
+
+        URI endpoint;
+        try {
+            endpoint = new URI(config.getProperty(replicaId));
+        } catch (Exception e) {
+            System.err.println("Cannot read replica URI.");
+            System.exit(1);
+            endpoint = null;
+        }
+
+        int fReplicas = Integer.parseInt(config.getProperty("NUM_F"));
+
+        WorkloadBFT workload = new WorkloadBFT(replicaId, endpoint, nUsers, nAccounts, fReplicas, executeReads);
         workload.run();
 
         System.out.println("Status Codes:");
@@ -107,16 +179,20 @@ public class WorkloadBFT extends Workload
                     }
                 });
 
-            readsThread.start();
+            if (executeReads)
+                readsThread.start();
 
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < 2; i++)
             {
                 // writes
                 mineBlocksAndSendTransactions(client);
             }
 
-            stopReads.set(true);
-            readsThread.join();
+            if (executeReads)
+            {
+                stopReads.set(true);
+                readsThread.join();
+            }
         }
         catch (Exception e)
         {
@@ -191,15 +267,36 @@ public class WorkloadBFT extends Workload
             };
 
             // send transactions
+
             for ( Map<AccountId, KeyPair> m : this.accounts.values())
             {
-                for (Entry<AccountId, KeyPair> account : m.entrySet()) {
+                for (Entry<AccountId, KeyPair> account : m.entrySet())
+                {
                     if (account.getKey().equals(this.miner.getKey()))
                         continue;
                     
-                    requestBFTOp(() -> client.sendTransactionBFT(this.miner.getKey(), account.getKey(),
-                    1, this.miner.getValue()),
-                    tp2.bitdlp.impl.srv.resources.requests.Request.Operation.SEND_TRANSACTION_ASYNC);             
+                    if (!smartContracts.isEmpty() && random.nextDouble() < 0.33)
+                    {
+                        // send transaction with smart contract validation
+
+                        SmartContractValidation param =
+                            new SmartContractValidation("ValueMultiple5",
+                            smartContracts.get("ValueMultiple5"),
+                            new Pair<>(this.miner.getKey().getObjectId(), account.getKey().getObjectId()), 5, this.random.nextInt(), null);
+                        
+                        SmartContract smartContract = smartContractValidation(client, param, this.miner.getValue());
+                        SendTransaction sendTransaction =
+                            new SendTransaction(param.getOriginDestPair(), param.getValue(),
+                            null, param.getNonce(), smartContract);
+                        requestBFTOp(() -> client.sendTransactionBFT(sendTransaction, this.miner.getValue()),
+                        tp2.bitdlp.impl.srv.resources.requests.Request.Operation.SEND_TRANSACTION_ASYNC);  
+                    }
+                    else
+                    {
+                        requestBFTOp(() -> client.sendTransactionBFT(this.miner.getKey(), account.getKey(),
+                        1, this.miner.getValue()),
+                        tp2.bitdlp.impl.srv.resources.requests.Request.Operation.SEND_TRANSACTION_ASYNC);  
+                    }              
                 }
             }
 
@@ -277,6 +374,20 @@ public class WorkloadBFT extends Workload
         }
     }
 
+    protected SmartContract smartContractValidation(LedgerClientBFT client,
+        SmartContractValidation param, KeyPair keypair)
+    {
+        try {
+            var result = 
+                requestBFTOpWithSignatures(() -> client.smartContractValidationBFT(param, keypair),
+                        tp2.bitdlp.impl.srv.resources.requests.Request.Operation.SMART_CONTRACT_VALIDATION_ASYNC);  
+            return new SmartContract(param.getName(), param.getCode(), result.getRight().getSignatures());
+        } catch (Exception e) {
+            System.err.println(e.getMessage());
+            return null;
+        }
+    }
+
     protected <T> Result<T> requestBFTOp(BFTRequest<T> request, tp2.bitdlp.impl.srv.resources.requests.Request.Operation operation) throws InvalidServerSignatureException
     {
         long before = System.currentTimeMillis();
@@ -296,6 +407,27 @@ public class WorkloadBFT extends Workload
         statusCodes.put(status, statusCodeCounter);
 
         return result.getLeft();
+    }
+
+    protected <T> Pair<Result<T>, ReplyWithSignatures> requestBFTOpWithSignatures(BFTRequest<T> request, tp2.bitdlp.impl.srv.resources.requests.Request.Operation operation) throws InvalidServerSignatureException
+    {
+        long before = System.currentTimeMillis();
+        Pair<Result<T>, ReplyWithSignatures> result = request.request();
+        long after = System.currentTimeMillis();
+
+        getStats(operation).addLatency(after - before);
+        
+        Map<Status, Integer> statusCodes = this.statusCodes.get(operation);
+        Status status = Status.fromStatusCode(result.getLeft().error());
+        Integer statusCodeCounter = statusCodes.get(status);
+
+        if (statusCodeCounter == null)
+            statusCodeCounter = 0;
+
+        statusCodeCounter++;
+        statusCodes.put(status, statusCodeCounter);
+
+        return result;
     }
     
 }

@@ -65,7 +65,7 @@ public class TransactionsToMine
 
                 return Result.ok();
             }
-                return Result.error(new WebApplicationException("The transaction is invalid vecause origin account balance is not enough.", Status.CONFLICT));
+                return Result.error(new WebApplicationException("Transaction over the balance limit.", Status.CONFLICT));
         } finally
         {
             lock.writeLock().unlock();

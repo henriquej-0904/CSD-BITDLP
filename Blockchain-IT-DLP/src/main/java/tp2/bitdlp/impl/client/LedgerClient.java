@@ -21,6 +21,7 @@ import tp2.bitdlp.api.Account;
 import tp2.bitdlp.api.AccountId;
 import tp2.bitdlp.api.UserId;
 import tp2.bitdlp.api.service.Accounts;
+import tp2.bitdlp.impl.srv.resources.requests.SendTransaction;
 import tp2.bitdlp.pow.block.BCBlock;
 import tp2.bitdlp.pow.transaction.LedgerTransaction;
 import tp2.bitdlp.util.Crypto;
@@ -155,19 +156,20 @@ public class LedgerClient implements Closeable
     public Result<LedgerTransaction> sendTransaction(AccountId originId, AccountId destId, int value, KeyPair originAccountKeys,
         int nonce) throws InvalidServerSignatureException
     {
-        ByteBuffer buffer = ByteBuffer.allocate(2 * Integer.BYTES);
-        buffer.putInt(value);
-        buffer.putInt(nonce);
+        return sendTransaction(
+            new SendTransaction(new Pair<>(originId.getObjectId(), destId.getObjectId()),
+            value, null, nonce, null), originAccountKeys);
+    }
 
-        String signature = sign(originAccountKeys.getPrivate(), originId.getObjectId(), destId.getObjectId(), buffer.array());
+    public Result<LedgerTransaction> sendTransaction(SendTransaction params, KeyPair originAccountKeys) throws InvalidServerSignatureException
+    {
+        byte[] digest = params.digest();
+        params.setAccountSignature(sign(originAccountKeys.getPrivate(), digest));
 
         Pair<Result<LedgerTransaction>, Response> resultPair = request(this.client.target(this.endpoint).path(Accounts.PATH)
-            .path("transaction").path(Integer.toString(value))
+            .path("transaction")
             .request()
-            .header(Accounts.ACC_SIG, signature)
-            .header(Accounts.NONCE, nonce)
-            .buildPost(Entity.json(new Pair<>(originId.getObjectId(), destId.getObjectId()))),
-                LedgerTransaction.class);
+            .buildPost(Entity.json(params)), LedgerTransaction.class);
 
         return verifyResponseSignature(resultPair, LedgerTransaction::digest); 
     }

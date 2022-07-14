@@ -1,7 +1,6 @@
 package tp2.bitdlp.impl.client;
 
 import java.net.URI;
-import java.nio.ByteBuffer;
 import java.security.InvalidKeyException;
 import java.security.KeyPair;
 import java.security.KeyStoreException;
@@ -22,6 +21,8 @@ import jakarta.ws.rs.core.Response.Status;
 import tp2.bitdlp.api.AccountId;
 import tp2.bitdlp.api.service.Accounts;
 import tp2.bitdlp.api.service.AccountsWithBFTOps;
+import tp2.bitdlp.impl.srv.resources.requests.SendTransaction;
+import tp2.bitdlp.impl.srv.resources.requests.SmartContractValidation;
 import tp2.bitdlp.pow.block.BCBlock;
 import tp2.bitdlp.pow.transaction.LedgerTransaction;
 import tp2.bitdlp.util.Crypto;
@@ -89,19 +90,21 @@ public class LedgerClientBFT extends LedgerClient
     public Pair<Result<LedgerTransaction>, ReplyWithSignatures> sendTransactionBFT(AccountId originId, AccountId destId, int value, KeyPair originAccountKeys,
         int nonce) throws InvalidServerSignatureException, InvalidReplyWithSignaturesException
     {
-        ByteBuffer buffer = ByteBuffer.allocate(2 * Integer.BYTES);
-        buffer.putInt(value);
-        buffer.putInt(nonce);
+        return sendTransactionBFT(
+            new SendTransaction(new Pair<>(originId.getObjectId(), destId.getObjectId()),
+            value, null, nonce, null), originAccountKeys);
+    }
 
-        String signature = sign(originAccountKeys.getPrivate(), originId.getObjectId(), destId.getObjectId(), buffer.array());
+    public Pair<Result<LedgerTransaction>, ReplyWithSignatures>
+        sendTransactionBFT(SendTransaction params, KeyPair originAccountKeys) throws InvalidServerSignatureException, InvalidReplyWithSignaturesException
+    {
+        byte[] digest = params.digest();
+        params.setAccountSignature(sign(originAccountKeys.getPrivate(), digest));
 
         return requestBFTOp(this.client.target(this.endpoint).path(AccountsWithBFTOps.PATH)
-            .path("transaction").path(Integer.toString(value))
-            .request()
-            .header(Accounts.ACC_SIG, signature)
-            .header(Accounts.NONCE, nonce)
-            .buildPost(Entity.json(new Pair<>(originId.getObjectId(), destId.getObjectId()))),
-            LedgerTransaction.class);
+        .path("transaction")
+        .request()
+        .buildPost(Entity.json(params)), LedgerTransaction.class);
     }
 
     public Pair<Result<String>, ReplyWithSignatures> proposeMinedBlockBFT(
@@ -117,6 +120,19 @@ public class LedgerClientBFT extends LedgerClient
             .buildPost(Entity.json(new Pair<>(
                 Utils.toHex(minerId.getObjectId()), block))),
             String.class);
+    }
+
+    public Pair<Result<byte[]>, ReplyWithSignatures> smartContractValidationBFT(SmartContractValidation params,
+        KeyPair originAccountKeys) throws InvalidServerSignatureException
+    {
+        final byte[] digest = params.digest();
+        params.setSignature(sign(originAccountKeys.getPrivate(), digest));
+
+        return
+            requestBFTOp(this.client.target(this.endpoint).path(AccountsWithBFTOps.PATH)
+            .path("smart-contract")
+            .request()
+            .buildPost(Entity.json(params)), byte[].class);
     }
 
     private <T> Pair<Result<T>, ReplyWithSignatures> requestBFTOp(Invocation invocation, Class<T> classType)
@@ -148,6 +164,7 @@ public class LedgerClientBFT extends LedgerClient
         throw error;
     }
 
+
     protected <T> Pair<Result<T>, ReplyWithSignatures> processReply(Response response,
         Class<T> classType)
     {
@@ -172,7 +189,11 @@ public class LedgerClientBFT extends LedgerClient
             else
             {
                 try {
-                    replyValue = Utils.json.readValue(reply.getReply(), classType);
+                    byte[] replyBytes = reply.getReply();
+                    if (classType.equals(byte[].class))
+                        replyValue = classType.cast(replyBytes);
+                    else
+                        replyValue = Utils.json.readValue(replyBytes, classType);
                 } catch (Exception e) {
                     replyValue = null;
                 }
