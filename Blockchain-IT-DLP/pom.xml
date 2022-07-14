@@ -16,7 +16,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.source>17</maven.compiler.source>
     <maven.compiler.target>17</maven.compiler.target>
-    <authors>55065-52464</authors>
+    <authors>55065</authors>
   </properties>
 
   <dependencies>
@@ -269,7 +269,7 @@
         <configuration>
           <images>
             <image>
-              <name>csd-tp2-blockchain-it-dlp-${authors}</name>
+              <name>henriquej0904/csd-tp2-blockchain-it-dlp-${authors}:bft-smart</name>
               <build>
                 <dockerFile>${project.basedir}/Dockerfile</dockerFile>
               </build>
