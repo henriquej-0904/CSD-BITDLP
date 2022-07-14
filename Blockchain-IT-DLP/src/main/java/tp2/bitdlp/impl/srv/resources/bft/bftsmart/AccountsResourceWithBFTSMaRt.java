@@ -1,5 +1,7 @@
 package tp2.bitdlp.impl.srv.resources.bft.bftsmart;
 
+import java.util.concurrent.TimeUnit;
+
 import com.fasterxml.jackson.core.type.TypeReference;
 
 import bftsmart.tom.AsynchServiceProxy;
@@ -37,8 +39,7 @@ import jakarta.ws.rs.WebApplicationException;
  */
 public class AccountsResourceWithBFTSMaRt extends AccountsResourceBFT
 {
-    private static final long ASYNC_TIME_TO_WAIT_MILLIS = 20;
-    private static final long ASYNC_MAX_WAIT_ITER = 60000/ASYNC_TIME_TO_WAIT_MILLIS;
+    private static final long ASYNC_TIME_TO_WAIT_SEC = 60;
 
     private static BFTSMaRtServerReplica replica;
     private static ServiceProxy proxy;
@@ -106,24 +107,15 @@ public class AccountsResourceWithBFTSMaRt extends AccountsResourceBFT
 
         int opId = asyncProxy.invokeAsynchRequest(request, replyListener, type);
 
-        ReplyWithSignatures reply = null;
-
-        long n = 0;
-        while ((reply = replyListener.getReply()) == null && n < ASYNC_MAX_WAIT_ITER) {
-            n++;
-            try {
-                Thread.sleep(ASYNC_TIME_TO_WAIT_MILLIS);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
+        boolean ready = replyListener.waitForReply(ASYNC_TIME_TO_WAIT_SEC, TimeUnit.SECONDS)
+            && replyListener.getReply() != null;
 
         asyncProxy.cleanAsynchRequest(opId);
 
-        if (reply == null)
+        if (!ready)
             throw new InternalServerErrorException("Invoke async returned null");
             
-        return reply;
+        return replyListener.getReply();
     }
 
     
