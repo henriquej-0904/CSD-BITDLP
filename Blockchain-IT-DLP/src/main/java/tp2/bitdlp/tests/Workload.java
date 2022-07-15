@@ -1,6 +1,7 @@
 package tp2.bitdlp.tests;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.security.KeyPair;
@@ -9,7 +10,9 @@ import java.security.SecureRandom;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Map.Entry;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -20,6 +23,7 @@ import tp2.bitdlp.api.UserId;
 import tp2.bitdlp.impl.client.InvalidServerSignatureException;
 import tp2.bitdlp.impl.client.LedgerClient;
 import tp2.bitdlp.impl.srv.resources.requests.Request.Operation;
+import tp2.bitdlp.pow.block.BCBlock;
 import tp2.bitdlp.util.Crypto;
 import tp2.bitdlp.util.result.Result;
 import jakarta.ws.rs.core.Response.Status;
@@ -47,7 +51,14 @@ public class Workload implements Runnable
 
     protected String replicaId;
 
-    public Workload(String replicaId, URI endpoint, int nUsers, int nAccounts) throws MalformedURLException
+    protected Entry<AccountId, KeyPair> miner;
+
+    protected LatencyThroughputCalc mineStats;
+
+    protected boolean executeReads;
+
+    public Workload(String replicaId, URI endpoint, int nUsers, int nAccounts,
+        boolean executeReads) throws MalformedURLException
     {
         this.stats = new HashMap<>();
         
@@ -62,25 +73,61 @@ public class Workload implements Runnable
         this.endpoint = endpoint;
         this.isHttps = this.endpoint.toURL().getProtocol().equals("https");
         this.replicaId = replicaId;
+
+        this.mineStats = new LatencyThroughputCalc();
+        this.executeReads = executeReads;
     }
 
-    public static void main(String[] args) throws MalformedURLException
+    protected static Properties loadConfig(File configFile)
     {
-        URI endpoint = URI.create(args[0]);
+        try (FileInputStream input = new FileInputStream(configFile)) {
+            Properties config = new Properties();
+            config.load(input);
+            return config;
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.exit(1);
+            return null;
+        }
+    }
+
+    public static void main(String[] args) throws  MalformedURLException
+    {
+        if (args.length < 2)
+        {
+            System.err.println("Usage: <workload-config> <replicaId> <OPTIONAL (defaults to false) - execute reads: true or false>");
+            System.exit(1);
+        }
+
+        File configFile = new File(args[0]);
         String replicaId = args[1];
-        int nUsers = Integer.parseInt(args[2]);
-        int nAccounts = Integer.parseInt(args[3]);
+        boolean executeReads = args.length == 3 && Boolean.parseBoolean(args[2].toLowerCase());
 
-        Workload workload = new Workload(replicaId, endpoint, nUsers, nAccounts);
+        Properties config = loadConfig(configFile);
+
+        int nUsers = Integer.parseInt(config.getProperty("N_USERS"));
+        int nAccounts = Integer.parseInt(config.getProperty("N_ACCOUNTS"));
+
+        URI endpoint;
+        try {
+            endpoint = new URI(config.getProperty(replicaId));
+        } catch (Exception e) {
+            System.err.println("Cannot read replica URI.");
+            System.exit(1);
+            endpoint = null;
+        }
+
+        Workload workload = new Workload(replicaId, endpoint, nUsers, nAccounts, executeReads);
         workload.run();
-
-        /* System.out.println("Latencies:");
-        System.out.println(workload.latencies);
-        System.out.println(); */
 
         System.out.println("Status Codes:");
         System.out.println(workload.statusCodes);
         System.out.println();
+
+        System.out.println("Stats:");
+        System.out.println(workload.stats);
+        System.out.println();
+        System.out.println("Mining stats: " + workload.mineStats);
     }
 
     @Override
@@ -90,18 +137,46 @@ public class Workload implements Runnable
 
         try
         (
-            LedgerClient client = isHttps
-                ? new LedgerClient(this.replicaId, this.endpoint, this.random, getSSLContext())
-                : new LedgerClient(this.endpoint, this.random);
+            LedgerClient client =
+                new LedgerClient(replicaId, endpoint, random, getSSLContext())
         )
         {
             createAccounts(client);
-            getAccounts(client);
-            sendTransaction(client);
-            getBalance(client);
-            getTotalValue(client);
-            getGlobalLedgerValue(client);
-            getLedger(client);
+
+            // choose an account to be the miner.
+            this.miner = this.accounts.values().iterator().next().entrySet().iterator().next();
+
+            AtomicBoolean stopReads = new AtomicBoolean(false);
+            Thread readsThread = new Thread(() ->
+                {
+                    while(!stopReads.get())
+                    {
+                        // reads
+                        if (random.nextBoolean())
+                            getAccounts(client);
+                        else
+                            getBalance(client);
+                        
+                        getTotalValue(client);
+                        getGlobalLedgerValue(client);
+                        getLedger(client);
+                    }
+                });
+
+            if (executeReads)
+                readsThread.start();
+
+            for (int i = 0; i < 2; i++)
+            {
+                // writes
+                mineBlocksAndSendTransactions(client);
+            }
+
+            if (executeReads)
+            {
+                stopReads.set(true);
+                readsThread.join();
+            }
         }
         catch (Exception e)
         {
@@ -147,8 +222,7 @@ public class Workload implements Runnable
         for (Entry<UserId, Map<AccountId, KeyPair>> entry : this.accounts.entrySet())
         {
             for (AccountId accountId : entry.getValue().keySet())
-                request(() -> client.getAccount(accountId),
-                tp2.bitdlp.impl.srv.resources.requests.Request.Operation.GET_ACCOUNT);
+                client.getAccount(accountId);
         }
 
         // expected to fail with 404
@@ -157,8 +231,7 @@ public class Workload implements Runnable
         {
             this.random.nextBytes(randomBytes);
             AccountId accountId = new AccountId(randomBytes);
-            request(() -> client.getAccount(accountId),
-                tp2.bitdlp.impl.srv.resources.requests.Request.Operation.GET_ACCOUNT);
+            client.getAccount(accountId);
         }
         
     }
@@ -169,8 +242,7 @@ public class Workload implements Runnable
         for (Entry<UserId, Map<AccountId, KeyPair>> entry : this.accounts.entrySet())
         {
             for (AccountId accountId : entry.getValue().keySet())
-                request(() -> client.getBalance(accountId),
-                tp2.bitdlp.impl.srv.resources.requests.Request.Operation.GET_BALANCE);
+                client.getBalance(accountId);
         }
     }
 
@@ -178,18 +250,13 @@ public class Workload implements Runnable
     {
         // send create account requests
         for (Entry<UserId, Map<AccountId, KeyPair>> entry : this.accounts.entrySet())
-        {
-            request(() -> client.getTotalValue( entry.getValue().keySet().toArray(new AccountId[0])),
-            tp2.bitdlp.impl.srv.resources.requests.Request.Operation.GET_TOTAL_VALUE);
-        }
+            client.getTotalValue( entry.getValue().keySet().toArray(new AccountId[0]));
     }
 
     protected void getGlobalLedgerValue(LedgerClient client) throws InvalidServerSignatureException
     {
         // send getGlovalLedgerValue requests
-        request(() -> client.getGlobalLedgerValue(),
-        tp2.bitdlp.impl.srv.resources.requests.Request.Operation.GET_GLOBAL_LEDGER_VALUE);
-        
+        client.getGlobalLedgerValue();
     }
 
     protected void sendTransaction(LedgerClient client) throws InvalidServerSignatureException
@@ -219,7 +286,122 @@ public class Workload implements Runnable
 
     protected void getLedger(LedgerClient client) throws InvalidServerSignatureException
     {
-        request(() -> client.getLedger(), tp2.bitdlp.impl.srv.resources.requests.Request.Operation.GET_LEDGER);
+        client.getLedger();
+    }
+
+    protected boolean proposeBlock(LedgerClient client, BCBlock block) throws InvalidServerSignatureException
+    {
+        var res = request(() -> client.proposeMinedBlock(this.miner.getKey(), block, this.miner.getValue()),
+                tp2.bitdlp.impl.srv.resources.requests.Request.Operation.PROPOSE_BLOCK);
+        
+        if (res.isOK())
+            return true;
+        else
+        {
+            System.err.println(res.errorException().getMessage());
+            return false;
+        }
+    }
+
+    protected void mineBlocksAndSendTransactions(LedgerClient client)
+    {
+        while (mineBlock(client))
+            {
+                /* try {
+                    System.out.println("Continue... Press!");
+                    System.in.read();
+                    
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } */
+            };
+
+            // send transactions
+
+            for ( Map<AccountId, KeyPair> m : this.accounts.values())
+            {
+                for (Entry<AccountId, KeyPair> account : m.entrySet())
+                {
+                    if (account.getKey().equals(this.miner.getKey()))
+                        continue;
+                    
+                    request(() -> client.sendTransaction(this.miner.getKey(), account.getKey(),
+                        1, this.miner.getValue()),
+                        tp2.bitdlp.impl.srv.resources.requests.Request.Operation.SEND_TRANSACTION);             
+                }
+            }
+
+            while (mineBlock(client))
+            {
+                /* try {
+                    System.out.println("Continue... Press!");
+                    System.in.read();
+                    
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } */
+            };
+    }
+
+    /**
+     * Mine a block.
+     * @param client
+     * @return true if there was a block to mine.
+     */
+    protected boolean mineBlock(LedgerClient client)
+    {
+        // get block
+        Result<BCBlock> result = client.getBlockToMine(this.miner.getKey());
+        if (!result.isOK())
+        {
+            System.out.println("There are no blocks to mine!");
+            return false;
+        }
+
+        BCBlock block = result.value();
+
+        // mine block
+        System.err.println("Mining block...");
+
+        long t1 = System.currentTimeMillis();
+
+        /* try {
+            Thread.sleep(this.random.nextLong(20000, 60000));
+        } catch (InterruptedException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        } */
+
+        while (!block.isBlockMined())
+            block.getHeader().setNonce(this.random.nextInt());
+
+        long t2 = System.currentTimeMillis();
+
+        long time = (t2 - t1);
+
+        this.mineStats.addLatency(time);
+
+        System.err.println("Mined block in " + time + "ms");
+
+        // propose block
+        if (proposeBlock(client, block))
+        {
+            System.err.println("Block accepted and added to the blockchain!");
+
+            Result<Integer> balanceRes = client.getBalance(this.miner.getKey());
+
+            if (balanceRes.isOK())
+            {
+                System.err.println("Current miner balance: " + balanceRes.value());
+            }
+
+            return true;
+        }
+        else
+        {
+            System.err.println("The block was invalid \\:");
+            return true;
+        }
     }
 
     protected <T> Result<T> request(Request<T> request, tp2.bitdlp.impl.srv.resources.requests.Request.Operation operation) throws InvalidServerSignatureException

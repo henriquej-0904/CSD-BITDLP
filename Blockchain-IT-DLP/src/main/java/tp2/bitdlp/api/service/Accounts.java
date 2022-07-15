@@ -117,4 +117,10 @@ public interface Accounts {
     @Produces(MediaType.APPLICATION_JSON)
     BCBlock getBlockToMine(@PathParam("minerAccountId") String minerAccountId);
 
+    
+    @Path("/block")
+    @POST
+    @Consumes(MediaType.APPLICATION_JSON)
+    byte[] proposeMinedBlock(Pair<String, BCBlock> pairMinerIdBlock, @HeaderParam(ACC_SIG) String signature);
+
 }

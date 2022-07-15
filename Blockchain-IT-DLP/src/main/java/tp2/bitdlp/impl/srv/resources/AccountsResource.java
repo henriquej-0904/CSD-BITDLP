@@ -25,10 +25,8 @@ import tp2.bitdlp.data.LedgerDBlayer;
 import tp2.bitdlp.data.LedgerDBlayerException;
 import tp2.bitdlp.impl.srv.config.ServerConfig;
 import tp2.bitdlp.impl.srv.resources.requests.CreateAccount;
-import tp2.bitdlp.impl.srv.resources.requests.GetAccount;
-import tp2.bitdlp.impl.srv.resources.requests.GetBalance;
-import tp2.bitdlp.impl.srv.resources.requests.GetTotalValue;
 import tp2.bitdlp.impl.srv.resources.requests.ProposeMinedBlock;
+import tp2.bitdlp.impl.srv.resources.requests.Request;
 import tp2.bitdlp.impl.srv.resources.requests.SendTransaction;
 import tp2.bitdlp.pow.block.BCBlock;
 import tp2.bitdlp.pow.transaction.InvalidTransactionException;
@@ -110,7 +108,7 @@ public abstract class AccountsResource implements Accounts
         return Crypto.verifySignature(getPublicKey(id), signature, data);
     }
 
-    public String sign(PrivateKey key, byte[]... data)
+    protected String sign(PrivateKey key, byte[]... data)
     {
         try {
             return Crypto.sign(key, data);
@@ -119,24 +117,25 @@ public abstract class AccountsResource implements Accounts
         }
     }
 
+    protected abstract <T> T executeOrderedRequest(Request request, TypeReference<Result<T>> type);
+
 
     @Override
     public final Account createAccount(Pair<byte[],byte[]> accountUserPair, String userSignature) {
         CreateAccount clientParams;
-        Account newAccount;
 
         try {
             init();
 
             clientParams = new CreateAccount(accountUserPair, userSignature);
-            newAccount = verifyCreateAccount(clientParams);
+            verifyCreateAccount(clientParams);
         } catch (WebApplicationException e) {
             LOG.info(e.getMessage());
             throw e;
         }
 
         // execute operation
-        Account account = createAccount(clientParams, newAccount);
+        Account account = executeOrderedRequest(clientParams, new TypeReference<Result<Account>>() {});
         //LOG.info(String.format("Created account with %s,\n%s\n", accountId, owner));
 
         throw new WebApplicationException(
@@ -161,35 +160,23 @@ public abstract class AccountsResource implements Accounts
         return new Account(accountId, owner);
     }
 
-    /**
-	 * Creates a new account.
-	 *
-     * @param clientParams The params sent by the client.
-	 * @param account The new account
-     * 
-     * @return The created account object.
-	 */
-    public abstract Account createAccount(CreateAccount clientParams, Account account);
-
-
 
     @Override
     public final Account getAccount(String accountId) {
-        GetAccount clientParams;
         AccountId id;
+        Account account;
 
         try {
             init();
 
-            clientParams = new GetAccount(accountId);
-            id = verifyGetAccount(clientParams);
+            id = getAccountId(Utils.fromHex(accountId));
+            account = this.db.getAccount(id).resultOrThrow();
         } catch (WebApplicationException e) {
             LOG.info(e.getMessage());
             throw e;
         }
 
-        Account account = getAccount(clientParams, id);
-        // LOG.info(id.toString());
+        LOG.info(id.toString());
 
         throw new WebApplicationException(
                 Response.status(Status.OK)
@@ -198,40 +185,22 @@ public abstract class AccountsResource implements Accounts
                         .build());
     }
 
-    protected AccountId verifyGetAccount(GetAccount clientParams)
-    {
-        return getAccountId(Utils.fromHex(clientParams.getId()));
-    }
-
-    /**
-	 * Returns an account with the extract.
-	 *
-     * @param clientParams
-	 * @param accountId account id
-     * 
-     * @return The account object.
-	 */
-    public abstract Account getAccount(GetAccount clientParams, AccountId accountId);
-
-
-
     @Override
     public final int getBalance(String accountId) {
-        GetBalance clientParams;
         AccountId id;
+        int result;
 
         try {
             init();
 
-            clientParams = new GetBalance(accountId);
-            id = verifyGetBalance(clientParams);
+            id = getAccountId(Utils.fromHex(accountId));
+            result = this.db.getBalance(id).resultOrThrow();
         } catch (WebApplicationException e) {
             LOG.info(e.getMessage());
             throw e;
         }
 
-        int result = getBalance(clientParams, id);
-        // LOG.info(String.format("Balance - %d, %s\n", result, accountId));
+        LOG.info(String.format("Balance - %d, %s\n", result, accountId));
 
         // sign result
         ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES);
@@ -244,27 +213,11 @@ public abstract class AccountsResource implements Accounts
                         .build());
     }
 
-    protected AccountId verifyGetBalance(GetBalance clientParams)
-    {
-        return getAccountId(Utils.fromHex(clientParams.getId()));
-    }
-
-    /**
-	 * Returns the balance of an account.
-	 *
-     * @param clientParams
-	 * @param accountId account id
-     * 
-     * @return The balance of the account.
-	 */
-    public abstract int getBalance(GetBalance clientParams, AccountId accountId);
-
-
 
     @Override
     public final int getTotalValue(byte[][] accounts) {
-        GetTotalValue clientParams;
         AccountId[] accountIds;
+        int result;
 
         try {
             init();
@@ -272,14 +225,13 @@ public abstract class AccountsResource implements Accounts
             if (accounts == null || accounts.length == 0)
                 throw new BadRequestException();
 
-            clientParams = new GetTotalValue(accounts);
-            accountIds = verifyGetTotalValue(clientParams);
+            accountIds = getAccountIds(accounts);
+            result = this.db.getTotalValue(accountIds).resultOrThrow();
         } catch (WebApplicationException e) {
             LOG.info(e.getMessage());
             throw e;
         }
 
-        int result = getTotalValue(clientParams, accountIds);
         LOG.info(String.format("Total value for %d accounts: %d\n", accountIds.length, result));
 
         ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES);
@@ -292,34 +244,26 @@ public abstract class AccountsResource implements Accounts
                         .build());
     }
 
-    protected AccountId[] verifyGetTotalValue(GetTotalValue clientParams)
+    protected AccountId[] getAccountIds(byte[][] accounts)
     {
-        return Stream.of(clientParams.getAccounts())
+        return Stream.of(accounts)
         .map(this::getAccountId).collect(Collectors.toList())
         .toArray(new AccountId[0]);
     }
 
-    /**
-     * Return total balance of account list
-     * 
-     * @param clientParams
-     * @param accounts
-     * @return total balance
-     */
-    public abstract int getTotalValue(GetTotalValue clientParams, AccountId[] accounts);
-
     @Override
     public final int getGlobalLedgerValue() {
+
+        int result;
         try {
             init();
+            result = this.db.getGlobalLedgerValue().resultOrThrow();
         } catch (WebApplicationException e) {
             LOG.info(e.getMessage());
             throw e;
         }
 
-        int result = getGlobalValue();
-
-        //LOG.info("Global Ledger Value: " + result);
+        LOG.info("Global Ledger Value: " + result);
 
         // sign result
         ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES);
@@ -332,11 +276,33 @@ public abstract class AccountsResource implements Accounts
                         .build());
     }
 
-    /**
-     * Return total amount of value registered in the ledger
-     * @return total balance
-     */
-    public abstract int getGlobalValue();
+    @Override
+    public final BCBlock[] getLedger() {
+
+        BCBlock[] result;
+        try {
+            init();
+
+            result = this.db.getLedger().resultOrThrow();
+        } catch (WebApplicationException e) {
+            LOG.info(e.getMessage());
+            throw e;
+        }
+
+        LOG.info(String.format("Get Ledger with %d blocks.", result.length));
+
+        MessageDigest digest = Crypto.getSha256Digest();
+
+        for (int i = 0; i < result.length; i++) {
+            digest.update(result[i].digest());
+        }
+
+        throw new WebApplicationException(
+                Response.status(Status.OK)
+                        .entity(result)
+                        .header(Accounts.SERVER_SIG, sign(ServerConfig.getKeyPair().getPrivate(), digest.digest()))
+                        .build());
+    }
 
 
     @Override
@@ -353,7 +319,7 @@ public abstract class AccountsResource implements Accounts
             throw e;
         }
 
-        sendTransaction(params, transaction);
+        executeOrderedRequest(params, new TypeReference<Result<Void>>() {});
 
         // log operation if successful
         // LOG.info(String.format("ORIGIN: %s, DEST: %s, TYPE: %s, VALUE: %d",
@@ -381,14 +347,6 @@ public abstract class AccountsResource implements Accounts
         {
             LedgerTransaction t = LedgerTransaction.newTransaction(originId, destId, clientParams.getValue(), clientParams.getNonce());
             t.setClientSignature(clientParams.getAccountSignature());
-            t.setSmartContract(clientParams.getSmartContract());
-
-            if (t.getSmartContract() != null)
-            {
-                if (!t.getSmartContract().verifySignatures(digest))
-                    throw new ForbiddenException("Invalid Smart-Contract signatures.");    
-            }     
-
             t.setHash(t.digest());
             return t;
         } catch (InvalidTransactionException e) {
@@ -414,45 +372,6 @@ public abstract class AccountsResource implements Accounts
         LOG.info(String.format("Validated transaction to mine - ORIGIN: %s, DEST: %s, VALUE: %d", 
                     t.getOrigin(), t.getDest(), t.getValue()));
     }
-
-    /**
-	 * Transfers money from an origin to a destination.
-	 *
-	 * @param transaction the ledger transaction
-	 */
-    public abstract void sendTransaction(SendTransaction clientParams, LedgerTransaction transaction);
-
-    @Override
-    public final BCBlock[] getLedger() {
-        try {
-            init();
-        } catch (WebApplicationException e) {
-            LOG.info(e.getMessage());
-            throw e;
-        }
-
-        BCBlock[] result = getFullLedger();
-
-        //LOG.info(String.format("Get Ledger with %d operations.", result.length));
-
-        MessageDigest digest = Crypto.getSha256Digest();
-
-        for (int i = 0; i < result.length; i++) {
-            digest.update(result[i].digest());
-        }
-
-        throw new WebApplicationException(
-                Response.status(Status.OK)
-                        .entity(result)
-                        .header(Accounts.SERVER_SIG, sign(ServerConfig.getKeyPair().getPrivate(), digest.digest()))
-                        .build());
-    }
-
-     /**
-     * Obtains the current Ledger.
-     * @return The current Ledger.
-     */
-    public abstract BCBlock[] getFullLedger();
 
 
     @Override
@@ -519,6 +438,32 @@ public abstract class AccountsResource implements Accounts
     private LedgerTransaction createGenerationTransaction(AccountId minerId)
     {
         return LedgerTransaction.newGenerationTransaction(minerId, ServerConfig.getGenerationTransactionValue());
+    }
+
+
+    @Override
+    public byte[] proposeMinedBlock(Pair<String, BCBlock> pairMinerIdBlock, String signature) {
+        ProposeMinedBlock clientParams;
+
+        try {
+            init();
+
+            clientParams = new ProposeMinedBlock(pairMinerIdBlock.getLeft(), signature, pairMinerIdBlock.getRight());
+            verifyMinedBlockIntegrity(clientParams);
+        } catch (WebApplicationException e) {
+            Utils.logError(e, LOG);
+            throw e;
+        }
+
+        String blockDigest = executeOrderedRequest(clientParams, new TypeReference<Result<String>>() {});
+        byte[] digest = Utils.fromHex(blockDigest);
+
+
+        throw new WebApplicationException(
+                Response.status(Status.OK)
+                .entity(digest)
+                .header(Accounts.SERVER_SIG, sign(ServerConfig.getKeyPair().getPrivate(), digest))
+                .build());
     }
 
 

@@ -6,16 +6,8 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY)
 @JsonSubTypes({
     @JsonSubTypes.Type(value = CreateAccount.class, name = "CreateAccount"),
-
-    @JsonSubTypes.Type(value = GetAccount.class, name = "GetAccount"),
-    @JsonSubTypes.Type(value = GetBalance.class, name = "GetBalance"),
-    @JsonSubTypes.Type(value = GetFullLedger.class, name = "GetFullLedger"),
-    @JsonSubTypes.Type(value = GetGlobalValue.class, name = "GetGlobalValue"),
-    @JsonSubTypes.Type(value = GetTotalValue.class, name = "GetTotalValue"),
-    @JsonSubTypes.Type(value = LoadMoney.class, name = "LoadMoney"),
     @JsonSubTypes.Type(value = SendTransaction.class, name = "SendTransaction"),
-    @JsonSubTypes.Type(value = ProposeMinedBlock.class, name = "ProposeMinedBlock"),
-    @JsonSubTypes.Type(value = SmartContractValidation.class, name = "SmartContractValidation")
+    @JsonSubTypes.Type(value = ProposeMinedBlock.class, name = "ProposeMinedBlock")
  }
 )
 public abstract class Request
@@ -23,20 +15,8 @@ public abstract class Request
     public static enum Operation
     {
         CREATE_ACCOUNT,
-        LOAD_MONEY,
         SEND_TRANSACTION,
-
-        GET_ACCOUNT,
-        GET_BALANCE,
-        GET_TOTAL_VALUE,
-        GET_GLOBAL_LEDGER_VALUE,
-        GET_LEDGER,
-
-        // ASYNC
-        GET_BALANCE_ASYNC,
-        SEND_TRANSACTION_ASYNC,
-        PROPOSE_BLOCK_ASYNC,
-        SMART_CONTRACT_VALIDATION_ASYNC;
+        PROPOSE_BLOCK
     }
 
     private Operation operation;

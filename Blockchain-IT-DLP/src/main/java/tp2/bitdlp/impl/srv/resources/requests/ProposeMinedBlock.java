@@ -9,11 +9,11 @@ public class ProposeMinedBlock extends Request {
     private BCBlock block;
 
     public ProposeMinedBlock() {
-        super(Operation.PROPOSE_BLOCK_ASYNC);
+        super(Operation.PROPOSE_BLOCK);
     }
 
     public ProposeMinedBlock(String minerId, String clientSignature, BCBlock block){
-        super(Operation.PROPOSE_BLOCK_ASYNC);
+        super(Operation.PROPOSE_BLOCK);
         this.minerId = minerId;
         this.clientSignature = clientSignature;
         this.block = block;

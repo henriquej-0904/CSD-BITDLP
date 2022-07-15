@@ -3,7 +3,6 @@ package tp2.bitdlp.impl.srv.resources.requests;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 
-import tp2.bitdlp.pow.transaction.SmartContract;
 import tp2.bitdlp.util.Crypto;
 import tp2.bitdlp.util.Pair;
 
@@ -14,8 +13,6 @@ public class SendTransaction extends Request {
     private String accountSignature;
     private int nonce;
 
-    private SmartContract smartContract;
-
     public SendTransaction() {
         super(Operation.SEND_TRANSACTION);
     }
@@ -24,13 +21,12 @@ public class SendTransaction extends Request {
      * @param transaction
      */
     public SendTransaction(Pair<byte[],byte[]> originDestPair, int value,
-    String accountSignature, int nonce, SmartContract smartContract) {
+    String accountSignature, int nonce) {
         super(Operation.SEND_TRANSACTION);
         this.originDestPair = originDestPair;
         this.value = value;
         this.accountSignature = accountSignature;
         this.nonce = nonce;
-        this.smartContract = smartContract;
     }
 
     /**
@@ -89,25 +85,6 @@ public class SendTransaction extends Request {
         this.nonce = nonce;
     }
 
-    /**
-     * @return the smartContract
-     */
-    public SmartContract getSmartContract() {
-        return smartContract;
-    }
-
-    /**
-     * @param smartContract the smartContract to set
-     */
-    public void setSmartContract(SmartContract smartContract) {
-        this.smartContract = smartContract;
-    }
-
-    public void async()
-    {
-        this.setOperation(Operation.SEND_TRANSACTION_ASYNC);
-    }
-
     public byte[] digest()
     {
         MessageDigest digest = Crypto.getSha256Digest();
@@ -119,12 +96,6 @@ public class SendTransaction extends Request {
         digest.update(getOriginDestPair().getLeft());
         digest.update(getOriginDestPair().getRight());
         digest.update(bufferArray);
-
-        if (getSmartContract() != null)
-        {
-            digest.update(getSmartContract().getName().getBytes());
-            digest.update(getSmartContract().getCode());
-        }
 
         return digest.digest();
     }

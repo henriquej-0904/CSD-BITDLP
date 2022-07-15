@@ -158,7 +158,7 @@ public class LedgerClient implements Closeable
     {
         return sendTransaction(
             new SendTransaction(new Pair<>(originId.getObjectId(), destId.getObjectId()),
-            value, null, nonce, null), originAccountKeys);
+            value, null, nonce), originAccountKeys);
     }
 
     public Result<LedgerTransaction> sendTransaction(SendTransaction params, KeyPair originAccountKeys) throws InvalidServerSignatureException
@@ -205,6 +205,24 @@ public class LedgerClient implements Closeable
             .buildGet(), BCBlock.class);
 
         return verifyResponseSignature(resultPair, BCBlock::digest);
+    }
+
+    public Result<byte[]> proposeMinedBlock(
+        AccountId minerId, BCBlock block, KeyPair minerKeyPair)
+            throws InvalidServerSignatureException, InvalidReplyWithSignaturesException
+    {
+        final byte[] digest = block.digest();
+        final String signature = sign(minerKeyPair.getPrivate(), digest);
+
+        Pair<Result<byte[]>, Response> resultPair = request(this.client.target(this.endpoint).path(Accounts.PATH)
+            .path("block")
+            .request()
+            .header(Accounts.ACC_SIG, signature)
+            .buildPost(Entity.json(new Pair<>(
+                Utils.toHex(minerId.getObjectId()), block))),
+            byte[].class);
+
+        return verifyResponseSignature(resultPair, (v) -> digest);
     }
 
     @Override
