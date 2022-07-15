@@ -87,13 +87,13 @@
       <version>1.69</version> 
     </dependency>
 
-    <!-- Dependencies for bft-smart-->
+    <!-- Dependencies for blockmess-->
     <dependency>
-      <groupId>com.github.bft-smart</groupId>
-      <artifactId>library</artifactId>
-      <version>1.2</version>
+      <groupId>org.example</groupId>
+      <artifactId>Blockmess_Simple_PoET</artifactId>
+      <version>1.0-SNAPSHOT</version>
       <scope>system</scope>
-      <systemPath>${project.basedir}/bft-smart/lib/BFT-SMaRt.jar</systemPath>
+      <systemPath>${project.basedir}/blockmess/target/BlockmessLib.jar</systemPath>
     </dependency>
 
     <!-- Dependencies for mongo-db-->
@@ -269,7 +269,7 @@
         <configuration>
           <images>
             <image>
-              <name>henriquej0904/csd-tp2-blockchain-it-dlp-${authors}:bft-smart</name>
+              <name>henriquej0904/csd-tp2-blockchain-it-dlp-${authors}:blockmess</name>
               <build>
                 <dockerFile>${project.basedir}/Dockerfile</dockerFile>
               </build>
