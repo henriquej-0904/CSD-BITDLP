@@ -57,8 +57,13 @@ public class AccountsResourceWithBlockmess extends AccountsResource
 
     public class BlockmessServerReplica extends ApplicationInterface {
 
-        public BlockmessServerReplica(int id) {
-            super(new String[0]);
+        public BlockmessServerReplica(int replicaId, String ip, int port) {
+            super(new String[]
+            {
+                "address=" + ip,
+                "port=" + port,
+                "redirectFile=blockmess-logs/" + replicaId + ".log"
+            });
         }
 
         @Override
@@ -118,16 +123,14 @@ public class AccountsResourceWithBlockmess extends AccountsResource
 
         protected Result<Account> createAccount(CreateAccount request) {
             // verify and execute
-            Result<Account> result;
-            try {
-                result = AccountsResourceWithBlockmess.this.db.createAccount(verifyCreateAccount(request));
-                LOG.info(String.format("Created account with %s,\n%s\n",
-                    result.value().getId(), result.value().getOwner()));
-            } catch (WebApplicationException e) {
-                result = Result.error(e);
-                LOG.info(result.errorException().getMessage());
-            }
+            Result<Account> result = AccountsResourceWithBlockmess.this.db.createAccount(verifyCreateAccount(request));
 
+            if (result.isOK())
+                LOG.info(String.format("Created account with %s,\n%s\n",
+                result.value().getId(), result.value().getOwner()));
+            else
+                LOG.info(result.errorException().getMessage());
+            
             return result;
         }
     }

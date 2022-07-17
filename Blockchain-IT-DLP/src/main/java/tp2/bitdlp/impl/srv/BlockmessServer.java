@@ -17,29 +17,30 @@ public class BlockmessServer
 	/**
 	 * args[0] -> replicaId
 	 * args[1] -> Server Port
+	 * args[2] -> Blockmess Port
 	 * @param args
 	 */
 	public static void main(String[] args) {
 		try
 		{
-			if (args.length != 2)
+			if (args.length != 3)
 			{
-				System.err.println("Invalid parameters:\nUsage: <replicaId> <bind port>");
+				System.err.println("Invalid parameters:\nUsage: <replicaId> <bind port> <Blockmess port>");
 				System.exit(1);
 			}
 
 			int replicaId = Integer.parseInt(args[0]);
-			int proxyId = replicaId*3254 + 10;
-			int asyncProxyId = replicaId*3254 + 11;
 			int port = Integer.parseInt(args[1]);
+
+			String ip = InetAddress.getLocalHost().getHostAddress();
+			int blockmessPort = Integer.parseInt(args[2]);
 
 			ServerConfig.init(replicaId);
 
 			AccountsResourceWithBlockmess resource = new AccountsResourceWithBlockmess();
 
-			AccountsResourceWithBlockmess.setReplica(resource.new BlockmessServerReplica(replicaId));
-			
-            String ip = InetAddress.getLocalHost().getHostAddress();
+			AccountsResourceWithBlockmess.setReplica(resource.new BlockmessServerReplica(replicaId, ip, blockmessPort));
+            
 			URI uri = new URI(String.format("https://%s:%d/rest", ip, port));
 
 			ResourceConfig config = new ResourceConfig();

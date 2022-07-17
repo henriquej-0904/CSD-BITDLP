@@ -93,7 +93,7 @@
       <artifactId>Blockmess_Simple_PoET</artifactId>
       <version>1.0-SNAPSHOT</version>
       <scope>system</scope>
-      <systemPath>${project.basedir}/blockmess/target/BlockmessLib.jar</systemPath>
+      <systemPath>${project.basedir}/blockmess/lib/BlockmessLib.jar</systemPath>
     </dependency>
 
     <!-- Dependencies for mongo-db-->
@@ -106,6 +106,17 @@
       <groupId>org.mongodb</groupId>
       <artifactId>mongodb-driver-sync</artifactId>
       <version>4.6.0</version>
+    </dependency>
+
+    <dependency> 
+      <groupId>org.slf4j</groupId>  
+      <artifactId>slf4j-simple</artifactId>  
+      <version>1.7.32</version> 
+    </dependency>  
+    <dependency> 
+      <groupId>log4j</groupId>  
+      <artifactId>log4j</artifactId>  
+      <version>1.2.17</version> 
     </dependency>
 
     <dependency>
@@ -189,7 +200,7 @@
         <version>3.12.0</version>
       </dependency>
 
-      <!-- <dependency> 
+      <dependency> 
         <groupId>org.slf4j</groupId>  
         <artifactId>slf4j-simple</artifactId>  
         <version>1.7.32</version> 
@@ -198,7 +209,7 @@
         <groupId>log4j</groupId>  
         <artifactId>log4j</artifactId>  
         <version>1.2.17</version> 
-      </dependency> -->
+      </dependency>
 
       <dependency>
         <groupId>junit</groupId>
