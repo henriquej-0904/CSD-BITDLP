@@ -4,6 +4,7 @@ import org.bson.types.ObjectId;
 
 import tp2.bitdlp.api.AccountId;
 import tp2.bitdlp.pow.transaction.LedgerTransaction;
+import tp2.bitdlp.pow.transaction.SmartContract;
 
 public class LedgerTransactionDAO
 {
@@ -18,6 +19,8 @@ public class LedgerTransactionDAO
     
     protected int nonce;
 
+    protected SmartContract smartContract;
+
     public LedgerTransactionDAO(LedgerTransaction transaction)
     {
         this.value = transaction.getValue();
@@ -26,6 +29,7 @@ public class LedgerTransactionDAO
         this.origin = transaction.getOrigin();
         this.dest = transaction.getDest();
         this.nonce = transaction.getNonce();
+        this.smartContract = transaction.getSmartContract();
     }
 
     /**
@@ -132,6 +136,20 @@ public class LedgerTransactionDAO
         this.nonce = nonce;
     }
 
+    /**
+     * @return the smartContract
+     */
+    public SmartContract getSmartContract() {
+        return smartContract;
+    }
+
+    /**
+     * @param smartContract the smartContract to set
+     */
+    public void setSmartContract(SmartContract smartContract) {
+        this.smartContract = smartContract;
+    }
+
     @Override
     public String toString() {
         return toLedgerTransaction().toString();
@@ -147,6 +165,7 @@ public class LedgerTransactionDAO
         t.setOrigin(this.origin);
         t.setDest(this.dest);
         t.setNonce(this.nonce);
+        t.setSmartContract(this.smartContract);
 
         return t;
     }
