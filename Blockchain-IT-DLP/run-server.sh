@@ -8,7 +8,7 @@ blockmess_port=`expr 10000 + $replicaId`
 server_port=`expr 10800 + $replicaId`
 mongo_port=`expr 10900 + $replicaId`
 
-docker run --name "replica-$replicaId" --rm -it --network host \
+docker run --name "replica-$replicaId" --rm -d --network host \
 -v "$(pwd)/tls-config/replica-$replicaId:/app/tls-config/replica-$replicaId" \
 -v "$(pwd)/tls-config/truststore.pkcs12:/app/tls-config/truststore.pkcs12" \
 -v "$(pwd)/server-config.properties:/app/server-config.properties" \
