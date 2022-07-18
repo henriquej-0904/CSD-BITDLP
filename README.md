@@ -21,7 +21,7 @@ IN_MEMORY = Sem persistência, em memória || MONGO = Com persistência, utiliza
 
 - A cada máquina está associado um ID (0, 1, etc) que corresponde ao ID da réplica a executar (conforme o ficheiro de configuração [hosts.config](https://github.com/henriquej-0904/CSD-BITDLP/blob/main/Blockchain-IT-DLP/bft-smart/config/hosts.config)). Nota: uma máquina pode executar mais do que uma réplica.
 - Cada réplica deve ter os seus ficheiros de configuração: [bft-smart](https://github.com/henriquej-0904/CSD-BITDLP/blob/main/Blockchain-IT-DLP/bft-smart), [smart-contracts](https://github.com/henriquej-0904/CSD-BITDLP/blob/main/Blockchain-IT-DLP/smart-contracts), [tls-config](https://github.com/henriquej-0904/CSD-BITDLP/blob/main/Blockchain-IT-DLP/tls-config) e [server-config.properties](https://github.com/henriquej-0904/CSD-BITDLP/blob/main/Blockchain-IT-DLP/server-config.properties), assim como todos os scripts necessários à execução e paragem do serviço.
-- Para iniciar e parar um conjunto de réplicas na mesma máquina juntamente com a base de dados, deve-se executar os scripts [run-all.sh](https://github.com/henriquej-0904/CSD-BITDLP/blob/main/Blockchain-IT-DLP/run-all.sh) \<ID\> e [stop-all.sh](https://github.com/henriquej-0904/CSD-BITDLP/blob/main/Blockchain-IT-DLP/stop-all.sh) \<min_ID\> \<max_ID\>, respectivamente.
+- Para iniciar e parar um conjunto de réplicas na mesma máquina juntamente com a base de dados, deve-se executar os scripts [run-all.sh](https://github.com/henriquej-0904/CSD-BITDLP/blob/main/Blockchain-IT-DLP/run-all.sh) \<min_ID\> \<max_ID\> e [stop-all.sh](https://github.com/henriquej-0904/CSD-BITDLP/blob/main/Blockchain-IT-DLP/stop-all.sh) \<min_ID\> \<max_ID\>, respectivamente.
 
 ## Execução do Workload (cliente)
 
