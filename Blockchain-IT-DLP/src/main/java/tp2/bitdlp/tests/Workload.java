@@ -365,12 +365,11 @@ public class Workload implements Runnable
 
         long t1 = System.currentTimeMillis();
 
-        /* try {
-            Thread.sleep(this.random.nextLong(20000, 60000));
+        try {
+            Thread.sleep(this.random.nextLong(20000, 40000));
         } catch (InterruptedException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        } */
+            
+        }
 
         while (!block.isBlockMined())
             block.getHeader().setNonce(this.random.nextInt());
