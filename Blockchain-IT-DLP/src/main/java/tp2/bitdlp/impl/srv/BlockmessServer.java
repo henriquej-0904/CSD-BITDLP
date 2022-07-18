@@ -39,7 +39,7 @@ public class BlockmessServer
 
 			AccountsResourceWithBlockmess resource = new AccountsResourceWithBlockmess();
 
-			AccountsResourceWithBlockmess.setReplica(resource.new BlockmessServerReplica(replicaId, ip, blockmessPort));
+			AccountsResourceWithBlockmess.setReplica(resource.new BlockmessServerReplica(replicaId, blockmessPort));
             
 			URI uri = new URI(String.format("https://%s:%d/rest", ip, port));
 
@@ -49,7 +49,7 @@ public class BlockmessServer
 			SSLContext sslContext = ServerConfig.getSSLContext();
 			JdkHttpServerFactory.createHttpServer(uri, config, sslContext);
 
-			System.out.println("Blockmess is running!!!");
+			System.out.println("Blockmess is running on " + uri.toString());
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

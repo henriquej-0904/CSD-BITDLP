@@ -1,5 +1,7 @@
 package tp2.bitdlp.impl.srv.resources.blockmess;
 
+import java.util.UUID;
+
 import com.fasterxml.jackson.core.type.TypeReference;
 
 import applicationInterface.ApplicationInterface;
@@ -57,12 +59,12 @@ public class AccountsResourceWithBlockmess extends AccountsResource
 
     public class BlockmessServerReplica extends ApplicationInterface {
 
-        public BlockmessServerReplica(int replicaId, String ip, int port) {
+        public BlockmessServerReplica(int replicaId, int port) {
             super(new String[]
             {
-                "address=" + ip,
                 "port=" + port,
-                "redirectFile=blockmess-logs/" + replicaId + ".log"
+                "redirectFile=blockmess-logs/" + replicaId + ".log",
+                "genesisUUID=" + UUID.randomUUID()
             });
         }
 
