@@ -1,6 +1,14 @@
 #! /bin/bash
 
-replicaId=$1
+# stop multiple servers in the same machine
+# usage: <min_id> <max_id>
 
-docker stop mongo-$replicaId
-docker stop replica-$replicaId
+min_id=$1
+max_id=$2
+
+for (( replicaId=$min_id; replicaId <= $max_id; replicaId++ ));
+do
+    docker stop mongo-$replicaId
+
+    docker stop replica-$replicaId
+done
