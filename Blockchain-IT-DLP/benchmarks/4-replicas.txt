@@ -1,0 +1,39 @@
+Status Codes:
+{PROPOSE_BLOCK={OK=7, Bad Request=2}, SEND_TRANSACTION={OK=998}, CREATE_ACCOUNT={OK=500, Conflict=250}}
+
+Stats:
+{SEND_TRANSACTION=Latency (ms): Avg=473, Max=1395, Min=329
+Throughput (op/s): 2.1132158571652417, nOps=998, totalTime(s)=472
+
+, PROPOSE_BLOCK=Latency (ms): Avg=1755, Max=2627, Min=565
+Throughput (op/s): 0.5696563073612254, nOps=9, totalTime(s)=15
+
+, CREATE_ACCOUNT=Latency (ms): Avg=440, Max=3911, Min=241
+Throughput (op/s): 2.26928895612708, nOps=750, totalTime(s)=330
+
+}
+
+Mining stats: Latency (ms): Avg=19879, Max=100117, Min=37
+Throughput (op/s): 0.05030349776987827, nOps=9, totalTime(s)=178
+
+----------------------------------------------------------------------------------------------------
+
+Status Codes:
+{CREATE_ACCOUNT={OK=500, Conflict=250}, PROPOSE_BLOCK={OK=5, Bad Request=4}, SEND_TRANSACTION={OK=499, Conflict=499}}
+
+Stats:
+{SEND_TRANSACTION=Latency (ms): Avg=377, Max=785, Min=228
+Throughput (op/s): 2.6501321082889655, nOps=998, totalTime(s)=376
+
+, PROPOSE_BLOCK=Latency (ms): Avg=874, Max=1257, Min=483
+Throughput (op/s): 1.143002286004572, nOps=9, totalTime(s)=7
+
+, CREATE_ACCOUNT=Latency (ms): Avg=421, Max=2072, Min=229
+Throughput (op/s): 2.3696832207470506, nOps=750, totalTime(s)=316
+
+}
+
+Mining stats: Latency (ms): Avg=34561, Max=83623, Min=1790
+Throughput (op/s): 0.02893397588192366, nOps=9, totalTime(s)=311
+
+
