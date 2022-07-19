@@ -340,23 +340,20 @@ public abstract class AccountsResource implements Accounts
 
 
     @Override
-    public final LedgerTransaction sendTransaction(Pair<byte[], byte[]> originDestPair, int value,
-            String accountSignature, int nonce)
+    public final LedgerTransaction sendTransaction(SendTransaction params)
     {
-        SendTransaction clientParams;
         LedgerTransaction transaction;
 
         try {
             init();
 
-            clientParams = new SendTransaction(originDestPair, value, accountSignature, nonce);
-            transaction = verifySendTransactionParams(clientParams);
+            transaction = verifySendTransactionParams(params);
         } catch (WebApplicationException e) {
             LOG.info(e.getMessage());
             throw e;
         }
 
-        sendTransaction(clientParams, transaction);
+        sendTransaction(params, transaction);
 
         // log operation if successful
         // LOG.info(String.format("ORIGIN: %s, DEST: %s, TYPE: %s, VALUE: %d",
@@ -369,27 +366,34 @@ public abstract class AccountsResource implements Accounts
                         .build());
     }
 
-    private LedgerTransaction verifySendTransactionParams(SendTransaction clientParams) {
+    private LedgerTransaction verifySendTransactionParams(SendTransaction clientParams)
+    {
         AccountId originId = getAccountId(clientParams.getOriginDestPair().getLeft());
-            AccountId destId = getAccountId(clientParams.getOriginDestPair().getRight());
+        AccountId destId = getAccountId(clientParams.getOriginDestPair().getRight());
 
-            // verify signature
-            ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES*2);
-            buffer.putInt(clientParams.getValue());
-            buffer.putInt(clientParams.getNonce());
-
-            if (!verifySignature(originId, clientParams.getAccountSignature(), clientParams.getOriginDestPair().getLeft(),
-                clientParams.getOriginDestPair().getRight(), buffer.array()))
-                throw new ForbiddenException("Invalid Account Signature.");    
+        // verify signature
+        byte[] digest = clientParams.digest();
+            
+        if (!verifySignature(originId, clientParams.getAccountSignature(), digest))
+            throw new ForbiddenException("Invalid Account Signature.");    
         
-            try {
-                LedgerTransaction t = LedgerTransaction.newTransaction(originId, destId, clientParams.getValue(), clientParams.getNonce());
-                t.setClientSignature(clientParams.getAccountSignature());
-                t.setHash(t.digest());
-                return t;
-            } catch (InvalidTransactionException e) {
-                throw new BadRequestException(e.getMessage(), e);
-            }
+        try
+        {
+            LedgerTransaction t = LedgerTransaction.newTransaction(originId, destId, clientParams.getValue(), clientParams.getNonce());
+            t.setClientSignature(clientParams.getAccountSignature());
+            t.setSmartContract(clientParams.getSmartContract());
+
+            if (t.getSmartContract() != null)
+            {
+                if (!t.getSmartContract().verifySignatures(digest))
+                    throw new ForbiddenException("Invalid Smart-Contract signatures.");    
+            }     
+
+            t.setHash(t.digest());
+            return t;
+        } catch (InvalidTransactionException e) {
+            throw new BadRequestException(e.getMessage(), e);
+        }
     }
 
     /**
@@ -598,7 +602,6 @@ public abstract class AccountsResource implements Accounts
         // add block to ledger.
         return this.db.addBlock(clientParams.getBlock());
     }
-
 
     protected byte[] toJson(Object obj)
     {

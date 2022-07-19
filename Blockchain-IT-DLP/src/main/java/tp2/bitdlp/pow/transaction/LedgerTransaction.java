@@ -32,6 +32,8 @@ public class LedgerTransaction
     
     protected int nonce;
 
+    protected SmartContract smartContract;
+
     protected byte[] hash;
 
     /**
@@ -234,9 +236,26 @@ public class LedgerTransaction
 
         digest.update(dest.getObjectId());
 
+        if (smartContract != null)
+            smartContract.digest(digest);
+
         if (includeClientSig && clientSignature != null)
             digest.update(clientSignature.getBytes());
 
         return digest;
+    }
+
+    /**
+     * @return the smartContract
+     */
+    public SmartContract getSmartContract() {
+        return smartContract;
+    }
+
+    /**
+     * @param smartContract the smartContract to set
+     */
+    public void setSmartContract(SmartContract smartContract) {
+        this.smartContract = smartContract;
     }
 }

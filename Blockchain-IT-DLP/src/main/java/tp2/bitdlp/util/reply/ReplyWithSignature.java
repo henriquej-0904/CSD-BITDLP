@@ -1,6 +1,5 @@
 package tp2.bitdlp.util.reply;
 
-import java.nio.ByteBuffer;
 import java.security.InvalidKeyException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
@@ -94,18 +93,11 @@ public class ReplyWithSignature
     
     public void sign(PrivateKey key) throws InvalidKeyException, SignatureException
     {
-        ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES * 2);
-        buffer.putInt(getStatusCode());
-
-        setSignature(Crypto.sign(key, getReplicaId().getBytes(), buffer.array(), getReply()));
+        setSignature(Crypto.sign(key, getReply()));
     }
 
     public boolean verifySignature(PublicKey key) throws InvalidKeyException, SignatureException
     {
-        ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES * 2);
-        buffer.putInt(getStatusCode());
-
-        return Crypto.verifySignature(key, getSignature(),
-            getReplicaId().getBytes(), buffer.array(), getReply());
+        return Crypto.verifySignature(key, getSignature(), getReply());
     }
 }

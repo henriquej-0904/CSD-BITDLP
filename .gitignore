@@ -13,3 +13,5 @@ buildNumber.properties
 .vscode
 
 Blockchain-IT-DLP/tls-config/
+Blockchain-IT-DLP/bft-smart/config/
+Blockchain-IT-DLP/workload-config/config.properties

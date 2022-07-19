@@ -2,8 +2,12 @@ package tp2.bitdlp.data.mongo;
 
 import org.bson.types.ObjectId;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+
 import tp2.bitdlp.api.AccountId;
 import tp2.bitdlp.pow.transaction.LedgerTransaction;
+import tp2.bitdlp.pow.transaction.SmartContract;
+import tp2.bitdlp.util.Utils;
 
 public class LedgerTransactionDAO
 {
@@ -18,6 +22,8 @@ public class LedgerTransactionDAO
     
     protected int nonce;
 
+    protected String smartContract;
+
     public LedgerTransactionDAO(LedgerTransaction transaction)
     {
         this.value = transaction.getValue();
@@ -26,6 +32,10 @@ public class LedgerTransactionDAO
         this.origin = transaction.getOrigin();
         this.dest = transaction.getDest();
         this.nonce = transaction.getNonce();
+        try {
+            this.smartContract = transaction.getSmartContract() == null ? null
+                : Utils.json.writeValueAsString(transaction.getSmartContract());
+        } catch (JsonProcessingException e) {}
     }
 
     /**
@@ -132,6 +142,20 @@ public class LedgerTransactionDAO
         this.nonce = nonce;
     }
 
+    /**
+     * @return the smartContract
+     */
+    public String getSmartContract() {
+        return smartContract;
+    }
+
+    /**
+     * @param smartContract the smartContract to set
+     */
+    public void setSmartContract(String smartContract) {
+        this.smartContract = smartContract;
+    }
+
     @Override
     public String toString() {
         return toLedgerTransaction().toString();
@@ -147,6 +171,11 @@ public class LedgerTransactionDAO
         t.setOrigin(this.origin);
         t.setDest(this.dest);
         t.setNonce(this.nonce);
+
+        if (this.smartContract != null)
+            try {
+                t.setSmartContract(Utils.json.readValue(this.smartContract, SmartContract.class));
+            } catch (Exception e) {}
 
         return t;
     }

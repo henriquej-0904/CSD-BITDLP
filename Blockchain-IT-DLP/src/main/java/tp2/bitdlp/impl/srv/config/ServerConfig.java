@@ -12,8 +12,11 @@ import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.security.UnrecoverableKeyException;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Properties;
 import java.util.function.Function;
@@ -22,6 +25,7 @@ import java.util.stream.Stream;
 
 import javax.net.ssl.SSLContext;
 
+import jakarta.ws.rs.InternalServerErrorException;
 import tp2.bitdlp.data.LedgerDBlayer.DBtype;
 import tp2.bitdlp.util.Crypto;
 
@@ -69,6 +73,7 @@ public class ServerConfig
     private static KeyPair keyPair;
     private static KeyStore keyStore;
     private static KeyStore trustStore;
+    private static Map<String, PublicKey> replicasKeys;
 
     private static String replicaId;
     private static File replicaConfigFolder;
@@ -127,6 +132,31 @@ public class ServerConfig
             trustStore = Crypto.getTrustStore();
         }
         return trustStore;
+    }
+
+    public static Map<String, PublicKey> getAllReplicaKeys()
+    {
+        if (replicasKeys != null)
+            return replicasKeys;
+        
+        try
+        {
+            KeyStore truststore = getTrustStore();
+            Iterator<String> ids = truststore.aliases().asIterator();
+            Map<String, PublicKey> keys = new HashMap<>();
+
+            while (ids.hasNext())
+            {
+                String id = ids.next();
+                keys.put(id, truststore.getCertificate(id).getPublicKey());
+            }
+
+            replicasKeys = Map.copyOf(keys);
+            return replicasKeys;
+
+        } catch (Exception e) {
+            throw new InternalServerErrorException(e.getMessage(), e);
+        }
     }
 
     public static SSLContext getSSLContext()
