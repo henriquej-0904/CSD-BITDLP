@@ -14,7 +14,8 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
     @JsonSubTypes.Type(value = GetTotalValue.class, name = "GetTotalValue"),
     @JsonSubTypes.Type(value = LoadMoney.class, name = "LoadMoney"),
     @JsonSubTypes.Type(value = SendTransaction.class, name = "SendTransaction"),
-    @JsonSubTypes.Type(value = ProposeMinedBlock.class, name = "ProposeMinedBlock")
+    @JsonSubTypes.Type(value = ProposeMinedBlock.class, name = "ProposeMinedBlock"),
+    @JsonSubTypes.Type(value = SmartContractValidation.class, name = "SmartContractValidation")
  }
 )
 public abstract class Request
@@ -31,11 +32,11 @@ public abstract class Request
         GET_GLOBAL_LEDGER_VALUE,
         GET_LEDGER,
 
-        PROPOSE_BLOCK_ASYNC,
-
         // ASYNC
         GET_BALANCE_ASYNC,
-        SEND_TRANSACTION_ASYNC;
+        SEND_TRANSACTION_ASYNC,
+        PROPOSE_BLOCK_ASYNC,
+        SMART_CONTRACT_VALIDATION_ASYNC;
     }
 
     private Operation operation;

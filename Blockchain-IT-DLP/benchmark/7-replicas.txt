@@ -1,0 +1,63 @@
+Status Codes:
+{CREATE_ACCOUNT={Conflict=250, OK=500}, GET_LEDGER={OK=10}, LOAD_MONEY={}, SEND_TRANSACTION={}, GET_BALANCE_ASYNC={OK=3000}, SMART_CONTRACT_VALIDATION_ASYNC={OK=312}, SEND_TRANSACTION_ASYNC={Conflict=998}, GET_ACCOUNT={Not Found=40, OK=2000}, GET_GLOBAL_LEDGER_VALUE={OK=10}, GET_BALANCE={}, GET_TOTAL_VALUE={OK=20}, PROPOSE_BLOCK_ASYNC={Bad Request=7}}
+
+Stats:
+{GET_LEDGER=Latency (ms): Avg=435, Max=608, Min=173
+Throughput (op/s): 2.296738631143776, nOps=10, totalTime(s)=4
+
+, CREATE_ACCOUNT=Latency (ms): Avg=246, Max=1950, Min=141
+Throughput (op/s): 4.06237643605007, nOps=750, totalTime(s)=184
+
+, GET_ACCOUNT=Latency (ms): Avg=191, Max=743, Min=71
+Throughput (op/s): 5.219059801726895, nOps=2040, totalTime(s)=390
+
+, SEND_TRANSACTION_ASYNC=Latency (ms): Avg=284, Max=733, Min=226
+Throughput (op/s): 3.5119946229180523, nOps=998, totalTime(s)=284
+
+, GET_GLOBAL_LEDGER_VALUE=Latency (ms): Avg=179, Max=255, Min=162
+Throughput (op/s): 5.567928730512249, nOps=10, totalTime(s)=1
+
+, GET_TOTAL_VALUE=Latency (ms): Avg=335, Max=968, Min=224
+Throughput (op/s): 2.9801817910892563, nOps=20, totalTime(s)=6
+
+, SMART_CONTRACT_VALIDATION_ASYNC=Latency (ms): Avg=496, Max=824, Min=421
+Throughput (op/s): 2.0132409307367687, nOps=312, totalTime(s)=154
+
+, GET_BALANCE_ASYNC=Latency (ms): Avg=203, Max=591, Min=158
+Throughput (op/s): 4.913731258210026, nOps=3000, totalTime(s)=610
+
+, PROPOSE_BLOCK_ASYNC=Latency (ms): Avg=653, Max=957, Min=403
+Throughput (op/s): 1.5297202797202798, nOps=7, totalTime(s)=4
+
+}
+
+Mining stats: Latency (ms): Avg=78808, Max=147978, Min=33890
+Throughput (op/s): 0.012689021096403932, nOps=7, totalTime(s)=551
+
+----------------------------------------------------------------------------------------------------
+
+Status Codes:
+{SMART_CONTRACT_VALIDATION_ASYNC={OK=336}, GET_BALANCE_ASYNC={OK=8}, SEND_TRANSACTION={}, LOAD_MONEY={}, GET_LEDGER={}, CREATE_ACCOUNT={Conflict=250, OK=500}, PROPOSE_BLOCK_ASYNC={OK=8}, GET_TOTAL_VALUE={}, GET_BALANCE={}, GET_GLOBAL_LEDGER_VALUE={}, GET_ACCOUNT={}, SEND_TRANSACTION_ASYNC={No Content=928, Conflict=70}}
+
+Stats:
+{CREATE_ACCOUNT=Latency (ms): Avg=245, Max=1459, Min=139
+Throughput (op/s): 4.077815595741673, nOps=750, totalTime(s)=183
+
+, SEND_TRANSACTION_ASYNC=Latency (ms): Avg=291, Max=860, Min=230
+Throughput (op/s): 3.428104272077438, nOps=998, totalTime(s)=291
+
+, SMART_CONTRACT_VALIDATION_ASYNC=Latency (ms): Avg=502, Max=1130, Min=430
+Throughput (op/s): 1.991512363972593, nOps=336, totalTime(s)=168
+
+, GET_BALANCE_ASYNC=Latency (ms): Avg=257, Max=382, Min=195
+Throughput (op/s): 3.883495145631068, nOps=8, totalTime(s)=2
+
+, PROPOSE_BLOCK_ASYNC=Latency (ms): Avg=1462, Max=1740, Min=678
+Throughput (op/s): 0.6835854054515936, nOps=8, totalTime(s)=11
+
+}
+
+Mining stats: Latency (ms): Avg=60510, Max=93140, Min=21709
+Throughput (op/s): 0.016526091599994214, nOps=8, totalTime(s)=484
+
+

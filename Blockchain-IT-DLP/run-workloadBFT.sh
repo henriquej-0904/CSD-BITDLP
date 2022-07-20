@@ -1,10 +1,9 @@
 #! /bin/bash
 
-# usage: <replicaId> <fReplicas> <% reads>
-
-replicaId=$1
-replicaPort=`expr 8080 + $replicaId`
+# usage: <workload-config> <replicaId> <OPTIONAL (default is false): true for execute reads>
 
 docker run --rm -it --network host \
 -v "$(pwd)/tls-config/truststore.pkcs12:/app/tls-config/truststore.pkcs12" \
-csd-tp2-blockchain-it-dlp-55065-52464 tp2.bitdlp.tests.WorkloadBFT "https://localhost:$replicaPort/rest" "replica-$replicaId" $2 $3
+-v "$(pwd)/smart-contracts:/app/smart-contracts" \
+-v "$(pwd)/workload-config:/app/workload-config" \
+henriquej0904/csd-tp2-blockchain-it-dlp-55065:bft-smart tp2.bitdlp.tests.WorkloadBFT $1 replica-$2 $3

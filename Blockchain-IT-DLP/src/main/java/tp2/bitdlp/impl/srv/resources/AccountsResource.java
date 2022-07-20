@@ -30,7 +30,6 @@ import tp2.bitdlp.impl.srv.resources.requests.GetBalance;
 import tp2.bitdlp.impl.srv.resources.requests.GetTotalValue;
 import tp2.bitdlp.impl.srv.resources.requests.ProposeMinedBlock;
 import tp2.bitdlp.impl.srv.resources.requests.SendTransaction;
-import tp2.bitdlp.pow.Settings;
 import tp2.bitdlp.pow.block.BCBlock;
 import tp2.bitdlp.pow.transaction.InvalidTransactionException;
 import tp2.bitdlp.pow.transaction.LedgerTransaction;
@@ -341,23 +340,20 @@ public abstract class AccountsResource implements Accounts
 
 
     @Override
-    public final LedgerTransaction sendTransaction(Pair<byte[], byte[]> originDestPair, int value,
-            String accountSignature, int nonce)
+    public final LedgerTransaction sendTransaction(SendTransaction params)
     {
-        SendTransaction clientParams;
         LedgerTransaction transaction;
 
         try {
             init();
 
-            clientParams = new SendTransaction(originDestPair, value, accountSignature, nonce);
-            transaction = verifySendTransactionParams(clientParams);
+            transaction = verifySendTransactionParams(params);
         } catch (WebApplicationException e) {
             LOG.info(e.getMessage());
             throw e;
         }
 
-        sendTransaction(clientParams, transaction);
+        sendTransaction(params, transaction);
 
         // log operation if successful
         // LOG.info(String.format("ORIGIN: %s, DEST: %s, TYPE: %s, VALUE: %d",
@@ -370,27 +366,34 @@ public abstract class AccountsResource implements Accounts
                         .build());
     }
 
-    private LedgerTransaction verifySendTransactionParams(SendTransaction clientParams) {
+    private LedgerTransaction verifySendTransactionParams(SendTransaction clientParams)
+    {
         AccountId originId = getAccountId(clientParams.getOriginDestPair().getLeft());
-            AccountId destId = getAccountId(clientParams.getOriginDestPair().getRight());
+        AccountId destId = getAccountId(clientParams.getOriginDestPair().getRight());
 
-            // verify signature
-            ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES*2);
-            buffer.putInt(clientParams.getValue());
-            buffer.putInt(clientParams.getNonce());
-
-            if (!verifySignature(originId, clientParams.getAccountSignature(), clientParams.getOriginDestPair().getLeft(),
-                clientParams.getOriginDestPair().getRight(), buffer.array()))
-                throw new ForbiddenException("Invalid Account Signature.");    
+        // verify signature
+        byte[] digest = clientParams.digest();
+            
+        if (!verifySignature(originId, clientParams.getAccountSignature(), digest))
+            throw new ForbiddenException("Invalid Account Signature.");    
         
-            try {
-                LedgerTransaction t = LedgerTransaction.newTransaction(originId, destId, clientParams.getValue(), clientParams.getNonce());
-                t.setClientSignature(clientParams.getAccountSignature());
-                t.setHash(t.digest());
-                return t;
-            } catch (InvalidTransactionException e) {
-                throw new BadRequestException(e.getMessage(), e);
-            }
+        try
+        {
+            LedgerTransaction t = LedgerTransaction.newTransaction(originId, destId, clientParams.getValue(), clientParams.getNonce());
+            t.setClientSignature(clientParams.getAccountSignature());
+            t.setSmartContract(clientParams.getSmartContract());
+
+            if (t.getSmartContract() != null)
+            {
+                if (!t.getSmartContract().verifySignatures(digest))
+                    throw new ForbiddenException("Invalid Smart-Contract signatures.");    
+            }     
+
+            t.setHash(t.digest());
+            return t;
+        } catch (InvalidTransactionException e) {
+            throw new BadRequestException(e.getMessage(), e);
+        }
     }
 
     /**
@@ -494,7 +497,7 @@ public abstract class AccountsResource implements Accounts
         // get transactions from pool
         List<LedgerTransaction> transactions =
             this.transactionsToMine
-            .getTransactions(Settings.getValidNumberTransactionsInBlock() - 1);
+            .getTransactions(ServerConfig.getValidNumberTransactionsInBlock() - 1);
 
         if (transactions == null)
             throw new WebApplicationException(
@@ -515,7 +518,7 @@ public abstract class AccountsResource implements Accounts
 
     private LedgerTransaction createGenerationTransaction(AccountId minerId)
     {
-        return LedgerTransaction.newGenerationTransaction(minerId, Settings.getGenerationTransactionValue());
+        return LedgerTransaction.newGenerationTransaction(minerId, ServerConfig.getGenerationTransactionValue());
     }
 
 
@@ -527,8 +530,8 @@ public abstract class AccountsResource implements Accounts
                     clientParams.getBlock().digest());
 
             BCBlock block = clientParams.getBlock();
-            boolean check = block.getHeader().getVersion() == Settings.getCurrentVersion()
-                    && block.getHeader().getDiffTarget() == Settings.getDifficultyTarget()
+            boolean check = block.getHeader().getVersion() == ServerConfig.getCurrentVersion()
+                    && block.getHeader().getDiffTarget() == ServerConfig.getDifficultyTarget()
                     && block.getHeader().getMerkleRoot()
                             .equals(Utils.toHex(block.getTransactions().getMerkleRootHash()))
                     && block.isBlockMined();
@@ -549,9 +552,9 @@ public abstract class AccountsResource implements Accounts
                     throw new BadRequestException("Expected genesis block.");
             } else {
                 // verify exists n transactions
-                if (transactions.size() < Settings.getValidNumberTransactionsInBlock())
+                if (transactions.size() < ServerConfig.getValidNumberTransactionsInBlock())
                     throw new BadRequestException("Expected at least " +
-                            Settings.getValidNumberTransactionsInBlock() + " transactions");
+                    ServerConfig.getValidNumberTransactionsInBlock() + " transactions");
 
                 // verify previous hash
                 if (!this.db.getPreviousBlockHash().resultOrThrow().equals(block.getHeader().getPreviousHash()))
@@ -567,7 +570,7 @@ public abstract class AccountsResource implements Accounts
     private void verifyGenerationTransaction(AccountId minerId, LedgerTransaction transaction)
     {
         boolean result =transaction.getType() == Type.GENERATION_TRANSACTION &&
-           transaction.getValue() == Settings.getGenerationTransactionValue()
+           transaction.getValue() == ServerConfig.getGenerationTransactionValue()
            && minerId.equals(transaction.getDest())
            && transaction.getOrigin() == null;
 
@@ -599,7 +602,6 @@ public abstract class AccountsResource implements Accounts
         // add block to ledger.
         return this.db.addBlock(clientParams.getBlock());
     }
-
 
     protected byte[] toJson(Object obj)
     {

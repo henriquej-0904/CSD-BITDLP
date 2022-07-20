@@ -1,12 +1,9 @@
 package tp2.bitdlp.data;
 
-import java.io.FileInputStream;
-import java.io.InputStream;
-import java.util.Properties;
-
 import tp2.bitdlp.api.Account;
 import tp2.bitdlp.api.AccountId;
 import tp2.bitdlp.data.mongo.LedgerDBWithMongo;
+import tp2.bitdlp.impl.srv.config.ServerConfig;
 import tp2.bitdlp.pow.block.BCBlock;
 import tp2.bitdlp.pow.transaction.LedgerTransaction;
 import tp2.bitdlp.util.result.Result;
@@ -47,7 +44,7 @@ public abstract class LedgerDBlayer
     {
         if (instance == null)
         {
-            dbType = getDBType();
+            dbType = ServerConfig.getDBtype();
             
             switch (dbType) {
                 case IN_MEMORY:
@@ -60,23 +57,6 @@ public abstract class LedgerDBlayer
         }
 
         return instance;
-    }
-
-    private static DBtype getDBType() throws LedgerDBlayerException
-    {
-        Properties props = new Properties();
-        try (InputStream input = new FileInputStream("db-config.properties"))
-        {
-            props.load(input);
-            String type = props.getProperty("DB_TYPE");
-
-            if (type == null)
-                throw new LedgerDBlayerException("DB_TYPE not specified.");
-
-            return DBtype.valueOf(type.toUpperCase());
-        } catch (Exception e) {
-            throw new LedgerDBlayerException(e.getMessage(), e);
-        }
     }
 
 
